@@ -19,10 +19,15 @@ def canon_db(tmp_path_factory) -> Path:
     return out_path
 
 
-@pytest.fixture(scope="session")
-def client(canon_db: Path):
+@pytest.fixture
+def saves_dir(tmp_path: Path) -> Path:
+    return tmp_path / "saves"
+
+
+@pytest.fixture
+def client(canon_db: Path, saves_dir: Path):
     from fastapi.testclient import TestClient
 
     from server.app import create_app
 
-    return TestClient(create_app(canon_db))
+    return TestClient(create_app(canon_db, saves_dir))

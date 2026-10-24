@@ -9,3 +9,4 @@ canon.db
 ratings_output.json
 web/dist/
 data/raster/
+saves/

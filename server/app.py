@@ -5,12 +5,21 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from server.canon import REPO_ROOT, Canon, default_db_path
+from server.career import (
+    SaveFormatError,
+    SaveNotFound,
+    SaveStore,
+    SaveVersionError,
+    build_snapshot,
+    create_career,
+)
 
 RASTER_DIR = REPO_ROOT / "data" / "raster"
 WEB_DIST = REPO_ROOT / "web" / "dist"
+SAVES_DIR = REPO_ROOT / "saves"
 
 
 class MetaCounts(BaseModel):
@@ -94,16 +103,125 @@ class PlayerSummary(BaseModel):
     skill_moves: int | None = None
     role: str | None = None
     photo: str
+    fatigue: int = 100
 
 
 class PlayerDetail(PlayerSummary):
     stats: dict[str, float]
 
 
-def create_app(db_path: Path | None = None) -> FastAPI:
+class CreateCareerRequest(BaseModel):
+    club_id: str
+    manager_name: str = Field(min_length=1, max_length=80)
+    manager_nationality_id: str
+    seed: int | None = Field(default=None, ge=0, le=4_294_967_295)
+
+
+class ManagerInfo(BaseModel):
+    name: str
+    nationality_id: str
+    nationality: str
+
+
+class SquadSummary(BaseModel):
+    squad_size: int
+    average_overall: float
+    average_age: float | None = None
+    total_market_value: int
+
+
+class SquadGroup(BaseModel):
+    role: str
+    players: list[PlayerSummary]
+
+
+class LineupSlot(BaseModel):
+    position: str
+    role: str
+    x: int
+    y: int
+    player: PlayerSummary
+
+
+class Lineup(BaseModel):
+    formation: str
+    slots: list[LineupSlot]
+    bench: list[PlayerSummary]
+
+
+class SquadBlock(BaseModel):
+    summary: SquadSummary
+    groups: list[SquadGroup]
+    lineup: Lineup
+
+
+class CareerSnapshot(BaseModel):
+    version: int
+    id: str
+    seed: int
+    date: str
+    created_at: str
+    updated_at: str
+    manager: ManagerInfo
+    club: Club
+    squad: SquadBlock
+
+
+def _int_or_zero(value) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+class CareerListItem(BaseModel):
+    id: str
+    version: int
+    seed: int
+    date: str
+    created_at: str
+    updated_at: str
+    manager_name: str
+    club_id: str
+    club_name: str
+    club_logo: str
+    league_name: str
+    country_name: str
+    compatible: bool = True
+    problem: str | None = None
+
+
+def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> FastAPI:
     canon = Canon(db_path or default_db_path())
-    app = FastAPI(title="GF Career Prototype API", version="0.2.0")
+    saves = SaveStore(saves_dir or SAVES_DIR)
+    app = FastAPI(title="GF Career Prototype API", version="0.3.0")
     app.state.canon = canon
+    app.state.saves = saves
+
+    def load_career(career_id: str):
+        try:
+            return saves.load(career_id)
+        except SaveNotFound as error:
+            raise HTTPException(status_code=404, detail="career save not found") from error
+        except SaveVersionError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        except SaveFormatError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    def snapshot(career):
+        club = canon.club(career.club_id)
+        if club is None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"club {career.club_id} from career {career.id} is missing from canon.db",
+            )
+        players = canon.players_by_ids(career.player_ids)
+        if not players:
+            raise HTTPException(
+                status_code=409,
+                detail=f"career {career.id} has no players in canon.db",
+            )
+        return build_snapshot(career, club, players)
 
     app.add_middleware(
         CORSMiddleware,
@@ -154,6 +272,106 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         if result is None:
             raise HTTPException(status_code=404, detail="player not found")
         return result
+
+    @app.post("/api/careers", response_model=CareerSnapshot, status_code=201)
+    def create_career_endpoint(payload: CreateCareerRequest):
+        club = canon.club(payload.club_id)
+        if club is None:
+            raise HTTPException(status_code=404, detail="club not found")
+        nationality = canon.country(payload.manager_nationality_id)
+        if nationality is None:
+            raise HTTPException(status_code=404, detail="manager nationality not found")
+        manager_name = payload.manager_name.strip()
+        if not manager_name:
+            raise HTTPException(status_code=422, detail="manager name must not be blank")
+        squad = canon.squad(payload.club_id)
+        if not squad:
+            raise HTTPException(
+                status_code=422,
+                detail="selected club has no players in canon.db",
+            )
+        career = create_career(
+            manager_name=manager_name,
+            manager_nationality_id=nationality["id"],
+            manager_nationality=nationality["name"],
+            club_id=club["id"],
+            player_ids=[player["id"] for player in squad],
+            seed=payload.seed,
+        )
+        saves.save(career)
+        return snapshot(career)
+
+    @app.get("/api/careers", response_model=list[CareerListItem])
+    def careers():
+        items = []
+        for entry in saves.scan():
+            career = entry["career"]
+            if career is not None:
+                club = canon.club(career.club_id)
+                if club is None:
+                    continue
+                items.append(
+                    {
+                        "id": career.id,
+                        "version": career.version,
+                        "seed": career.seed,
+                        "date": career.date,
+                        "created_at": career.created_at,
+                        "updated_at": career.updated_at,
+                        "manager_name": career.manager.name,
+                        "club_id": club["id"],
+                        "club_name": club["name"],
+                        "club_logo": club["logo"],
+                        "league_name": club["league_name"],
+                        "country_name": club["country_name"],
+                        "compatible": True,
+                    }
+                )
+                continue
+
+            raw = entry["raw"] or {}
+            manager = raw.get("manager") or {}
+            club_id = raw.get("club_id")
+            club = canon.club(str(club_id)) if club_id else None
+            items.append(
+                {
+                    "id": entry["id"],
+                    "version": _int_or_zero(raw.get("version")),
+                    "seed": _int_or_zero(raw.get("seed")),
+                    "date": str(raw.get("date") or ""),
+                    "created_at": str(raw.get("created_at") or ""),
+                    "updated_at": str(raw.get("updated_at") or ""),
+                    "manager_name": str(manager.get("name") or "Неизвестный менеджер"),
+                    "club_id": club["id"] if club else "",
+                    "club_name": club["name"] if club else "Неизвестный клуб",
+                    "club_logo": club["logo"] if club else "",
+                    "league_name": club["league_name"] if club else "",
+                    "country_name": club["country_name"] if club else "",
+                    "compatible": False,
+                    "problem": str(entry["error"]),
+                }
+            )
+
+        items.sort(key=lambda item: (item["updated_at"], item["id"]), reverse=True)
+        return items
+
+    @app.get("/api/careers/latest", response_model=CareerSnapshot)
+    def latest_career():
+        career = saves.latest()
+        if career is None:
+            raise HTTPException(status_code=404, detail="no career saves yet")
+        return snapshot(career)
+
+    @app.get("/api/careers/{career_id}", response_model=CareerSnapshot)
+    def career(career_id: str):
+        return snapshot(load_career(career_id))
+
+    @app.post("/api/careers/{career_id}/save", response_model=CareerSnapshot)
+    def save_career(career_id: str):
+        career = load_career(career_id)
+        career.touch()
+        saves.save(career)
+        return snapshot(career)
 
     if WEB_DIST.exists():
         app.mount("/", StaticFiles(directory=str(WEB_DIST), html=True), name="web")

@@ -117,6 +117,12 @@ class Canon:
             rows = connection.execute(query).fetchall()
         return [dict(row) for row in rows]
 
+    def country(self, country_id: str) -> dict | None:
+        query = f"SELECT {COUNTRY_COLUMNS} FROM countries co WHERE co.id = ?"
+        with self._connect() as connection:
+            row = connection.execute(query, (country_id,)).fetchone()
+        return dict(row) if row else None
+
     def leagues(self, country_id: str | None = None) -> list[dict]:
         query = f"""
             SELECT {LEAGUE_COLUMNS}, co.name AS country_name, co.flag AS country_flag,
@@ -173,6 +179,17 @@ class Canon:
             player.pop("stats", None)
         rows.sort(key=lambda player: (ROLE_ORDER.get(player["role"], 99), -player["overall"], player["name"]))
         return rows
+
+    def players_by_ids(self, player_ids: list[str]) -> list[dict]:
+        if not player_ids:
+            return []
+        placeholders = ",".join("?" for _ in player_ids)
+        rows = self._player_rows(f"WHERE p.id IN ({placeholders})", tuple(player_ids))
+        by_id = {row["id"]: row for row in rows}
+        players = [by_id[player_id] for player_id in player_ids if player_id in by_id]
+        for player in players:
+            player.pop("stats", None)
+        return players
 
     def player(self, player_id: str) -> dict | None:
         rows = self._player_rows("WHERE p.id = ?", (player_id,))
