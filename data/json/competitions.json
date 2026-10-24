@@ -1,0 +1,3071 @@
+[
+  {
+    "id": "MEXA",
+    "name": "Liga MX Apertura",
+    "type": "league",
+    "country": {
+      "id": "110",
+      "name": "Mexico"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/mexa.png"
+  },
+  {
+    "id": "MLS1",
+    "name": "Major League Soccer",
+    "type": "league",
+    "country": {
+      "id": "184",
+      "name": "United States"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/mls1.png"
+  },
+  {
+    "id": "COL1",
+    "name": "Liga Dimayor Finalización",
+    "type": "league",
+    "country": {
+      "id": "83",
+      "name": "Colombia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/col1.png"
+  },
+  {
+    "id": "JFL",
+    "name": "Japan Football League",
+    "type": "league",
+    "country": {
+      "id": "77",
+      "name": "Japan"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/jfl.png"
+  },
+  {
+    "id": "SA2L",
+    "name": "Saudi First Division League",
+    "type": "league",
+    "country": {
+      "id": "146",
+      "name": "Saudi Arabia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sa2l.png"
+  },
+  {
+    "id": "IS1",
+    "name": "Besta deild",
+    "type": "league",
+    "country": {
+      "id": "73",
+      "name": "Iceland"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/is1.png"
+  },
+  {
+    "id": "VZ1C",
+    "name": "Liga FUTVE Clausura",
+    "type": "league",
+    "country": {
+      "id": "182",
+      "name": "Venezuela"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/vz1c.png"
+  },
+  {
+    "id": "ALB1",
+    "name": "Kategoria Superiore",
+    "type": "league",
+    "country": {
+      "id": "3",
+      "name": "Albania"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/alb1.png"
+  },
+  {
+    "id": "LI1",
+    "name": "Toplyga",
+    "type": "league",
+    "country": {
+      "id": "98",
+      "name": "Lithuania"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/li1.png"
+  },
+  {
+    "id": "EGY1",
+    "name": "Egyptian Premier League",
+    "type": "league",
+    "country": {
+      "id": "2",
+      "name": "Egypt"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/egy1.png"
+  },
+  {
+    "id": "GE1N",
+    "name": "Erovnuli Liga",
+    "type": "league",
+    "country": {
+      "id": "53",
+      "name": "Georgia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ge1n.png"
+  },
+  {
+    "id": "WAL1",
+    "name": "Cymru Premier",
+    "type": "league",
+    "country": {
+      "id": "191",
+      "name": "Wales"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/wal1.png"
+  },
+  {
+    "id": "WAL2",
+    "name": "Cymru North",
+    "type": "league",
+    "country": {
+      "id": "191",
+      "name": "Wales"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/wal2.png"
+  },
+  {
+    "id": "WA2S",
+    "name": "Cymru South",
+    "type": "league",
+    "country": {
+      "id": "191",
+      "name": "Wales"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/wa2s.png"
+  },
+  {
+    "id": "NLN6",
+    "name": "National League North",
+    "type": "league",
+    "country": {
+      "id": "189",
+      "name": "England"
+    },
+    "tier": "Sixth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/nln6.png"
+  },
+  {
+    "id": "URUC",
+    "name": "Liga AUF Clausura",
+    "type": "league",
+    "country": {
+      "id": "179",
+      "name": "Uruguay"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/uruc.png"
+  },
+  {
+    "id": "NLS6",
+    "name": "National League South",
+    "type": "league",
+    "country": {
+      "id": "189",
+      "name": "England"
+    },
+    "tier": "Sixth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/nls6.png"
+  },
+  {
+    "id": "EST3",
+    "name": "Esiliiga B",
+    "type": "league",
+    "country": {
+      "id": "47",
+      "name": "Estonia"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/est3.png"
+  },
+  {
+    "id": "TDeC",
+    "name": "Liga 1 Clausura",
+    "type": "league",
+    "country": {
+      "id": "133",
+      "name": "Peru"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/tdec.png"
+  },
+  {
+    "id": "CNAT",
+    "name": "National League",
+    "type": "league",
+    "country": {
+      "id": "189",
+      "name": "England"
+    },
+    "tier": "Fifth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/cnat.png"
+  },
+  {
+    "id": "CLPD",
+    "name": "Liga de Primera",
+    "type": "league",
+    "country": {
+      "id": "33",
+      "name": "Chile"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/clpd.png"
+  },
+  {
+    "id": "FR2",
+    "name": "Ligue 2",
+    "type": "league",
+    "country": {
+      "id": "50",
+      "name": "France"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/fr2.png"
+  },
+  {
+    "id": "RO2",
+    "name": "Liga 2",
+    "type": "league",
+    "country": {
+      "id": "140",
+      "name": "Romania"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ro2.png"
+  },
+  {
+    "id": "NL2",
+    "name": "Keuken Kampioen Divisie",
+    "type": "league",
+    "country": {
+      "id": "122",
+      "name": "Netherlands"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/nl2.png"
+  },
+  {
+    "id": "PO1",
+    "name": "Liga Portugal",
+    "type": "league",
+    "country": {
+      "id": "136",
+      "name": "Portugal"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/po1.png"
+  },
+  {
+    "id": "UA2P",
+    "name": "Premier Liga 2",
+    "type": "league",
+    "country": {
+      "id": "177",
+      "name": "Ukraine"
+    },
+    "tier": "Youth league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ua2p.png"
+  },
+  {
+    "id": "C2",
+    "name": "Challenge League",
+    "type": "league",
+    "country": {
+      "id": "148",
+      "name": "Switzerland"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/c2.png"
+  },
+  {
+    "id": "NO42",
+    "name": "Norsk Tipping-Ligaen avdeling 2",
+    "type": "league",
+    "country": {
+      "id": "125",
+      "name": "Norway"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/no42.png"
+  },
+  {
+    "id": "NO43",
+    "name": "Norsk Tipping-Ligaen avdeling 3",
+    "type": "league",
+    "country": {
+      "id": "125",
+      "name": "Norway"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/no43.png"
+  },
+  {
+    "id": "NO44",
+    "name": "Norsk Tipping-Ligaen avdeling 4",
+    "type": "league",
+    "country": {
+      "id": "125",
+      "name": "Norway"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/no44.png"
+  },
+  {
+    "id": "NO46",
+    "name": "Norsk Tipping-Ligaen avdeling 6",
+    "type": "league",
+    "country": {
+      "id": "125",
+      "name": "Norway"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/no46.png"
+  },
+  {
+    "id": "NO45",
+    "name": "Norsk Tipping-Ligaen avdeling 5",
+    "type": "league",
+    "country": {
+      "id": "125",
+      "name": "Norway"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/no45.png"
+  },
+  {
+    "id": "SER2",
+    "name": "Prva liga Srbije",
+    "type": "league",
+    "country": {
+      "id": "215",
+      "name": "Serbia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ser2.png"
+  },
+  {
+    "id": "SE2",
+    "name": "Superettan",
+    "type": "league",
+    "country": {
+      "id": "147",
+      "name": "Sweden"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/se2.png"
+  },
+  {
+    "id": "SE1",
+    "name": "Allsvenskan",
+    "type": "league",
+    "country": {
+      "id": "147",
+      "name": "Sweden"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/se1.png"
+  },
+  {
+    "id": "KAS1",
+    "name": "Premier Liga",
+    "type": "league",
+    "country": {
+      "id": "81",
+      "name": "Kazakhstan"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/kas1.png"
+  },
+  {
+    "id": "ISR2",
+    "name": "Liga Leumit",
+    "type": "league",
+    "country": {
+      "id": "74",
+      "name": "Israel"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/isr2.png"
+  },
+  {
+    "id": "ISR1",
+    "name": "Ligat ha'Al",
+    "type": "league",
+    "country": {
+      "id": "74",
+      "name": "Israel"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/isr1.png"
+  },
+  {
+    "id": "UN2",
+    "name": "Nemzeti Bajnokság II.",
+    "type": "league",
+    "country": {
+      "id": "178",
+      "name": "Hungary"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/un2.png"
+  },
+  {
+    "id": "E3G1",
+    "name": "Primera Federación - Grupo I",
+    "type": "league",
+    "country": {
+      "id": "157",
+      "name": "Spain"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/e3g1.png"
+  },
+  {
+    "id": "CDN1",
+    "name": "Canadian Premier League",
+    "type": "league",
+    "country": {
+      "id": "80",
+      "name": "Canada"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/cdn1.png"
+  },
+  {
+    "id": "E3G2",
+    "name": "Primera Federación - Grupo II",
+    "type": "league",
+    "country": {
+      "id": "157",
+      "name": "Spain"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/e3g2.png"
+  },
+  {
+    "id": "CRPD",
+    "name": "Primera División Apertura",
+    "type": "league",
+    "country": {
+      "id": "36",
+      "name": "Costa Rica"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/crpd.png"
+  },
+  {
+    "id": "NC1A",
+    "name": "Liga Primera de Nicaragua Apertura",
+    "type": "league",
+    "country": {
+      "id": "121",
+      "name": "Nicaragua"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/nc1a.png"
+  },
+  {
+    "id": "PN1A",
+    "name": "Liga Panameña de Fútbol Apertura",
+    "type": "league",
+    "country": {
+      "id": "130",
+      "name": "Panama"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/pn1a.png"
+  },
+  {
+    "id": "PRA1",
+    "name": "Liga Puerto Rico Apertura",
+    "type": "league",
+    "country": {
+      "id": "228",
+      "name": "Puerto Rico"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/pra1.png"
+  },
+  {
+    "id": "IRQ1",
+    "name": "Iraq Stars League",
+    "type": "league",
+    "country": {
+      "id": "70",
+      "name": "Iraq"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/irq1.png"
+  },
+  {
+    "id": "SK2",
+    "name": "II. Liga",
+    "type": "league",
+    "country": {
+      "id": "154",
+      "name": "Slovakia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sk2.png"
+  },
+  {
+    "id": "ZYP1",
+    "name": "Cyprus League",
+    "type": "league",
+    "country": {
+      "id": "188",
+      "name": "Cyprus"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/zyp1.png"
+  },
+  {
+    "id": "UR2T",
+    "name": "Segunda División - Torneo Competencia",
+    "type": "league",
+    "country": {
+      "id": "179",
+      "name": "Uruguay"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ur2t.png"
+  },
+  {
+    "id": "EC1N",
+    "name": "LigaPro Serie A",
+    "type": "league",
+    "country": {
+      "id": "44",
+      "name": "Ecuador"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ec1n.png"
+  },
+  {
+    "id": "LET1",
+    "name": "Virsliga",
+    "type": "league",
+    "country": {
+      "id": "92",
+      "name": "Latvia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/let1.png"
+  },
+  {
+    "id": "AZ1",
+    "name": "Premyer Liqa",
+    "type": "league",
+    "country": {
+      "id": "13",
+      "name": "Azerbaijan"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/az1.png"
+  },
+  {
+    "id": "ARM1",
+    "name": "Premier League",
+    "type": "league",
+    "country": {
+      "id": "10",
+      "name": "Armenia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/arm1.png"
+  },
+  {
+    "id": "FARO",
+    "name": "Meistaradeildin",
+    "type": "league",
+    "country": {
+      "id": "208",
+      "name": "Faroe Islands"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/faro.png"
+  },
+  {
+    "id": "SE3N",
+    "name": "Ettan Norra",
+    "type": "league",
+    "country": {
+      "id": "147",
+      "name": "Sweden"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/se3n.png"
+  },
+  {
+    "id": "IJ1",
+    "name": "Primavera 1",
+    "type": "league",
+    "country": {
+      "id": "75",
+      "name": "Italy"
+    },
+    "tier": "Youth league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ij1.png"
+  },
+  {
+    "id": "ITJ7",
+    "name": "Campionato Under 18",
+    "type": "league",
+    "country": {
+      "id": "75",
+      "name": "Italy"
+    },
+    "tier": "Youth league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/itj7.png"
+  },
+  {
+    "id": "MAZ1",
+    "name": "Prva Makedonska Fudbalska Liga",
+    "type": "league",
+    "country": {
+      "id": "100",
+      "name": "North Macedonia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/maz1.png"
+  },
+  {
+    "id": "QU2L",
+    "name": "Qatar Stars League 2",
+    "type": "league",
+    "country": {
+      "id": "137",
+      "name": "Qatar"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/qu2l.png"
+  },
+  {
+    "id": "NL1",
+    "name": "Eredivisie",
+    "type": "league",
+    "country": {
+      "id": "122",
+      "name": "Netherlands"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/nl1.png"
+  },
+  {
+    "id": "BE1",
+    "name": "Jupiler Pro League",
+    "type": "league",
+    "country": {
+      "id": "19",
+      "name": "Belgium"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/be1.png"
+  },
+  {
+    "id": "SA1",
+    "name": "Saudi Pro League",
+    "type": "league",
+    "country": {
+      "id": "146",
+      "name": "Saudi Arabia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sa1.png"
+  },
+  {
+    "id": "IRN1",
+    "name": "Persian Gulf Pro League",
+    "type": "league",
+    "country": {
+      "id": "71",
+      "name": "Iran"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/irn1.png"
+  },
+  {
+    "id": "QSL",
+    "name": "Qatar Stars League",
+    "type": "league",
+    "country": {
+      "id": "137",
+      "name": "Qatar"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/qsl.png"
+  },
+  {
+    "id": "JAP1",
+    "name": "J1 League",
+    "type": "league",
+    "country": {
+      "id": "77",
+      "name": "Japan"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/jap1.png"
+  },
+  {
+    "id": "AUS1",
+    "name": "A-League Men",
+    "type": "league",
+    "country": {
+      "id": "12",
+      "name": "Australia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/aus1.png"
+  },
+  {
+    "id": "UAE1",
+    "name": "UAE Pro League",
+    "type": "league",
+    "country": {
+      "id": "183",
+      "name": "United Arab Emirates"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/uae1.png"
+  },
+  {
+    "id": "IN1L",
+    "name": "Super League",
+    "type": "league",
+    "country": {
+      "id": "68",
+      "name": "Indonesia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/in1l.png"
+  },
+  {
+    "id": "SFA1",
+    "name": "Betway Premiership",
+    "type": "league",
+    "country": {
+      "id": "159",
+      "name": "South Africa"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sfa1.png"
+  },
+  {
+    "id": "MAR1",
+    "name": "Botola Pro Inwi",
+    "type": "league",
+    "country": {
+      "id": "107",
+      "name": "Morocco"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/mar1.png"
+  },
+  {
+    "id": "TUN1",
+    "name": "Ligue 1",
+    "type": "league",
+    "country": {
+      "id": "173",
+      "name": "Tunisia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/tun1.png"
+  },
+  {
+    "id": "GB3",
+    "name": "League One",
+    "type": "league",
+    "country": {
+      "id": "189",
+      "name": "England"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/gb3.png"
+  },
+  {
+    "id": "A1",
+    "name": "Bundesliga",
+    "type": "league",
+    "country": {
+      "id": "127",
+      "name": "Austria"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/a1.png"
+  },
+  {
+    "id": "GB1",
+    "name": "Premier League",
+    "type": "league",
+    "country": {
+      "id": "189",
+      "name": "England"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/gb1.png"
+  },
+  {
+    "id": "GB2",
+    "name": "Championship",
+    "type": "league",
+    "country": {
+      "id": "189",
+      "name": "England"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/gb2.png"
+  },
+  {
+    "id": "ES1",
+    "name": "LaLiga",
+    "type": "league",
+    "country": {
+      "id": "157",
+      "name": "Spain"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/es1.png"
+  },
+  {
+    "id": "ES2",
+    "name": "LaLiga2",
+    "type": "league",
+    "country": {
+      "id": "157",
+      "name": "Spain"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/es2.png"
+  },
+  {
+    "id": "RU1",
+    "name": "Premier Liga",
+    "type": "league",
+    "country": {
+      "id": "141",
+      "name": "Russia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ru1.png"
+  },
+  {
+    "id": "RU2",
+    "name": "1.Division",
+    "type": "league",
+    "country": {
+      "id": "141",
+      "name": "Russia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ru2.png"
+  },
+  {
+    "id": "L1",
+    "name": "Bundesliga",
+    "type": "league",
+    "country": {
+      "id": "40",
+      "name": "Germany"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/l1.png"
+  },
+  {
+    "id": "IT1",
+    "name": "Serie A",
+    "type": "league",
+    "country": {
+      "id": "75",
+      "name": "Italy"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/it1.png"
+  },
+  {
+    "id": "FR1",
+    "name": "Ligue 1",
+    "type": "league",
+    "country": {
+      "id": "50",
+      "name": "France"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/fr1.png"
+  },
+  {
+    "id": "BRA1",
+    "name": "Campeonato Brasileiro Série A",
+    "type": "league",
+    "country": {
+      "id": "26",
+      "name": "Brazil"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/bra1.png"
+  },
+  {
+    "id": "RO1",
+    "name": "SuperLiga",
+    "type": "league",
+    "country": {
+      "id": "140",
+      "name": "Romania"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ro1.png"
+  },
+  {
+    "id": "T191",
+    "name": "U19 Süper Lig",
+    "type": "league",
+    "country": {
+      "id": "174",
+      "name": "Türkiye"
+    },
+    "tier": "Youth league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/t191.png"
+  },
+  {
+    "id": "TR1",
+    "name": "Süper Lig",
+    "type": "league",
+    "country": {
+      "id": "174",
+      "name": "Türkiye"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/tr1.png"
+  },
+  {
+    "id": "UKR1",
+    "name": "Premier Liga",
+    "type": "league",
+    "country": {
+      "id": "177",
+      "name": "Ukraine"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ukr1.png"
+  },
+  {
+    "id": "GR1",
+    "name": "Super League 1",
+    "type": "league",
+    "country": {
+      "id": "56",
+      "name": "Greece"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/gr1.png"
+  },
+  {
+    "id": "DK1",
+    "name": "Superliga",
+    "type": "league",
+    "country": {
+      "id": "39",
+      "name": "Denmark"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/dk1.png"
+  },
+  {
+    "id": "SB19",
+    "name": "Omladinska liga Srbije",
+    "type": "league",
+    "country": {
+      "id": "215",
+      "name": "Serbia"
+    },
+    "tier": "Youth league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sb19.png"
+  },
+  {
+    "id": "SER1",
+    "name": "Super liga Srbije",
+    "type": "league",
+    "country": {
+      "id": "215",
+      "name": "Serbia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ser1.png"
+  },
+  {
+    "id": "KR1",
+    "name": "SuperSport HNL",
+    "type": "league",
+    "country": {
+      "id": "37",
+      "name": "Croatia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/kr1.png"
+  },
+  {
+    "id": "KOG2",
+    "name": "Kolmonen Etelä Group B",
+    "type": "league",
+    "country": {
+      "id": "49",
+      "name": "Finland"
+    },
+    "tier": "Fifth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/kog2.png"
+  },
+  {
+    "id": "FI1",
+    "name": "Veikkausliiga",
+    "type": "league",
+    "country": {
+      "id": "49",
+      "name": "Finland"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/fi1.png"
+  },
+  {
+    "id": "BU1",
+    "name": "efbet Liga",
+    "type": "league",
+    "country": {
+      "id": "28",
+      "name": "Bulgaria"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/bu1.png"
+  },
+  {
+    "id": "ARG2",
+    "name": "Primera Nacional",
+    "type": "league",
+    "country": {
+      "id": "9",
+      "name": "Argentina"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/arg2.png"
+  },
+  {
+    "id": "ARGC",
+    "name": "Torneo Clausura",
+    "type": "league",
+    "country": {
+      "id": "9",
+      "name": "Argentina"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/argc.png"
+  },
+  {
+    "id": "R3D1",
+    "name": "2. Division A (Phase 1)",
+    "type": "league",
+    "country": {
+      "id": "141",
+      "name": "Russia"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/r3d1.png"
+  },
+  {
+    "id": "2DVB",
+    "name": "2. Division B",
+    "type": "league",
+    "country": {
+      "id": "141",
+      "name": "Russia"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/2dvb.png"
+  },
+  {
+    "id": "GB4",
+    "name": "League Two",
+    "type": "league",
+    "country": {
+      "id": "189",
+      "name": "England"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/gb4.png"
+  },
+  {
+    "id": "GB21",
+    "name": "Premier League 2",
+    "type": "league",
+    "country": {
+      "id": "189",
+      "name": "England"
+    },
+    "tier": "Reserve league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/gb21.png"
+  },
+  {
+    "id": "E4G3",
+    "name": "Segunda Federación - Grupo III",
+    "type": "league",
+    "country": {
+      "id": "157",
+      "name": "Spain"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/e4g3.png"
+  },
+  {
+    "id": "E4G5",
+    "name": "Segunda Federación - Grupo V",
+    "type": "league",
+    "country": {
+      "id": "157",
+      "name": "Spain"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/e4g5.png"
+  },
+  {
+    "id": "E4G2",
+    "name": "Segunda Federación - Grupo II",
+    "type": "league",
+    "country": {
+      "id": "157",
+      "name": "Spain"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/e4g2.png"
+  },
+  {
+    "id": "E4G4",
+    "name": "Segunda Federación - Grupo IV",
+    "type": "league",
+    "country": {
+      "id": "157",
+      "name": "Spain"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/e4g4.png"
+  },
+  {
+    "id": "L2",
+    "name": "2. Bundesliga",
+    "type": "league",
+    "country": {
+      "id": "40",
+      "name": "Germany"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/l2.png"
+  },
+  {
+    "id": "L3",
+    "name": "3. Liga",
+    "type": "league",
+    "country": {
+      "id": "40",
+      "name": "Germany"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/l3.png"
+  },
+  {
+    "id": "RLSW",
+    "name": "Regionalliga Südwest",
+    "type": "league",
+    "country": {
+      "id": "40",
+      "name": "Germany"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/rlsw.png"
+  },
+  {
+    "id": "RLB3",
+    "name": "Regionalliga Bayern",
+    "type": "league",
+    "country": {
+      "id": "40",
+      "name": "Germany"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/rlb3.png"
+  },
+  {
+    "id": "RLN4",
+    "name": "Regionalliga Northeast",
+    "type": "league",
+    "country": {
+      "id": "40",
+      "name": "Germany"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/rln4.png"
+  },
+  {
+    "id": "FR3",
+    "name": "Ligue 3",
+    "type": "league",
+    "country": {
+      "id": "50",
+      "name": "France"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/fr3.png"
+  },
+  {
+    "id": "FR4C",
+    "name": "Championnat National 1 - Groupe C",
+    "type": "league",
+    "country": {
+      "id": "50",
+      "name": "France"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/fr4c.png"
+  },
+  {
+    "id": "FR5E",
+    "name": "Championnat National 2 - Groupe E",
+    "type": "league",
+    "country": {
+      "id": "50",
+      "name": "France"
+    },
+    "tier": "Fifth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/fr5e.png"
+  },
+  {
+    "id": "FR4B",
+    "name": "Championnat National 1 - Groupe B",
+    "type": "league",
+    "country": {
+      "id": "50",
+      "name": "France"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/fr4b.png"
+  },
+  {
+    "id": "FR5G",
+    "name": "Championnat National 2 - Groupe G",
+    "type": "league",
+    "country": {
+      "id": "50",
+      "name": "France"
+    },
+    "tier": "Fifth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/fr5g.png"
+  },
+  {
+    "id": "FR4A",
+    "name": "Championnat National 1 - Groupe A",
+    "type": "league",
+    "country": {
+      "id": "50",
+      "name": "France"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/fr4a.png"
+  },
+  {
+    "id": "FR5F",
+    "name": "Championnat National 2 - Groupe F",
+    "type": "league",
+    "country": {
+      "id": "50",
+      "name": "France"
+    },
+    "tier": "Fifth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/fr5f.png"
+  },
+  {
+    "id": "IT2",
+    "name": "Serie B",
+    "type": "league",
+    "country": {
+      "id": "75",
+      "name": "Italy"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/it2.png"
+  },
+  {
+    "id": "IT3B",
+    "name": "Serie C - Girone B",
+    "type": "league",
+    "country": {
+      "id": "75",
+      "name": "Italy"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/it3b.png"
+  },
+  {
+    "id": "IT3C",
+    "name": "Serie C - Girone C",
+    "type": "league",
+    "country": {
+      "id": "75",
+      "name": "Italy"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/it3c.png"
+  },
+  {
+    "id": "IT3A",
+    "name": "Serie C - Girone A",
+    "type": "league",
+    "country": {
+      "id": "75",
+      "name": "Italy"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/it3a.png"
+  },
+  {
+    "id": "BRA2",
+    "name": "Campeonato Brasileiro Série B",
+    "type": "league",
+    "country": {
+      "id": "26",
+      "name": "Brazil"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/bra2.png"
+  },
+  {
+    "id": "AR3R",
+    "name": "Federal A - Fase Reválida",
+    "type": "league",
+    "country": {
+      "id": "9",
+      "name": "Argentina"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ar3r.png"
+  },
+  {
+    "id": "AR3F",
+    "name": "Federal A - Fase Campeonato",
+    "type": "league",
+    "country": {
+      "id": "9",
+      "name": "Argentina"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ar3f.png"
+  },
+  {
+    "id": "URL3",
+    "name": "Primera B Metropolitana",
+    "type": "league",
+    "country": {
+      "id": "9",
+      "name": "Argentina"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/url3.png"
+  },
+  {
+    "id": "PO2",
+    "name": "Liga Portugal 2",
+    "type": "league",
+    "country": {
+      "id": "136",
+      "name": "Portugal"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/po2.png"
+  },
+  {
+    "id": "PT23",
+    "name": "Liga Next Gen U23",
+    "type": "league",
+    "country": {
+      "id": "136",
+      "name": "Portugal"
+    },
+    "tier": "Youth league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/pt23.png"
+  },
+  {
+    "id": "PT3A",
+    "name": "Liga 3",
+    "type": "league",
+    "country": {
+      "id": "136",
+      "name": "Portugal"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/pt3a.png"
+  },
+  {
+    "id": "CPSA",
+    "name": "Campeonato de Portugal - Série A",
+    "type": "league",
+    "country": {
+      "id": "136",
+      "name": "Portugal"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/cpsa.png"
+  },
+  {
+    "id": "CPSD",
+    "name": "Campeonato de Portugal - Série D",
+    "type": "league",
+    "country": {
+      "id": "136",
+      "name": "Portugal"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/cpsd.png"
+  },
+  {
+    "id": "CPSC",
+    "name": "Campeonato de Portugal - Série C",
+    "type": "league",
+    "country": {
+      "id": "136",
+      "name": "Portugal"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/cpsc.png"
+  },
+  {
+    "id": "CPSB",
+    "name": "Campeonato de Portugal - Série B",
+    "type": "league",
+    "country": {
+      "id": "136",
+      "name": "Portugal"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/cpsb.png"
+  },
+  {
+    "id": "NTD",
+    "name": "Tweede Divisie",
+    "type": "league",
+    "country": {
+      "id": "122",
+      "name": "Netherlands"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ntd.png"
+  },
+  {
+    "id": "510",
+    "name": "Derde Divisie A",
+    "type": "league",
+    "country": {
+      "id": "122",
+      "name": "Netherlands"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/510.png"
+  },
+  {
+    "id": "BE2",
+    "name": "Challenger Pro League",
+    "type": "league",
+    "country": {
+      "id": "19",
+      "name": "Belgium"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/be2.png"
+  },
+  {
+    "id": "BE3A",
+    "name": "1ste Nationale FFA",
+    "type": "league",
+    "country": {
+      "id": "19",
+      "name": "Belgium"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/be3a.png"
+  },
+  {
+    "id": "BE3V",
+    "name": "1ste Nationale VV",
+    "type": "league",
+    "country": {
+      "id": "19",
+      "name": "Belgium"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/be3v.png"
+  },
+  {
+    "id": "BE21",
+    "name": "U21 Pro League",
+    "type": "league",
+    "country": {
+      "id": "19",
+      "name": "Belgium"
+    },
+    "tier": "Youth league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/be21.png"
+  },
+  {
+    "id": "BEY1",
+    "name": "U18 Elite 1 - Belgium",
+    "type": "league",
+    "country": {
+      "id": "19",
+      "name": "Belgium"
+    },
+    "tier": "Youth league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/bey1.png"
+  },
+  {
+    "id": "UKR2",
+    "name": "Persha Liga",
+    "type": "league",
+    "country": {
+      "id": "177",
+      "name": "Ukraine"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ukr2.png"
+  },
+  {
+    "id": "UA3L",
+    "name": "Druga Liga",
+    "type": "league",
+    "country": {
+      "id": "177",
+      "name": "Ukraine"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ua3l.png"
+  },
+  {
+    "id": "GRS2",
+    "name": "Super League 2",
+    "type": "league",
+    "country": {
+      "id": "56",
+      "name": "Greece"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/grs2.png"
+  },
+  {
+    "id": "DK2",
+    "name": "1.Division",
+    "type": "league",
+    "country": {
+      "id": "39",
+      "name": "Denmark"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/dk2.png"
+  },
+  {
+    "id": "DK3O",
+    "name": "2.Division",
+    "type": "league",
+    "country": {
+      "id": "39",
+      "name": "Denmark"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/dk3o.png"
+  },
+  {
+    "id": "DK4L",
+    "name": "3.Division",
+    "type": "league",
+    "country": {
+      "id": "39",
+      "name": "Denmark"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/dk4l.png"
+  },
+  {
+    "id": "NO1",
+    "name": "Eliteserien",
+    "type": "league",
+    "country": {
+      "id": "125",
+      "name": "Norway"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/no1.png"
+  },
+  {
+    "id": "NO2",
+    "name": "OBOS-ligaen",
+    "type": "league",
+    "country": {
+      "id": "125",
+      "name": "Norway"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/no2.png"
+  },
+  {
+    "id": "NO32",
+    "name": "PostNord-ligaen Avd. 2",
+    "type": "league",
+    "country": {
+      "id": "125",
+      "name": "Norway"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/no32.png"
+  },
+  {
+    "id": "NO31",
+    "name": "PostNord-ligaen Avd. 1",
+    "type": "league",
+    "country": {
+      "id": "125",
+      "name": "Norway"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/no31.png"
+  },
+  {
+    "id": "NO41",
+    "name": "Norsk Tipping-Ligaen avdeling 1",
+    "type": "league",
+    "country": {
+      "id": "125",
+      "name": "Norway"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/no41.png"
+  },
+  {
+    "id": "SE3S",
+    "name": "Ettan Södra",
+    "type": "league",
+    "country": {
+      "id": "147",
+      "name": "Sweden"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/se3s.png"
+  },
+  {
+    "id": "C1",
+    "name": "Super League",
+    "type": "league",
+    "country": {
+      "id": "148",
+      "name": "Switzerland"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/c1.png"
+  },
+  {
+    "id": "CHPR",
+    "name": "Promotion League",
+    "type": "league",
+    "country": {
+      "id": "148",
+      "name": "Switzerland"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/chpr.png"
+  },
+  {
+    "id": "TS1",
+    "name": "Chance Liga",
+    "type": "league",
+    "country": {
+      "id": "172",
+      "name": "Czech Republic"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ts1.png"
+  },
+  {
+    "id": "TS2",
+    "name": "Chance Narodni Liga",
+    "type": "league",
+    "country": {
+      "id": "172",
+      "name": "Czech Republic"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ts2.png"
+  },
+  {
+    "id": "CZ3C",
+    "name": "Ceska fotbalova liga",
+    "type": "league",
+    "country": {
+      "id": "172",
+      "name": "Czech Republic"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/cz3c.png"
+  },
+  {
+    "id": "CZ3M",
+    "name": "Moravskoslezska fotbalova liga",
+    "type": "league",
+    "country": {
+      "id": "172",
+      "name": "Czech Republic"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/cz3m.png"
+  },
+  {
+    "id": "PL1",
+    "name": "PKO BP Ekstraklasa",
+    "type": "league",
+    "country": {
+      "id": "135",
+      "name": "Poland"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/pl1.png"
+  },
+  {
+    "id": "PL2",
+    "name": "Betclic 1 Liga",
+    "type": "league",
+    "country": {
+      "id": "135",
+      "name": "Poland"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/pl2.png"
+  },
+  {
+    "id": "PL2L",
+    "name": "Betclic 2 Liga",
+    "type": "league",
+    "country": {
+      "id": "135",
+      "name": "Poland"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/pl2l.png"
+  },
+  {
+    "id": "PL34",
+    "name": "Betclic 3 Liga - Group IV",
+    "type": "league",
+    "country": {
+      "id": "135",
+      "name": "Poland"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/pl34.png"
+  },
+  {
+    "id": "PL33",
+    "name": "Betclic 3 Liga - Group III",
+    "type": "league",
+    "country": {
+      "id": "135",
+      "name": "Poland"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/pl33.png"
+  },
+  {
+    "id": "PL32",
+    "name": "Betclic 3 Liga - Group II",
+    "type": "league",
+    "country": {
+      "id": "135",
+      "name": "Poland"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/pl32.png"
+  },
+  {
+    "id": "PL31",
+    "name": "Betclic 3 Liga - Group I",
+    "type": "league",
+    "country": {
+      "id": "135",
+      "name": "Poland"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/pl31.png"
+  },
+  {
+    "id": "KR2",
+    "name": "Prva Nogometna Liga",
+    "type": "league",
+    "country": {
+      "id": "37",
+      "name": "Croatia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/kr2.png"
+  },
+  {
+    "id": "BU2",
+    "name": "Vtora Liga",
+    "type": "league",
+    "country": {
+      "id": "28",
+      "name": "Bulgaria"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/bu2.png"
+  },
+  {
+    "id": "UNG1",
+    "name": "Nemzeti Bajnokság",
+    "type": "league",
+    "country": {
+      "id": "178",
+      "name": "Hungary"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ung1.png"
+  },
+  {
+    "id": "SLO1",
+    "name": "Niké Liga",
+    "type": "league",
+    "country": {
+      "id": "154",
+      "name": "Slovakia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/slo1.png"
+  },
+  {
+    "id": "SK19",
+    "name": "I. Liga starsieho dorastu",
+    "type": "league",
+    "country": {
+      "id": "154",
+      "name": "Slovakia"
+    },
+    "tier": "Youth league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sk19.png"
+  },
+  {
+    "id": "SL1",
+    "name": "Prva Liga",
+    "type": "league",
+    "country": {
+      "id": "155",
+      "name": "Slovenia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sl1.png"
+  },
+  {
+    "id": "SL2",
+    "name": "Druga Liga",
+    "type": "league",
+    "country": {
+      "id": "155",
+      "name": "Slovenia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sl2.png"
+  },
+  {
+    "id": "SL19",
+    "name": "NextGen Liga",
+    "type": "league",
+    "country": {
+      "id": "155",
+      "name": "Slovenia"
+    },
+    "tier": "Youth league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sl19.png"
+  },
+  {
+    "id": "CL2B",
+    "name": "Liga de Ascenso",
+    "type": "league",
+    "country": {
+      "id": "33",
+      "name": "Chile"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/cl2b.png"
+  },
+  {
+    "id": "CL2F",
+    "name": "Segunda División - Fase 2",
+    "type": "league",
+    "country": {
+      "id": "33",
+      "name": "Chile"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/cl2f.png"
+  },
+  {
+    "id": "CL2Z",
+    "name": "Segunda División - Liguilla zonal",
+    "type": "league",
+    "country": {
+      "id": "33",
+      "name": "Chile"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/cl2z.png"
+  },
+  {
+    "id": "CO22",
+    "name": "Torneo DIMAYOR II",
+    "type": "league",
+    "country": {
+      "id": "83",
+      "name": "Colombia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/co22.png"
+  },
+  {
+    "id": "MEX2",
+    "name": "Liga de Expansión MX Clausura",
+    "type": "league",
+    "country": {
+      "id": "110",
+      "name": "Mexico"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/mex2.png"
+  },
+  {
+    "id": "M21A",
+    "name": "Liga MX U21 Apertura",
+    "type": "league",
+    "country": {
+      "id": "110",
+      "name": "Mexico"
+    },
+    "tier": "Youth league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/m21a.png"
+  },
+  {
+    "id": "M191",
+    "name": "Liga MX U19 Apertura",
+    "type": "league",
+    "country": {
+      "id": "110",
+      "name": "Mexico"
+    },
+    "tier": "Youth league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/m191.png"
+  },
+  {
+    "id": "USL",
+    "name": "USL Championship",
+    "type": "league",
+    "country": {
+      "id": "184",
+      "name": "United States"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/usl.png"
+  },
+  {
+    "id": "MNP3",
+    "name": "MLS Next Pro",
+    "type": "league",
+    "country": {
+      "id": "184",
+      "name": "United States"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/mnp3.png"
+  },
+  {
+    "id": "USC3",
+    "name": "USL League One",
+    "type": "league",
+    "country": {
+      "id": "184",
+      "name": "United States"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/usc3.png"
+  },
+  {
+    "id": "JAP2",
+    "name": "J2 League",
+    "type": "league",
+    "country": {
+      "id": "77",
+      "name": "Japan"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/jap2.png"
+  },
+  {
+    "id": "JAP3",
+    "name": "J3 League",
+    "type": "league",
+    "country": {
+      "id": "77",
+      "name": "Japan"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/jap3.png"
+  },
+  {
+    "id": "CSL",
+    "name": "Chinese Super League",
+    "type": "league",
+    "country": {
+      "id": "34",
+      "name": "China"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/csl.png"
+  },
+  {
+    "id": "CLO",
+    "name": "China League One",
+    "type": "league",
+    "country": {
+      "id": "34",
+      "name": "China"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/clo.png"
+  },
+  {
+    "id": "HGKG",
+    "name": "Hong Kong Premier League",
+    "type": "league",
+    "country": {
+      "id": "218",
+      "name": "Hongkong"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/hgkg.png"
+  },
+  {
+    "id": "TFPL",
+    "name": "Taiwan Football Premier League",
+    "type": "league",
+    "country": {
+      "id": "164",
+      "name": "Chinese Taipei"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/tfpl.png"
+  },
+  {
+    "id": "CHL3",
+    "name": "China League Two A",
+    "type": "league",
+    "country": {
+      "id": "34",
+      "name": "China"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/chl3.png"
+  },
+  {
+    "id": "CL3S",
+    "name": "China League Two B",
+    "type": "league",
+    "country": {
+      "id": "34",
+      "name": "China"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/cl3s.png"
+  },
+  {
+    "id": "IND1",
+    "name": "Indian Super League",
+    "type": "league",
+    "country": {
+      "id": "67",
+      "name": "India"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ind1.png"
+  },
+  {
+    "id": "INIL",
+    "name": "Indian Football League",
+    "type": "league",
+    "country": {
+      "id": "67",
+      "name": "India"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/inil.png"
+  },
+  {
+    "id": "IND2",
+    "name": "I-League 2",
+    "type": "league",
+    "country": {
+      "id": "67",
+      "name": "India"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ind2.png"
+  },
+  {
+    "id": "A2VI",
+    "name": "National Premier League - Victoria",
+    "type": "league",
+    "country": {
+      "id": "12",
+      "name": "Australia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/a2vi.png"
+  },
+  {
+    "id": "A2SW",
+    "name": "National Premier League - New South Wales",
+    "type": "league",
+    "country": {
+      "id": "12",
+      "name": "Australia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/a2sw.png"
+  },
+  {
+    "id": "SEN1",
+    "name": "Ligue 1",
+    "type": "league",
+    "country": {
+      "id": "149",
+      "name": "Senegal"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sen1.png"
+  },
+  {
+    "id": "SEN2",
+    "name": "Ligue 2",
+    "type": "league",
+    "country": {
+      "id": "149",
+      "name": "Senegal"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sen2.png"
+  },
+  {
+    "id": "PR1C",
+    "name": "Primera División Clausura",
+    "type": "league",
+    "country": {
+      "id": "132",
+      "name": "Paraguay"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/pr1c.png"
+  },
+  {
+    "id": "EC2L",
+    "name": "Liga Pro Serie B",
+    "type": "league",
+    "country": {
+      "id": "44",
+      "name": "Ecuador"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ec2l.png"
+  },
+  {
+    "id": "UAE2",
+    "name": "UAE First Division League",
+    "type": "league",
+    "country": {
+      "id": "183",
+      "name": "United Arab Emirates"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/uae2.png"
+  },
+  {
+    "id": "NPFL",
+    "name": "Nigeria Professional Football League",
+    "type": "league",
+    "country": {
+      "id": "124",
+      "name": "Nigeria"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/npfl.png"
+  },
+  {
+    "id": "ALG1",
+    "name": "Ligue 1",
+    "type": "league",
+    "country": {
+      "id": "4",
+      "name": "Algeria"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/alg1.png"
+  },
+  {
+    "id": "GHPL",
+    "name": "Ghana Premier League",
+    "type": "league",
+    "country": {
+      "id": "54",
+      "name": "Ghana"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ghpl.png"
+  },
+  {
+    "id": "PAR2",
+    "name": "División Intermedia",
+    "type": "league",
+    "country": {
+      "id": "132",
+      "name": "Paraguay"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/par2.png"
+  },
+  {
+    "id": "PER2",
+    "name": "Liga 2",
+    "type": "league",
+    "country": {
+      "id": "133",
+      "name": "Peru"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/per2.png"
+  },
+  {
+    "id": "PLI3",
+    "name": "Liga 3",
+    "type": "league",
+    "country": {
+      "id": "133",
+      "name": "Peru"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/pli3.png"
+  },
+  {
+    "id": "BO1A",
+    "name": "División Profesional",
+    "type": "league",
+    "country": {
+      "id": "23",
+      "name": "Bolivia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/bo1a.png"
+  },
+  {
+    "id": "VN2A",
+    "name": "Liga FUTVE 2",
+    "type": "league",
+    "country": {
+      "id": "182",
+      "name": "Venezuela"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/vn2a.png"
+  },
+  {
+    "id": "NC2A",
+    "name": "Liga de Ascenso de Nicaragua Apertura",
+    "type": "league",
+    "country": {
+      "id": "121",
+      "name": "Nicaragua"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/nc2a.png"
+  },
+  {
+    "id": "JPL1",
+    "name": "Jamaica Premier League",
+    "type": "league",
+    "country": {
+      "id": "76",
+      "name": "Jamaica"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/jpl1.png"
+  },
+  {
+    "id": "IS2",
+    "name": "Lengjudeild",
+    "type": "league",
+    "country": {
+      "id": "73",
+      "name": "Iceland"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/is2.png"
+  },
+  {
+    "id": "ISL3",
+    "name": "2. deild",
+    "type": "league",
+    "country": {
+      "id": "73",
+      "name": "Iceland"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/isl3.png"
+  },
+  {
+    "id": "FI2",
+    "name": "Ykkösliiga",
+    "type": "league",
+    "country": {
+      "id": "49",
+      "name": "Finland"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/fi2.png"
+  },
+  {
+    "id": "FIYK",
+    "name": "Ykkönen",
+    "type": "league",
+    "country": {
+      "id": "49",
+      "name": "Finland"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/fiyk.png"
+  },
+  {
+    "id": "IR1",
+    "name": "League of Ireland Premier Division",
+    "type": "league",
+    "country": {
+      "id": "72",
+      "name": "Ireland"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ir1.png"
+  },
+  {
+    "id": "NIR1",
+    "name": "Premiership",
+    "type": "league",
+    "country": {
+      "id": "192",
+      "name": "Northern Ireland"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/nir1.png"
+  },
+  {
+    "id": "NIR2",
+    "name": "Championship",
+    "type": "league",
+    "country": {
+      "id": "192",
+      "name": "Northern Ireland"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/nir2.png"
+  },
+  {
+    "id": "SC1",
+    "name": "Scottish Premiership",
+    "type": "league",
+    "country": {
+      "id": "190",
+      "name": "Scotland"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sc1.png"
+  },
+  {
+    "id": "SC2",
+    "name": "Scottish Championship",
+    "type": "league",
+    "country": {
+      "id": "190",
+      "name": "Scotland"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sc2.png"
+  },
+  {
+    "id": "SC3",
+    "name": "Scottish League One",
+    "type": "league",
+    "country": {
+      "id": "190",
+      "name": "Scotland"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sc3.png"
+  },
+  {
+    "id": "SC4",
+    "name": "Scottish League Two",
+    "type": "league",
+    "country": {
+      "id": "190",
+      "name": "Scotland"
+    },
+    "tier": "Fourth Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sc4.png"
+  },
+  {
+    "id": "LIB1",
+    "name": "Lebanese Premier League",
+    "type": "league",
+    "country": {
+      "id": "94",
+      "name": "Lebanon"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/lib1.png"
+  },
+  {
+    "id": "JO1L",
+    "name": "Jordanian Pro League",
+    "type": "league",
+    "country": {
+      "id": "78",
+      "name": "Jordan"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/jo1l.png"
+  },
+  {
+    "id": "IRN2",
+    "name": "Azadegan League",
+    "type": "league",
+    "country": {
+      "id": "71",
+      "name": "Iran"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/irn2.png"
+  },
+  {
+    "id": "IRN3",
+    "name": "League 2",
+    "type": "league",
+    "country": {
+      "id": "71",
+      "name": "Iran"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/irn3.png"
+  },
+  {
+    "id": "OM1L",
+    "name": "Oman Jindal League",
+    "type": "league",
+    "country": {
+      "id": "126",
+      "name": "Oman"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/om1l.png"
+  },
+  {
+    "id": "LPL",
+    "name": "Libyan Premier League",
+    "type": "league",
+    "country": {
+      "id": "96",
+      "name": "Libya"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/lpl.png"
+  },
+  {
+    "id": "ETP1",
+    "name": "Ethiopian Premier League",
+    "type": "league",
+    "country": {
+      "id": "11",
+      "name": "Ethiopia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/etp1.png"
+  },
+  {
+    "id": "UGL1",
+    "name": "Uganda Premier League",
+    "type": "league",
+    "country": {
+      "id": "176",
+      "name": "Uganda"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ugl1.png"
+  },
+  {
+    "id": "NNL1",
+    "name": "National League - North",
+    "type": "league",
+    "country": {
+      "id": "120",
+      "name": "New Zealand"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/nnl1.png"
+  },
+  {
+    "id": "NCL1",
+    "name": "National League - Central",
+    "type": "league",
+    "country": {
+      "id": "120",
+      "name": "New Zealand"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ncl1.png"
+  },
+  {
+    "id": "NSL1",
+    "name": "National League - South",
+    "type": "league",
+    "country": {
+      "id": "120",
+      "name": "New Zealand"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/nsl1.png"
+  },
+  {
+    "id": "ILI2",
+    "name": "Championship Indonesia",
+    "type": "league",
+    "country": {
+      "id": "68",
+      "name": "Indonesia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ili2.png"
+  },
+  {
+    "id": "IN3L",
+    "name": "Liga Nusantara",
+    "type": "league",
+    "country": {
+      "id": "68",
+      "name": "Indonesia"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/in3l.png"
+  },
+  {
+    "id": "THA1",
+    "name": "Thai League",
+    "type": "league",
+    "country": {
+      "id": "167",
+      "name": "Thailand"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/tha1.png"
+  },
+  {
+    "id": "THA2",
+    "name": "Thai League 2",
+    "type": "league",
+    "country": {
+      "id": "167",
+      "name": "Thailand"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/tha2.png"
+  },
+  {
+    "id": "VIE1",
+    "name": "V.League 1",
+    "type": "league",
+    "country": {
+      "id": "185",
+      "name": "Vietnam"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/vie1.png"
+  },
+  {
+    "id": "PFL1",
+    "name": "Philippines Football League",
+    "type": "league",
+    "country": {
+      "id": "134",
+      "name": "Philippines"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/pfl1.png"
+  },
+  {
+    "id": "MYS1",
+    "name": "Malaysia Super League",
+    "type": "league",
+    "country": {
+      "id": "103",
+      "name": "Malaysia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/mys1.png"
+  },
+  {
+    "id": "MAY2",
+    "name": "Malaysia A1 Semi-Pro League",
+    "type": "league",
+    "country": {
+      "id": "103",
+      "name": "Malaysia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/may2.png"
+  },
+  {
+    "id": "SIN1",
+    "name": "Singapore Premier League",
+    "type": "league",
+    "country": {
+      "id": "153",
+      "name": "Singapore"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sin1.png"
+  },
+  {
+    "id": "SIN2",
+    "name": "Singapore Premier League 2",
+    "type": "league",
+    "country": {
+      "id": "153",
+      "name": "Singapore"
+    },
+    "tier": "Reserve league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/sin2.png"
+  },
+  {
+    "id": "MYA1",
+    "name": "M League",
+    "type": "league",
+    "country": {
+      "id": "116",
+      "name": "Myanmar"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/mya1.png"
+  },
+  {
+    "id": "KHM1",
+    "name": "Cambodian Premier League",
+    "type": "league",
+    "country": {
+      "id": "79",
+      "name": "Cambodia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/khm1.png"
+  },
+  {
+    "id": "TFL2",
+    "name": "Taiwan Football League Div.2",
+    "type": "league",
+    "country": {
+      "id": "164",
+      "name": "Chinese Taipei"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/tfl2.png"
+  },
+  {
+    "id": "HK22",
+    "name": "Hong Kong U22 League",
+    "type": "league",
+    "country": {
+      "id": "218",
+      "name": "Hongkong"
+    },
+    "tier": "Reserve league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/hk22.png"
+  },
+  {
+    "id": "HK2L",
+    "name": "Hong Kong First Division",
+    "type": "league",
+    "country": {
+      "id": "218",
+      "name": "Hongkong"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/hk2l.png"
+  },
+  {
+    "id": "HK3L",
+    "name": "Hong Kong Second Division",
+    "type": "league",
+    "country": {
+      "id": "218",
+      "name": "Hongkong"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/hk3l.png"
+  },
+  {
+    "id": "KAS2",
+    "name": "Pervaya Liga",
+    "type": "league",
+    "country": {
+      "id": "81",
+      "name": "Kazakhstan"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/kas2.png"
+  },
+  {
+    "id": "UZ1",
+    "name": "O'zbekiston Superligasi",
+    "type": "league",
+    "country": {
+      "id": "180",
+      "name": "Uzbekistan"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/uz1.png"
+  },
+  {
+    "id": "UZ2L",
+    "name": "O'zbekiston Pro Liga",
+    "type": "league",
+    "country": {
+      "id": "180",
+      "name": "Uzbekistan"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/uz2l.png"
+  },
+  {
+    "id": "GEO2",
+    "name": "Erovnuli Liga 2",
+    "type": "league",
+    "country": {
+      "id": "53",
+      "name": "Georgia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/geo2.png"
+  },
+  {
+    "id": "ARM2",
+    "name": "Armenian First League",
+    "type": "league",
+    "country": {
+      "id": "10",
+      "name": "Armenia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/arm2.png"
+  },
+  {
+    "id": "MO1N",
+    "name": "Super Liga",
+    "type": "league",
+    "country": {
+      "id": "112",
+      "name": "Moldova"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/mo1n.png"
+  },
+  {
+    "id": "MDL2",
+    "name": "Liga 1",
+    "type": "league",
+    "country": {
+      "id": "112",
+      "name": "Moldova"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/mdl2.png"
+  },
+  {
+    "id": "WER1",
+    "name": "Vysheyshaya Liga",
+    "type": "league",
+    "country": {
+      "id": "18",
+      "name": "Belarus"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/wer1.png"
+  },
+  {
+    "id": "WER2",
+    "name": "Pershaya Liga",
+    "type": "league",
+    "country": {
+      "id": "18",
+      "name": "Belarus"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/wer2.png"
+  },
+  {
+    "id": "LTU2",
+    "name": "I Lyga",
+    "type": "league",
+    "country": {
+      "id": "98",
+      "name": "Lithuania"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ltu2.png"
+  },
+  {
+    "id": "LET2",
+    "name": "Futbola Pirmā līga",
+    "type": "league",
+    "country": {
+      "id": "92",
+      "name": "Latvia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/let2.png"
+  },
+  {
+    "id": "EST1",
+    "name": "Premium Liiga",
+    "type": "league",
+    "country": {
+      "id": "47",
+      "name": "Estonia"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/est1.png"
+  },
+  {
+    "id": "ELME",
+    "name": "U19 Eliitliiga Meistriliiga",
+    "type": "league",
+    "country": {
+      "id": "47",
+      "name": "Estonia"
+    },
+    "tier": "Youth league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/elme.png"
+  },
+  {
+    "id": "EE19",
+    "name": "U19 Eliitliiga Esiliiga",
+    "type": "league",
+    "country": {
+      "id": "47",
+      "name": "Estonia"
+    },
+    "tier": "Youth league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ee19.png"
+  },
+  {
+    "id": "EST2",
+    "name": "Esiliiga",
+    "type": "league",
+    "country": {
+      "id": "47",
+      "name": "Estonia"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/est2.png"
+  },
+  {
+    "id": "CYP2",
+    "name": "2. Division",
+    "type": "league",
+    "country": {
+      "id": "188",
+      "name": "Cyprus"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/cyp2.png"
+  },
+  {
+    "id": "MT1N",
+    "name": "Premier League Opening Round",
+    "type": "league",
+    "country": {
+      "id": "106",
+      "name": "Malta"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/mt1n.png"
+  },
+  {
+    "id": "MAL2",
+    "name": "Challenge League",
+    "type": "league",
+    "country": {
+      "id": "106",
+      "name": "Malta"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/mal2.png"
+  },
+  {
+    "id": "MAL3",
+    "name": "National Amateur League I",
+    "type": "league",
+    "country": {
+      "id": "106",
+      "name": "Malta"
+    },
+    "tier": "Third Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/mal3.png"
+  },
+  {
+    "id": "LUX1",
+    "name": "BGL Ligue",
+    "type": "league",
+    "country": {
+      "id": "99",
+      "name": "Luxembourg"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/lux1.png"
+  },
+  {
+    "id": "LUX2",
+    "name": "Ehrenpromotion",
+    "type": "league",
+    "country": {
+      "id": "99",
+      "name": "Luxembourg"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/lux2.png"
+  },
+  {
+    "id": "AND1",
+    "name": "Primera Divisió",
+    "type": "league",
+    "country": {
+      "id": "5",
+      "name": "Andorra"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/and1.png"
+  },
+  {
+    "id": "SMR1",
+    "name": "Campionato Sammarinese",
+    "type": "league",
+    "country": {
+      "id": "144",
+      "name": "San Marino"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/smr1.png"
+  },
+  {
+    "id": "FAR2",
+    "name": "1. deild",
+    "type": "league",
+    "country": {
+      "id": "208",
+      "name": "Faroe Islands"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/far2.png"
+  },
+  {
+    "id": "GI1",
+    "name": "Gibraltar Football League",
+    "type": "league",
+    "country": {
+      "id": "266",
+      "name": "Gibraltar"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/gi1.png"
+  },
+  {
+    "id": "GIIL",
+    "name": "Gibraltar Reserve League",
+    "type": "league",
+    "country": {
+      "id": "266",
+      "name": "Gibraltar"
+    },
+    "tier": "Reserve league",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/giil.png"
+  },
+  {
+    "id": "KO1",
+    "name": "Superliga e Kosovës",
+    "type": "league",
+    "country": {
+      "id": "244",
+      "name": "Kosovo"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/ko1.png"
+  },
+  {
+    "id": "ALB2",
+    "name": "Kategoria e Parë",
+    "type": "league",
+    "country": {
+      "id": "3",
+      "name": "Albania"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/alb2.png"
+  },
+  {
+    "id": "MNE1",
+    "name": "Meridianbet 1. CFL",
+    "type": "league",
+    "country": {
+      "id": "216",
+      "name": "Montenegro"
+    },
+    "tier": "First Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/mne1.png"
+  },
+  {
+    "id": "MNE2",
+    "name": "2. CFL",
+    "type": "league",
+    "country": {
+      "id": "216",
+      "name": "Montenegro"
+    },
+    "tier": "Second Tier",
+    "logo": "https://img.a.transfermarkt.technology/logo/header/mne2.png"
+  }
+]

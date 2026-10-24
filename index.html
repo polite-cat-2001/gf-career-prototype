@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Career Mode</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* === TOKENS (from palette-cozy) === */
+    :root {
+      --bg: #262A30;
+      --bg-elevated: #2E333B;
+      --bg-hover: #363C46;
+      --border: #424854;
+      --text-primary: #EAEBEE;
+      --text-secondary: #9BA0AB;
+      --text-muted: #5E6370;
+      --text-inverse: #1A1C22;
+      --accent: #5B9A8B;
+      --accent-light: #7AB8A9;
+      --accent-dark: #3D7A6D;
+      --accent-soft: rgba(91, 154, 139, 0.14);
+      --warm: #D4A574;
+      --warm-soft: rgba(212, 165, 116, 0.14);
+      --success: #7DB88F;
+      --success-soft: rgba(125, 184, 143, 0.14);
+      --warning: #D4A574;
+      --warning-soft: rgba(212, 165, 116, 0.14);
+      --danger: #C47A7A;
+      --danger-soft: rgba(196, 122, 122, 0.14);
+      --info: #7A9AB8;
+      --info-soft: rgba(122, 154, 184, 0.14);
+      --font-heading: 'Barlow Condensed', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --space-xs: 4px; --space-sm: 8px; --space-md: 16px;
+      --space-lg: 24px; --space-xl: 32px; --space-2xl: 48px;
+      --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 20px; --radius-full: 999px;
+      --shadow-card: 0 4px 20px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.04);
+      --shadow-hover: 0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06);
+      --shadow-modal: 0 24px 80px rgba(0,0,0,0.5);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+      font-size: 16px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Ambient background */
+    .ambient-glow {
+      position: fixed; border-radius: 50%;
+      filter: blur(120px); pointer-events: none; z-index: 0;
+    }
+    .ambient-glow.tl {
+      width: 800px; height: 800px; background: var(--accent);
+      top: -200px; left: -200px; opacity: 0.3;
+    }
+    .ambient-glow.br {
+      width: 900px; height: 900px; background: var(--accent);
+      bottom: -300px; right: -300px; opacity: 0.15;
+    }
+    .ambient-glow.c {
+      width: 600px; height: 600px; background: var(--warm);
+      top: 40%; left: 50%; transform: translate(-50%, -50%); opacity: 0.08;
+    }
+
+    .noise {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none; z-index: 0; opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 128px 128px;
+    }
+
+    .grid-bg {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none; z-index: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+
+    /* Screens */
+    .screen {
+      position: fixed; inset: 0;
+      z-index: 10;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .screen.active { display: flex; }
+
+    /* ── Main Menu ───────────────────────────────────────────────────────── */
+    .menu-title {
+      font-family: var(--font-heading);
+      font-size: 72px; font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: var(--space-2xl);
+      text-align: center;
+    }
+    .menu-title span { color: var(--accent); }
+
+    .menu-subtitle {
+      font-size: 16px; color: var(--text-secondary);
+      margin-bottom: var(--space-2xl);
+      letter-spacing: 0.05em;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 16px 40px;
+      font-family: var(--font-heading);
+      font-size: 18px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      border-radius: var(--radius-md);
+      border: none; cursor: pointer;
+      transition: all 0.2s;
+      min-height: 56px;
+      text-decoration: none;
+      line-height: 1;
+    }
+    .btn:focus-visible {
+      outline: none;
+    }
+    .btn-primary {
+      background: var(--accent); color: var(--bg);
+    }
+    .btn-primary:hover, .btn-primary.selected { background: var(--accent-light); transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+    .btn-secondary:hover, .btn-secondary.selected { background: rgba(255,255,255,0.06); border-color: var(--accent); }
+    .btn-secondary.selected { box-shadow: 0 0 0 1px var(--accent); }
+    .btn-primary:active { background: var(--accent-dark); transform: scale(0.98); }
+
+    .btn-secondary {
+      background: transparent; color: var(--text-primary);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); }
+    .btn-secondary:active { background: rgba(255,255,255,0.1); transform: scale(0.98); }
+
+    .btn-lg { padding: 20px 48px; font-size: 20px; min-height: 64px; border-radius: var(--radius-lg); }
+
+    /* ─ Career Selection Screen ─────────────────────────────────────────── */
+    .career-screen {
+      justify-content: flex-start;
+      padding-top: 6vh;
+    }
+
+    .career-header {
+      text-align: center;
+      margin-bottom: var(--space-xl);
+    }
+    .career-header h1 {
+      font-family: var(--font-heading);
+      font-size: 42px; font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .cards-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-lg);
+      max-width: 960px;
+      width: 90%;
+      perspective: 1200px;
+    }
+
+    .career-card {
+      background: rgba(46, 51, 59, 0.55);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      padding: var(--space-lg);
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      position: relative;
+      overflow: hidden;
+      min-height: 380px;
+      display: flex;
+      flex-direction: column;
+    }
+    .career-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .career-card:focus-visible {
+      outline: none;
+    }
+    .career-card:focus-visible {
+      outline: none;
+    }
+
+    .career-card.selected {
+      border-color: transparent;
+      transform: translateY(-6px);
+    }
+    .career-card.selected::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: var(--accent-soft);
+      pointer-events: none;
+    }
+
+    .card-label {
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--text-muted);
+      margin-bottom: var(--space-sm);
+      position: relative; z-index: 1;
+    }
+
+    /* Continue card */
+    .continue-card .card-body { flex: 1; position: relative; z-index: 1; }
+    .continue-card .card-club-logo {
+      font-size: 56px;
+      text-align: center;
+      margin: var(--space-md) 0;
+    }
+    .continue-card .card-club-name {
+      font-size: 15px; color: var(--text-secondary);
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .continue-card .card-manager {
+      font-family: var(--font-heading);
+      font-size: 22px; font-weight: 800;
+      text-transform: uppercase;
+      text-align: center;
+      letter-spacing: 0.04em;
+      margin-bottom: var(--space-md);
+    }
+    .continue-card .card-divider {
+      height: 1px;
+      background: rgba(255,255,255,0.08);
+      margin: var(--space-sm) 0;
+    }
+    .continue-card .card-next-match-label {
+      font-size: 12px; color: var(--text-muted);
+      text-align: center;
+      margin-bottom: var(--space-sm);
+    }
+    .continue-card .card-league {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 13px; color: var(--text-secondary);
+      margin-bottom: var(--space-md);
+    }
+    .continue-card .card-league-icon { font-size: 18px; }
+    .continue-card .card-match {
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      margin-bottom: var(--space-md);
+    }
+    .continue-card .card-match-team {
+      font-size: 28px;
+    }
+    .continue-card .card-match-vs {
+      font-family: var(--font-heading);
+      font-size: 14px; color: var(--text-muted);
+      font-weight: 600;
+    }
+    .continue-card .card-date {
+      font-size: 12px; color: var(--text-muted);
+      text-align: center;
+    }
+    .continue-card .card-last-modified {
+      font-size: 11px; color: var(--success);
+      text-align: center;
+      margin-bottom: var(--space-sm);
+    }
+
+    /* New / Load cards */
+    .action-card {
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .action-card .card-icon {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px;
+      margin-bottom: var(--space-md);
+      color: var(--text-primary);
+      transition: all 0.2s;
+    }
+    .career-card.selected .card-icon { background: rgba(255,255,255,0.1); }
+    .action-card .card-title {
+      font-family: var(--font-heading);
+      font-size: 24px; font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: var(--space-sm);
+    }
+    .action-card .card-desc {
+      font-size: 14px; color: var(--text-secondary);
+      line-height: 1.5;
+      max-width: 260px;
+    }
+
+    /* Bottom bar */
+    .bottom-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: var(--space-md) var(--space-xl);
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 100%);
+      pointer-events: none;
+    }
+
+    .bottom-hint {
+      display: flex; align-items: center; gap: var(--space-md);
+    }
+
+    .hint-key {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      font-family: var(--font-heading);
+      font-size: 13px; font-weight: 700;
+      color: var(--text-primary);
+      margin-right: 8px;
+    }
+
+    .hint-text {
+      font-size: 14px; color: var(--text-secondary);
+    }
+
+    .bottom-action {
+      display: flex; align-items: center; gap: var(--space-sm);
+    }
+
+    .btn-continue {
+      padding: 14px 28px;
+      font-family: var(--font-heading);
+      font-size: 16px; font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .btn-continue.primary {
+      background: var(--accent); color: var(--bg);
+    }
+    .btn-continue.primary:hover { background: var(--accent-light); }
+    .btn-continue .key-badge {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+    }
+
+    /* Loading spinner */
+    .spinner {
+      width: 24px; height: 24px;
+      border: 2.5px solid rgba(255,255,255,0.1);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Empty state in continue card */
+    .no-saves {
+      text-align: center;
+      padding: var(--space-xl) 0;
+    }
+    .no-saves-icon {
+      font-size: 40px; margin-bottom: var(--space-md);
+      opacity: 0.5;
+    }
+    .no-saves-text {
+      font-size: 14px; color: var(--text-muted);
+    }
+
+    /* Keyboard navigation focus */
+    .career-card:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-glow tl"></div>
+  <div class="ambient-glow br"></div>
+  <div class="ambient-glow c"></div>
+  <div class="noise"></div>
+  <div class="grid-bg"></div>
+
+  <!-- ═══ Screen 1: Main Menu ═══ -->
+  <div class="screen active" id="screen-menu">
+    <div class="menu-title">Gameplay<span>Football</span></div>
+    <div class="menu-subtitle">3D Football Simulation</div>
+    <div style="display:flex;flex-direction:column;gap:16px;align-items:center;">
+      <button class="btn btn-primary btn-lg" id="btn-career">&#9917; Карьера</button>
+      <button class="btn btn-secondary btn-lg" id="btn-uikit">UI Kit</button>
+    </div>
+  </div>
+
+  <!-- ═══ Screen 2: Career Selection ═══ -->
+  <div class="screen career-screen" id="screen-career">
+    <div class="career-header">
+      <h1>Карьера</h1>
+    </div>
+
+    <div class="cards-container" id="cards-container">
+      <div class="career-card continue-card" id="card-continue" tabindex="0">
+        <div class="card-label">Карьера — прогресс тренер</div>
+        <div class="card-body" id="continue-body">
+          <div class="spinner" style="margin: 60px auto;"></div>
+        </div>
+      </div>
+
+      <div class="career-card action-card" id="card-new" tabindex="0">
+        <div class="card-icon">&#10010;</div>
+        <div class="card-title">Создать новую</div>
+        <div class="card-desc">Начните новую карьеру тренера реальным тренером или создав своего аватара.</div>
+      </div>
+
+      <div class="career-card action-card" id="card-load" tabindex="0">
+        <div class="card-icon">&#9776;</div>
+        <div class="card-title">Загрузить карьеру</div>
+        <div class="card-desc">Загрузить существующую карьеру тренера.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Bottom Bar (shared across all screens) ═══ -->
+  <div class="bottom-bar">
+    <div class="bottom-hint" id="bottom-hints">
+      <!-- Rendered by JS based on last input device -->
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:8765';
+    let careers = [];
+    let currentScreen = 'menu';
+    let focusedIndex = 0; // index within the current screen's focusable items
+    let lastGamepadState = {};
+
+    // ── Navigation ────────────────────────────────────────────────────────
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      currentScreen = id;
+      focusedIndex = 0;
+      renderHints();
+    }
+
+    // Main menu: 2 focusable items (btn-career, btn-uikit)
+    // Career screen: 3 cards
+    function getFocusables() {
+      if (currentScreen === 'screen-menu') {
+        return [
+          document.getElementById('btn-career'),
+          document.getElementById('btn-uikit'),
+        ];
+      }
+      if (currentScreen === 'screen-career') {
+        return Array.from(document.querySelectorAll('.career-card'));
+      }
+      return [];
+    }
+
+    function updateFocus() {
+      const items = getFocusables();
+      items.forEach((el, i) => {
+        if (i === focusedIndex) {
+          el.classList.add('selected');
+          el.focus({ preventScroll: true });
+        } else {
+          el.classList.remove('selected');
+          el.blur();
+        }
+      });
+    }
+
+    function navigateBack() {
+      if (currentScreen === 'screen-career') {
+        showScreen('screen-menu');
+      }
+    }
+
+    // ─ Button: open career selection ─────────────────────────────────────
+    document.getElementById('btn-career').addEventListener('click', () => {
+      showScreen('screen-career');
+      loadCareers();
+    });
+
+    document.getElementById('btn-uikit').addEventListener('click', () => {
+      window.open('../../GameplayFootball-of_port/palette-cozy.html', '_blank');
+    });
+
+    // ── Input device tracking & dynamic hints ─────────────────────────────
+    let lastInputDevice = 'gamepad';
+
+    const hintData = {
+      keyboard: {
+        menu: [
+          { keys: ['Enter', 'Space'], label: 'Выбор' },
+          { keys: ['↑', '↓'], label: 'Навигация' },
+        ],
+        career: [
+          { keys: ['Enter', 'Space'], label: 'Выбор' },
+          { keys: ['Esc'], label: 'Назад' },
+          { keys: ['←', '→'], label: 'Навигация' },
+        ],
+      },
+      mouse: {
+        menu: [
+          { keys: ['🖱'], label: 'Клик — выбор' },
+        ],
+        career: [
+          { keys: ['🖱'], label: 'Клик — выбор и навигация' },
+          { keys: ['Esc'], label: 'Назад' },
+        ],
+      },
+      gamepad: {
+        menu: [
+          { keys: ['A'], label: 'Выбор' },
+          { keys: ['▲', '▼'], label: 'Навигация' },
+        ],
+        career: [
+          { keys: ['A'], label: 'Выбор' },
+          { keys: ['B'], label: 'Назад' },
+          { keys: ['◄', '►'], label: 'Навигация' },
+        ],
+      },
+    };
+
+    function setInputDevice(device) {
+      if (lastInputDevice === device) return;
+      lastInputDevice = device;
+      renderHints();
+    }
+
+    function renderHints() {
+      const container = document.getElementById('bottom-hints');
+      if (!container) return;
+      const screenKey = currentScreen === 'screen-menu' ? 'menu' : 'career';
+      const hints = hintData[lastInputDevice]?.[screenKey] || hintData.gamepad.career;
+      container.innerHTML = hints.map(h =>
+        `<span class="hint-text">${h.keys.map(k => `<span class="hint-key">${k}</span>`).join('')}${h.label}</span>`
+      ).join('');
+    }
+
+    document.addEventListener('keydown', () => setInputDevice('keyboard'));
+    document.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse') setInputDevice('mouse');
+    });
+
+    renderHints();
+
+    // ── Load careers from server ──────────────────────────────────────────
+    async function loadCareers() {
+      const body = document.getElementById('continue-body');
+
+      try {
+        const res = await fetch(`${API}/api/careers`);
+        if (!res.ok) throw new Error('Server unavailable');
+        careers = await res.json();
+      } catch {
+        careers = [];
+      }
+
+      const continueCard = document.getElementById('card-continue');
+      if (careers.length > 0) {
+        const c = careers[0];
+        const home = c.next_match?.home?.logo || '';
+        const away = c.next_match?.away?.logo || '';
+        const comp = c.next_match?.competition || c.league.name;
+
+        body.innerHTML = `
+          <div class="card-last-modified">Последнее изменение: ${c.last_modified}</div>
+          <div class="card-club-logo">${c.club.logo}</div>
+          <div class="card-club-name">${c.club.name}</div>
+          <div class="card-manager">${c.manager_name}</div>
+          <div class="card-divider"></div>
+          <div class="card-next-match-label">Следующий матч</div>
+          <div class="card-league"><span class="card-league-icon">${c.league.logo}</span> ${comp}</div>
+          <div class="card-match">
+            <span class="card-match-team">${home}</span>
+            <span class="card-match-vs">vs</span>
+            <span class="card-match-team">${away}</span>
+          </div>
+          <div class="card-date">Текущая дата: ${c.date}</div>
+        `;
+        continueCard.style.pointerEvents = 'auto';
+        continueCard.style.opacity = '1';
+      } else {
+        body.innerHTML = `
+          <div class="no-saves">
+            <div class="no-saves-icon">&#128203;</div>
+            <div class="no-saves-text">Нет сохранённых карьер</div>
+          </div>
+        `;
+        continueCard.style.pointerEvents = 'none';
+        continueCard.style.opacity = '0.4';
+      }
+
+      focusedIndex = 0;
+      updateFocus();
+    }
+
+    // ── Card mouseenter: hover = navigation (same as arrow keys) ─────────
+    function getCards() {
+      return Array.from(document.querySelectorAll('.career-card'));
+    }
+
+    function selectByIndex(index) {
+      const cards = getCards();
+      if (index < 0 || index >= cards.length) return;
+      focusedIndex = index;
+      updateFocus();
+    }
+
+    getCards().forEach((card, i) => {
+      card.addEventListener('mouseenter', () => {
+        setInputDevice('mouse');
+        selectByIndex(i);
+      });
+    });
+
+    document.getElementById('btn-career').addEventListener('mouseenter', () => {
+      if (currentScreen === 'screen-menu') {
+        setInputDevice('mouse');
+        focusedIndex = 0;
+        updateFocus();
+      }
+    });
+
+    document.getElementById('btn-uikit').addEventListener('mouseenter', () => {
+      if (currentScreen === 'screen-menu') {
+        setInputDevice('mouse');
+        focusedIndex = 1;
+        updateFocus();
+      }
+    });
+
+    // ── Card actions ──────────────────────────────────────────────────────
+    document.getElementById('card-continue').addEventListener('click', function() {
+      if (careers.length === 0) return;
+      const c = careers[0];
+      alert(`Continue career:\n${c.club.name} — ${c.manager_name}\nSeason ${c.season}, ${c.date}`);
+    });
+
+    document.getElementById('card-new').addEventListener('click', function() {
+      alert('New career — coming next screen');
+    });
+
+    document.getElementById('card-load').addEventListener('click', function() {
+      alert('Load career — coming next screen');
+    });
+
+    // ── Keyboard input ────────────────────────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+      const items = getFocusables();
+      if (items.length === 0) return;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          e.preventDefault();
+          setInputDevice('keyboard');
+          focusedIndex = (focusedIndex - 1 + items.length) % items.length;
+          updateFocus();
+          break;
+        case 'ArrowRight':
+        case 'ArrowDown':
+          e.preventDefault();
+          setInputDevice('keyboard');
+          focusedIndex = (focusedIndex + 1) % items.length;
+          updateFocus();
+          break;
+        case 'Enter':
+        case ' ':
+          e.preventDefault();
+          setInputDevice('keyboard');
+          items[focusedIndex].click();
+          break;
+        case 'Escape':
+        case 'b':
+        case 'B':
+          e.preventDefault();
+          setInputDevice('keyboard');
+          navigateBack();
+          break;
+      }
+    });
+
+    // ── Gamepad input ─────────────────────────────────────────────────────
+    function pollGamepad() {
+      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+      for (const gp of gamepads) {
+        if (!gp) continue;
+
+        const axisX = gp.axes[0] || 0;
+        const axisY = gp.axes[1] || 0;
+        const btnLeft = gp.buttons[14]?.pressed || axisX < -0.5;
+        const btnRight = gp.buttons[15]?.pressed || axisX > 0.5;
+        const btnUp = gp.buttons[12]?.pressed || axisY < -0.5;
+        const btnDown = gp.buttons[13]?.pressed || axisY > 0.5;
+        const btnA = gp.buttons[0]?.pressed;
+        const btnB = gp.buttons[1]?.pressed;
+
+        const id = gp.id;
+        const prev = lastGamepadState[id] || {};
+        const items = getFocusables();
+
+        if ((btnLeft || btnUp) && !prev.btnLeft && !prev.btnUp) {
+          setInputDevice('gamepad');
+          focusedIndex = (focusedIndex - 1 + items.length) % items.length;
+          updateFocus();
+        }
+        if ((btnRight || btnDown) && !prev.btnRight && !prev.btnDown) {
+          setInputDevice('gamepad');
+          focusedIndex = (focusedIndex + 1) % items.length;
+          updateFocus();
+        }
+        if (btnA && !prev.btnA) {
+          setInputDevice('gamepad');
+          items[focusedIndex]?.click();
+        }
+        if (btnB && !prev.btnB) {
+          setInputDevice('gamepad');
+          navigateBack();
+        }
+
+        lastGamepadState[id] = { btnLeft, btnRight, btnUp, btnDown, btnA, btnB };
+      }
+      requestAnimationFrame(pollGamepad);
+    }
+    requestAnimationFrame(pollGamepad);
+
+    // ── Init focus on menu ────────────────────────────────────────────────
+    updateFocus();
+  </script>
+</body>
+</html>

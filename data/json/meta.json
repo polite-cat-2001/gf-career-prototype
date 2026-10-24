@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "snapshot_date": "2026-09-09",
+  "tm_season": null,
+  "counts": {
+    "competitions": 279,
+    "clubs": 4406,
+    "national_teams": 246,
+    "players": 121927,
+    "coaches": 0
+  }
+}
