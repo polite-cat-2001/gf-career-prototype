@@ -28,9 +28,13 @@ transfermarkt-api; канон и конвейер — в [[данные-из-tra
 
 ```bash
 pip install -r requirements.txt
-python server.py           # FastAPI на :8765
-# index.html — открыть в браузере напрямую (file://) или через любой статический сервер
+python scripts/build_canon_db.py   # canon.db из data/json + ratings_output.json
+cd web && npm install && npm run build
+cd .. && python server.py           # FastAPI + собранный Svelte на :8765
+python -m pytest                    # тесты канона и API
 ```
+
+Для разработки UI: `cd web && npm run dev` (Vite на :5173, проксирует `/api` и `/raster` на :8765).
 
 ## Устройство вики
 
@@ -67,3 +71,17 @@ YOUR changes made unused; don't delete pre-existing dead code unless asked.
 ## 4. Goal-Driven Execution
 Define success criteria. Loop until verified. For multi-step tasks, state a brief plan with
 verifiable checkpoints.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues in `polite-cat-2001/gf-career-prototype`, via `gh`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context. See `docs/agents/domain.md`.
