@@ -175,6 +175,14 @@ function onPointerMove() {
   inputDevice.set('keyboard')
 }
 
+function onPointerOver(event) {
+  inputDevice.set('keyboard')
+  const element = event.target.closest?.(NAV_SELECTOR)
+  if (element && element !== document.activeElement) {
+    element.focus({ preventScroll: true })
+  }
+}
+
 function pollGamepad() {
   if (!navigator.getGamepads) return
   const pads = Array.from(navigator.getGamepads()).filter(Boolean)
@@ -221,6 +229,7 @@ export function initInput() {
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('pointerdown', onPointerDown)
   window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerover', onPointerOver)
   window.addEventListener('gamepadconnected', () => inputDevice.set('gamepad'))
   pollTimer = window.setInterval(pollGamepad, 45)
   return () => {
@@ -228,6 +237,7 @@ export function initInput() {
     window.removeEventListener('keydown', onKeyDown)
     window.removeEventListener('pointerdown', onPointerDown)
     window.removeEventListener('pointermove', onPointerMove)
+    window.removeEventListener('pointerover', onPointerOver)
     window.clearInterval(pollTimer)
   }
 }

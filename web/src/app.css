@@ -392,11 +392,6 @@ kbd {
   transition: transform 0.18s ease, background 0.18s ease;
 }
 
-.start-card:hover:not(:disabled) {
-  background: linear-gradient(155deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04));
-  transform: translateY(-2px);
-}
-
 .start-card:disabled {
   opacity: 0.45;
 }
@@ -540,10 +535,6 @@ kbd {
   box-shadow: var(--shadow);
 }
 
-.load-card:hover:not(:disabled) {
-  background: linear-gradient(155deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04));
-}
-
 .load-card.incompatible {
   border-color: rgba(255, 156, 156, 0.25);
 }
@@ -656,10 +647,6 @@ kbd {
   transition: background 0.16s ease;
 }
 
-.country-tile:hover {
-  background: rgba(255, 255, 255, 0.075);
-}
-
 .country-tile img {
   grid-row: 1 / 3;
   width: 38px;
@@ -702,10 +689,6 @@ kbd {
   border: 1px solid var(--line-soft);
   background: var(--glass);
   backdrop-filter: blur(14px);
-}
-
-.big-row:hover {
-  background: linear-gradient(155deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
 }
 
 .row-crest {
@@ -1081,10 +1064,6 @@ kbd {
   text-transform: uppercase;
   white-space: nowrap;
   border-bottom: 2px solid transparent;
-}
-
-.hub-tab:hover:not(:disabled) {
-  color: var(--text);
 }
 
 .hub-tab.active {
@@ -1470,10 +1449,6 @@ kbd {
   transition: background 0.16s ease, filter 0.16s ease;
 }
 
-.pitch-player:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-
 .pitch-player.selected {
   border-color: rgba(200, 245, 105, 0.62);
   background: rgba(200, 245, 105, 0.08);
@@ -1589,10 +1564,6 @@ kbd {
   padding: 6px 7px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
-}
-
-.bench-player:hover {
-  background: rgba(255, 255, 255, 0.06);
 }
 
 .bench-player.selected {
