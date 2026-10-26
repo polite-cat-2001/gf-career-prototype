@@ -9,12 +9,14 @@ from pydantic import BaseModel, Field
 
 from server.canon import REPO_ROOT, Canon, default_db_path
 from server.career import (
+    ActionError,
     SaveFormatError,
     SaveNotFound,
     SaveStore,
     SaveVersionError,
     build_snapshot,
     create_career,
+    swap_players,
 )
 
 RASTER_DIR = REPO_ROOT / "data" / "raster"
@@ -104,6 +106,7 @@ class PlayerSummary(BaseModel):
     role: str | None = None
     photo: str
     fatigue: int = 100
+    stats: dict[str, float] | None = None
 
 
 class PlayerDetail(PlayerSummary):
@@ -115,6 +118,12 @@ class CreateCareerRequest(BaseModel):
     manager_name: str = Field(min_length=1, max_length=80)
     manager_nationality_id: str
     seed: int | None = Field(default=None, ge=0, le=4_294_967_295)
+
+
+class CareerActionRequest(BaseModel):
+    type: str
+    player_a: str | None = None
+    player_b: str | None = None
 
 
 class ManagerInfo(BaseModel):
@@ -215,7 +224,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 status_code=409,
                 detail=f"club {career.club_id} from career {career.id} is missing from canon.db",
             )
-        players = canon.players_by_ids(career.player_ids)
+        players = canon.players_by_ids(career.player_ids, with_stats=True)
         if not players:
             raise HTTPException(
                 status_code=409,
@@ -369,6 +378,22 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
     @app.post("/api/careers/{career_id}/save", response_model=CareerSnapshot)
     def save_career(career_id: str):
         career = load_career(career_id)
+        career.touch()
+        saves.save(career)
+        return snapshot(career)
+
+    @app.post("/api/careers/{career_id}/actions", response_model=CareerSnapshot)
+    def apply_action(career_id: str, payload: CareerActionRequest):
+        career = load_career(career_id)
+        if payload.type != "swap":
+            raise HTTPException(status_code=422, detail=f"unknown action type: {payload.type}")
+        if not payload.player_a or not payload.player_b:
+            raise HTTPException(status_code=422, detail="swap requires player_a and player_b")
+        players = canon.players_by_ids(career.player_ids)
+        try:
+            swap_players(career, players, payload.player_a, payload.player_b)
+        except ActionError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
         career.touch()
         saves.save(career)
         return snapshot(career)

@@ -15,6 +15,7 @@
   let saving = $state(false)
   let saveNotice = $state('')
   let saveError = $state('')
+  let noticeTimer = null
 
   let latest = $derived(saves.find((save) => save.compatible) ?? null)
 
@@ -23,6 +24,14 @@
     refreshSaves()
     return stopInput
   })
+
+  function announce(text) {
+    saveNotice = text
+    clearTimeout(noticeTimer)
+    noticeTimer = setTimeout(() => {
+      saveNotice = ''
+    }, 2800)
+  }
 
   async function refreshSaves() {
     savesLoading = true
@@ -82,7 +91,7 @@
   function careerCreated(snapshot) {
     career = snapshot
     openHub()
-    saveNotice = 'Карьера создана и сохранена'
+    announce('Карьера создана и сохранена')
   }
 
   async function saveCareer() {
@@ -92,12 +101,26 @@
     saveNotice = ''
     try {
       career = await api.saveCareer(career.id)
-      saveNotice = 'Сохранено вручную'
+      announce('Сохранено вручную')
       refreshSaves()
     } catch (caught) {
       saveError = `Не удалось сохранить: ${caught.message}`
     } finally {
       saving = false
+    }
+  }
+
+  async function swapPlayers(playerA, playerB) {
+    if (!career) return null
+    saveError = ''
+    try {
+      career = await api.swapPlayers(career.id, playerA, playerB)
+      announce('Состав обновлён и сохранён')
+      refreshSaves()
+      return career
+    } catch (caught) {
+      saveError = `Не удалось изменить состав: ${caught.message}`
+      return null
     }
   }
 
@@ -134,6 +157,7 @@
     {saveNotice}
     {saveError}
     onsave={saveCareer}
+    onswap={swapPlayers}
     onexit={exitToMenu}
   />
 {/if}

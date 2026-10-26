@@ -2,6 +2,7 @@ let backHandler = null
 let tabHandler = null
 let saveHandler = null
 let cycleHandler = null
+let detailsHandler = null
 
 export function registerBack(handler) {
   backHandler = handler
@@ -24,6 +25,13 @@ export function registerSave(handler) {
   }
 }
 
+export function registerDetails(handler) {
+  detailsHandler = handler
+  return () => {
+    if (detailsHandler === handler) detailsHandler = null
+  }
+}
+
 export function registerCycle(handler) {
   cycleHandler = handler
   return () => {
@@ -41,6 +49,10 @@ export function triggerTab(direction) {
 
 export function triggerSave() {
   saveHandler?.()
+}
+
+export function triggerDetails() {
+  detailsHandler?.()
 }
 
 export function triggerCycle(direction) {

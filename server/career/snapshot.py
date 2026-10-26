@@ -44,14 +44,35 @@ def _pick_player(players: list[dict], preferred_roles: list[str], used: set[str]
     return max(candidates, key=lambda player: float(player.get("overall") or 0)) if candidates else None
 
 
-def _lineup(players: list[dict]) -> dict:
+def _auto_starters(players: list[dict]) -> list[dict]:
     used: set[str] = set()
-    slots = []
+    starters = []
     for slot in LINEUP_SLOTS:
         player = _pick_player(players, slot["roles"], used)
         if player is None:
             break
         used.add(player["id"])
+        starters.append(player)
+    return starters
+
+
+def lineup_for(
+    players: list[dict],
+    order: list[str] | None = None,
+    bench_order: list[str] | None = None,
+) -> dict:
+    by_id = {player["id"]: player for player in players}
+    starters: list[dict] = []
+    if order:
+        for player_id in order:
+            player = by_id.get(str(player_id))
+            if player is not None and player not in starters:
+                starters.append(player)
+    if len(starters) != len(LINEUP_SLOTS):
+        starters = _auto_starters(players)
+
+    slots = []
+    for slot, player in zip(LINEUP_SLOTS, starters):
         slots.append(
             {
                 "position": slot["position"],
@@ -61,11 +82,28 @@ def _lineup(players: list[dict]) -> dict:
                 "player": player,
             }
         )
-    bench = sorted(
-        (player for player in players if player["id"] not in used),
-        key=lambda player: float(player.get("overall") or 0),
-        reverse=True,
-    )
+    used = {player["id"] for player in starters}
+    bench_players = [player for player in players if player["id"] not in used]
+    bench: list[dict] = []
+    if bench_order:
+        benched = {player["id"]: player for player in bench_players}
+        for player_id in bench_order:
+            player = benched.pop(str(player_id), None)
+            if player is not None:
+                bench.append(player)
+        bench.extend(
+            sorted(
+                benched.values(),
+                key=lambda player: float(player.get("overall") or 0),
+                reverse=True,
+            )
+        )
+    else:
+        bench = sorted(
+            bench_players,
+            key=lambda player: float(player.get("overall") or 0),
+            reverse=True,
+        )
     return {"formation": FORMATION, "slots": slots, "bench": bench}
 
 
@@ -99,7 +137,16 @@ def _groups(players: list[dict]) -> list[dict]:
         grouped.setdefault(role, []).append(player)
     ordered_roles = [role for role in ROLE_ORDER if role in grouped]
     ordered_roles.extend(role for role in grouped if role not in ROLE_ORDER)
-    return [{"role": role, "players": grouped[role]} for role in ordered_roles]
+    return [
+        {
+            "role": role,
+            "players": [
+                {key: value for key, value in player.items() if key != "stats"}
+                for player in grouped[role]
+            ],
+        }
+        for role in ordered_roles
+    ]
 
 
 def build_snapshot(career: Career, club: dict, players: list[dict]) -> dict:
@@ -118,6 +165,6 @@ def build_snapshot(career: Career, club: dict, players: list[dict]) -> dict:
         "squad": {
             "summary": _summary(squad),
             "groups": _groups(squad),
-            "lineup": _lineup(squad),
+            "lineup": lineup_for(squad, career.lineup, career.bench_order),
         },
     }

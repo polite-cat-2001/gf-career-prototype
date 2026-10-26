@@ -49,6 +49,8 @@ class Career:
     date: str = START_DATE
     created_at: str = field(default_factory=utc_now)
     updated_at: str = field(default_factory=utc_now)
+    lineup: list[str] | None = None
+    bench_order: list[str] | None = None
     journal: list[dict] = field(default_factory=list)
     version: int = SAVE_VERSION
 
@@ -56,7 +58,7 @@ class Career:
         self.updated_at = utc_now()
 
     def to_save(self) -> dict:
-        return {
+        payload = {
             "version": self.version,
             "id": self.id,
             "seed": self.seed,
@@ -68,9 +70,16 @@ class Career:
             "player_ids": list(self.player_ids),
             "journal": list(self.journal),
         }
+        if self.lineup is not None:
+            payload["lineup"] = list(self.lineup)
+        if self.bench_order is not None:
+            payload["bench"] = list(self.bench_order)
+        return payload
 
     @classmethod
     def from_save(cls, raw: dict) -> Career:
+        lineup = raw.get("lineup")
+        bench = raw.get("bench")
         return cls(
             version=int(raw["version"]),
             id=str(raw["id"]),
@@ -81,6 +90,8 @@ class Career:
             manager=Manager.from_save(raw["manager"]),
             club_id=str(raw["club_id"]),
             player_ids=[str(player_id) for player_id in raw["player_ids"]],
+            lineup=None if lineup is None else [str(player_id) for player_id in lineup],
+            bench_order=None if bench is None else [str(player_id) for player_id in bench],
             journal=list(raw.get("journal", [])),
         )
 

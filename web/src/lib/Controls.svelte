@@ -1,7 +1,7 @@
 <script>
   import { inputDevice } from './input.js'
 
-  let { hints = [], note = '' } = $props()
+  let { hints = [], note = '', showDefaults = true } = $props()
 
   const defaults = [
     { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Навигация' },
@@ -9,7 +9,7 @@
     { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
   ]
 
-  let shown = $derived([...defaults, ...hints])
+  let shown = $derived(showDefaults ? [...defaults, ...hints] : hints)
   let device = $derived($inputDevice)
 </script>
 

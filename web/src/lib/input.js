@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store'
 
-import { triggerBack, triggerCycle, triggerSave, triggerTab } from './actions.js'
+import { triggerBack, triggerCycle, triggerDetails, triggerSave, triggerTab } from './actions.js'
 
 export const inputDevice = writable('keyboard')
 
@@ -127,6 +127,10 @@ function saveShortcut() {
   triggerSave()
 }
 
+function detailsShortcut() {
+  triggerDetails()
+}
+
 function onKeyDown(event) {
   inputDevice.set('keyboard')
   if (event.key === 'Escape') {
@@ -164,6 +168,11 @@ function onKeyDown(event) {
   if (event.code === 'KeyS') {
     event.preventDefault()
     saveShortcut()
+    return
+  }
+  if (event.code === 'KeyR') {
+    event.preventDefault()
+    detailsShortcut()
   }
 }
 
@@ -219,6 +228,7 @@ function pollGamepad() {
     if (down(4)) switchTab('left')
     if (down(5)) switchTab('right')
     if (down(9)) saveShortcut()
+    if (down(3)) detailsShortcut()
     previousButtons[pad.index] = pressed
   }
 }

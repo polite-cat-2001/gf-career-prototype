@@ -180,7 +180,7 @@ class Canon:
         rows.sort(key=lambda player: (ROLE_ORDER.get(player["role"], 99), -player["overall"], player["name"]))
         return rows
 
-    def players_by_ids(self, player_ids: list[str]) -> list[dict]:
+    def players_by_ids(self, player_ids: list[str], with_stats: bool = False) -> list[dict]:
         if not player_ids:
             return []
         placeholders = ",".join("?" for _ in player_ids)
@@ -188,7 +188,10 @@ class Canon:
         by_id = {row["id"]: row for row in rows}
         players = [by_id[player_id] for player_id in player_ids if player_id in by_id]
         for player in players:
-            player.pop("stats", None)
+            if with_stats:
+                player["stats"] = json.loads(player["stats"])
+            else:
+                player.pop("stats", None)
         return players
 
     def player(self, player_id: str) -> dict | None:

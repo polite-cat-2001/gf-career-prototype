@@ -38,4 +38,10 @@ export const api = {
   career: (careerId) => get(`/api/careers/${encodeURIComponent(careerId)}`),
   createCareer: (payload) => post('/api/careers', payload),
   saveCareer: (careerId) => post(`/api/careers/${encodeURIComponent(careerId)}/save`),
+  swapPlayers: (careerId, playerA, playerB) =>
+    post(`/api/careers/${encodeURIComponent(careerId)}/actions`, {
+      type: 'swap',
+      player_a: playerA,
+      player_b: playerB,
+    }),
 }
