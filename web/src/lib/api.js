@@ -37,6 +37,9 @@ export const api = {
   latestCareer: () => get('/api/careers/latest'),
   career: (careerId) => get(`/api/careers/${encodeURIComponent(careerId)}`),
   createCareer: (payload) => post('/api/careers', payload),
+  matchPreview: (careerId) => get(`/api/careers/${encodeURIComponent(careerId)}/match`),
+  simulateMatch: (careerId) =>
+    post(`/api/careers/${encodeURIComponent(careerId)}/simulate`),
   saveCareer: (careerId) => post(`/api/careers/${encodeURIComponent(careerId)}/save`),
   swapPlayers: (careerId, playerA, playerB) =>
     post(`/api/careers/${encodeURIComponent(careerId)}/actions`, {

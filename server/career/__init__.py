@@ -14,10 +14,17 @@ from server.career.saves import (
     SaveStore,
     SaveVersionError,
 )
+from server.career.match import (
+    build_lineup,
+    build_match_setup,
+    build_match_simulation,
+    club_abbr,
+)
 from server.career.season import (
     SeasonError,
     advance_to,
     ensure_schedule,
+    next_fixture,
     next_season,
     play_next_match,
     season_state,
@@ -37,6 +44,7 @@ __all__ = [
     "create_career",
     "ensure_schedule",
     "new_seed",
+    "next_fixture",
     "next_season",
     "play_next_match",
     "season_state",
@@ -49,4 +57,8 @@ __all__ = [
     "SaveStore",
     "SaveVersionError",
     "build_snapshot",
+    "build_lineup",
+    "build_match_setup",
+    "build_match_simulation",
+    "club_abbr",
 ]

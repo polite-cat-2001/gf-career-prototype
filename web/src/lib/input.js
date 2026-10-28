@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store'
 
-import { triggerBack, triggerCycle, triggerDetails, triggerSave, triggerTab } from './actions.js'
+import { triggerBack, triggerCycle, triggerDetails, triggerPrimary, triggerSave, triggerTab } from './actions.js'
 
 export const inputDevice = writable('keyboard')
 
@@ -143,7 +143,7 @@ function onKeyDown(event) {
   if (isTyping()) return
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault()
-    activateFocused()
+    if (!triggerPrimary()) activateFocused()
     return
   }
   if (DIRECTIONS.includes(event.key)) {
@@ -225,7 +225,9 @@ function pollGamepad() {
     const was = previousButtons[pad.index] || []
     const down = (index) => pressed[index] && !was[index]
     if (pressed.some(Boolean) || direction) inputDevice.set('gamepad')
-    if (down(0)) activateFocused()
+    if (down(0)) {
+      if (!triggerPrimary()) activateFocused()
+    }
     if (down(1)) goBack()
     if (down(4)) switchTab('left')
     if (down(5)) switchTab('right')

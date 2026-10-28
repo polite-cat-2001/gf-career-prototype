@@ -16,9 +16,13 @@ from server.career import (
     SaveVersionError,
     SeasonError,
     advance_to,
+    build_lineup,
+    build_match_setup,
+    build_match_simulation,
     build_snapshot,
     create_career,
     ensure_schedule,
+    next_fixture,
     next_season,
     play_next_match,
     season_transition,
@@ -277,6 +281,74 @@ class CareerSnapshot(BaseModel):
     season: SeasonBlock
 
 
+class MatchPlayer(BaseModel):
+    id: str
+    name: str
+    last_name: str | None = None
+    shirt_number: int | None = None
+    role: str | None = None
+
+
+class MatchSlot(BaseModel):
+    position: str
+    role: str
+    x: int
+    y: int
+    player: MatchPlayer
+
+
+class MatchLineup(BaseModel):
+    formation: str
+    slots: list[MatchSlot]
+    bench: list[MatchPlayer]
+
+
+class MatchTeam(BaseModel):
+    id: str
+    name: str
+    logo: str = ""
+    abbr: str
+
+
+class MatchSetup(BaseModel):
+    fixture_id: str
+    round: int
+    date: str
+    home: bool
+    competition: str
+    home_team: MatchTeam
+    away_team: MatchTeam
+    home_lineup: MatchLineup
+    away_lineup: MatchLineup
+
+
+class MatchScore(BaseModel):
+    home: int
+    away: int
+
+
+class MatchEvent(BaseModel):
+    id: str
+    minute: int
+    type: str
+    team: str
+    player: MatchPlayer
+    player_out: MatchPlayer | None = None
+
+
+class MatchSimulation(MatchSetup):
+    events: list[MatchEvent]
+    score: MatchScore
+    outcome: str
+    goals_for: int
+    goals_against: int
+
+
+class MatchSimulationResponse(BaseModel):
+    career: CareerSnapshot
+    match: MatchSimulation
+
+
 def _int_or_zero(value) -> int:
     try:
         return int(value)
@@ -391,6 +463,47 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             if below2_league
             else [],
         }
+
+    def match_setup(career, context):
+        ensure_schedule(career, context["clubs"])
+        fixture = next_fixture(career)
+        if fixture is None:
+            raise HTTPException(status_code=422, detail="season is complete")
+        if career.date < fixture["date"]:
+            raise HTTPException(status_code=422, detail="advance to the match day first")
+
+        clubs = {}
+        for club_id in (fixture["home"], fixture["away"]):
+            item = canon.club(club_id)
+            if item is None:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"club {club_id} is missing from canon.db",
+                )
+            clubs[club_id] = item
+
+        our_players = canon.players_by_ids(career.player_ids, with_stats=True)
+        if not our_players:
+            raise HTTPException(status_code=409, detail="career squad is missing from canon.db")
+        home_players = (
+            our_players if fixture["home"] == career.club_id else canon.squad(fixture["home"])
+        )
+        away_players = (
+            our_players if fixture["away"] == career.club_id else canon.squad(fixture["away"])
+        )
+        home_order = career.lineup if fixture["home"] == career.club_id else None
+        home_bench = career.bench_order if fixture["home"] == career.club_id else None
+        away_order = career.lineup if fixture["away"] == career.club_id else None
+        away_bench = career.bench_order if fixture["away"] == career.club_id else None
+        setup = build_match_setup(
+            career,
+            fixture,
+            str(context["league"]["name"]),
+            clubs,
+            build_lineup(home_players, home_order, home_bench),
+            build_lineup(away_players, away_order, away_bench),
+        )
+        return fixture, setup
 
     def snapshot(career):
         club = canon.club(career.club_id)
@@ -587,6 +700,38 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
     @app.get("/api/careers/{career_id}", response_model=CareerSnapshot)
     def career(career_id: str):
         return snapshot(load_career(career_id))
+
+    @app.get("/api/careers/{career_id}/match", response_model=MatchSetup)
+    def match_preview(career_id: str):
+        loaded = load_career(career_id)
+        club = canon.club(loaded.club_id)
+        if club is None:
+            raise HTTPException(status_code=409, detail="career club is missing from canon.db")
+        context = division_context(loaded, club)
+        _, setup = match_setup(loaded, context)
+        return setup
+
+    @app.post("/api/careers/{career_id}/simulate", response_model=MatchSimulationResponse)
+    def simulate_career(career_id: str):
+        loaded = load_career(career_id)
+        club = canon.club(loaded.club_id)
+        if club is None:
+            raise HTTPException(status_code=409, detail="career club is missing from canon.db")
+        context = division_context(loaded, club)
+        fixture, setup = match_setup(loaded, context)
+        try:
+            played = play_next_match(loaded, context["clubs"], strength_resolver())
+        except SeasonError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        if played["id"] != fixture["id"]:
+            raise HTTPException(status_code=409, detail="next fixture changed during simulation")
+        score = loaded.results.get(fixture["id"])
+        if score is None:
+            raise HTTPException(status_code=409, detail="simulation produced no result")
+        match = build_match_simulation(loaded, fixture, setup, score)
+        loaded.touch()
+        saves.save(loaded)
+        return {"career": snapshot(loaded), "match": match}
 
     @app.post("/api/careers/{career_id}/save", response_model=CareerSnapshot)
     def save_career(career_id: str):

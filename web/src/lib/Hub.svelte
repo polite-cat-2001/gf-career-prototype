@@ -1,8 +1,9 @@
 <script>
   import { onMount, tick } from 'svelte'
-  import { registerBack, registerDetails, registerSave, registerTabs } from './actions.js'
+  import { registerBack, registerDetails, registerPrimary, registerSave, registerTabs } from './actions.js'
   import Controls from './Controls.svelte'
   import Icon from './Icon.svelte'
+  import MatchScreen from './MatchScreen.svelte'
   import Tabs from './Tabs.svelte'
   import { focusElement, focusFirst } from './input.js'
   import {
@@ -37,6 +38,8 @@
     onsave,
     onswap,
     onplay,
+    onpreview,
+    onsimulate,
     onadvance,
     onnextseason,
     onexit,
@@ -102,6 +105,14 @@
   let simDate = $state(null)
   let simStart = $state(null)
   let simTimer = null
+  let matchSimOpen = $state(false)
+  let matchSimPhase = $state('setup')
+  let matchSimSetup = $state(null)
+  let matchSimResult = $state(null)
+  let matchSimMinute = $state(0)
+  let matchSimLoading = $state(false)
+  let matchSimError = $state('')
+  let matchSimTimer = null
 
   let summary = $derived(career.squad.summary)
   let lineup = $derived(career.squad.lineup)
@@ -188,6 +199,28 @@
   let hints = $derived.by(() => {
     const start = { gamepad: ['Start'], keyboard: ['S'], label: 'Сохранить' }
     const sections = { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Разделы' }
+    if (matchSimOpen) {
+      if (matchSimPhase === 'live') {
+        return [
+          {
+            gamepad: ['Y'],
+            keyboard: ['R'],
+            label: matchSimLoading ? 'Симуляция…' : 'Пропустить',
+          },
+        ]
+      }
+      if (matchSimPhase === 'done') {
+        return [{ gamepad: ['A'], keyboard: ['Enter'], label: 'Далее' }]
+      }
+      return [
+        {
+          gamepad: ['A'],
+          keyboard: ['Enter'],
+          label: matchSimLoading ? 'Загрузка…' : 'Начать симуляцию',
+        },
+        { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+      ]
+    }
     if (matchResult) {
       return [
         { gamepad: ['A'], keyboard: ['Enter'], label: 'Продолжить' },
@@ -250,19 +283,119 @@
     const stopBack = registerBack(handleBack)
     const stopTabs = registerTabs(switchTab)
     const stopSave = registerSave(handleSave)
-    const stopDetails = registerDetails(toggleDetails)
+    const stopDetails = registerDetails(handleDetails)
+    const stopPrimary = registerPrimary(handlePrimaryAction)
     tick().then(focusFirst)
     return () => {
       stopBack()
       stopTabs()
       stopSave()
       stopDetails()
+      stopPrimary()
       if (simTimer) clearInterval(simTimer)
+      if (matchSimTimer) clearInterval(matchSimTimer)
     }
   })
 
   function handleSave() {
-    if (!saving && !matchResult && !seasonReview && !simulating && !advancing) onsave()
+    if (
+      !saving &&
+      !matchResult &&
+      !seasonReview &&
+      !simulating &&
+      !advancing &&
+      !matchSimOpen
+    ) {
+      onsave()
+    }
+  }
+
+  async function openMatchSimulation() {
+    if (playing || advancing || matchSimOpen || !isMatchDay || !nextMatch) return
+    matchSimError = ''
+    matchSimLoading = true
+    const setup = await onpreview()
+    matchSimLoading = false
+    if (!setup) {
+      matchSimError = saveError || 'Не удалось открыть симуляцию'
+      return
+    }
+    matchSimSetup = setup
+    matchSimResult = null
+    matchSimPhase = 'setup'
+    matchSimMinute = 0
+    matchSimOpen = true
+    await tick()
+    focusFirst()
+  }
+
+  async function launchMatchSimulation() {
+    if (!matchSimOpen || matchSimPhase !== 'setup' || matchSimLoading) return
+    matchSimError = ''
+    matchSimLoading = true
+    const result = await onsimulate()
+    matchSimLoading = false
+    if (!result) {
+      matchSimError = saveError || 'Не удалось запустить симуляцию'
+      return
+    }
+    matchSimResult = result
+    matchSimPhase = 'live'
+    matchSimMinute = 0
+    if (matchSimTimer) clearInterval(matchSimTimer)
+    matchSimTimer = setInterval(tickMatchSimulation, 1000)
+    await tick()
+    focusFirst()
+  }
+
+  function tickMatchSimulation() {
+    if (matchSimPhase !== 'live') return
+    if (matchSimMinute >= 90) {
+      finishMatchSimulation()
+      return
+    }
+    matchSimMinute += 1
+    if (matchSimMinute >= 90) finishMatchSimulation()
+  }
+
+  function finishMatchSimulation() {
+    if (matchSimTimer) {
+      clearInterval(matchSimTimer)
+      matchSimTimer = null
+    }
+    if (matchSimPhase === 'live') {
+      matchSimMinute = 90
+      matchSimPhase = 'done'
+    }
+  }
+
+  async function closeMatchSimulation() {
+    if (matchSimLoading) return
+    if (matchSimTimer) {
+      clearInterval(matchSimTimer)
+      matchSimTimer = null
+    }
+    matchSimOpen = false
+    matchSimPhase = 'setup'
+    matchSimSetup = null
+    matchSimResult = null
+    matchSimMinute = 0
+    matchSimError = ''
+    await tick()
+    focusFirst()
+  }
+
+  function activateMatchSimulation() {
+    if (matchSimLoading) return
+    if (matchSimPhase === 'setup') {
+      launchMatchSimulation()
+      return
+    }
+    if (matchSimPhase === 'live') {
+      finishMatchSimulation()
+      return
+    }
+    closeMatchSimulation()
   }
 
   async function playMatch() {
@@ -484,6 +617,11 @@
   }
 
   function handleBack() {
+    if (matchSimOpen) {
+      if (matchSimLoading || matchSimPhase !== 'setup') return
+      closeMatchSimulation()
+      return
+    }
     if (simulating) {
       stopSimulation()
       return
@@ -530,6 +668,20 @@
     tick().then(() => focusPlayer(focusPlayerId))
   }
 
+  function handlePrimaryAction() {
+    if (!matchSimOpen) return false
+    activateMatchSimulation()
+    return true
+  }
+
+  function handleDetails() {
+    if (matchSimOpen) {
+      if (matchSimPhase === 'live') finishMatchSimulation()
+      return
+    }
+    toggleDetails()
+  }
+
   function toggleDetails() {
     if (matchResult || seasonReview) return
     if (tab !== 'squad' || !focusedPlayer) return
@@ -555,7 +707,7 @@
   }
 
   async function setTab(next) {
-    if (simulating || advancing) return
+    if (simulating || advancing || matchSimOpen) return
     if (!enabledTabs.includes(next)) return
     tab = next
     view = 'overview'
@@ -566,7 +718,7 @@
   }
 
   function switchTab(direction) {
-    if (simulating || advancing || matchResult || seasonReview) return
+    if (simulating || advancing || matchResult || seasonReview || matchSimOpen) return
     if (tab === 'squad' && view === 'details') {
       switchDetailsPage(direction)
       return
@@ -657,7 +809,7 @@
   }
 </script>
 
-<div class="app">
+<div class="app" class:is-simulating={matchSimOpen}>
   <header class="topbar hub-topbar">
     <div class="brand">
       <div class="brand-mark">GF</div>
@@ -755,7 +907,7 @@
     {/if}
 
     {#if tab === 'centre'}
-      <div class="hub-grid" inert={matchResult || seasonReview ? true : undefined}>
+      <div class="hub-grid" inert={matchResult || seasonReview || matchSimOpen ? true : undefined}>
         {#if isMatchDay && nextMatch && !simulating && !advancing}
           <div class="match-actions" style="grid-area: next">
             <button class="match-action" data-nav data-autofocus onclick={playMatch}>
@@ -782,7 +934,7 @@
               </div>
             </button>
 
-            <button class="match-action" data-nav onclick={playMatch}>
+            <button class="match-action" data-nav onclick={openMatchSimulation}>
               <div class="match-action-head">
                 <div>
                   <span class="eyebrow">Матч</span>
@@ -1414,15 +1566,30 @@
     </div>
   {/if}
 
+  {#if matchSimOpen && matchSimSetup}
+    <MatchScreen
+      phase={matchSimPhase}
+      minute={matchSimMinute}
+      setup={matchSimSetup}
+      simulation={matchSimResult}
+      loading={matchSimLoading}
+      error={matchSimError || saveError}
+    />
+  {/if}
+
   <Controls
     {hints}
     showDefaults={false}
-    note={saving
-      ? 'Сохранение…'
-      : playing
-        ? 'Матч идёт…'
-        : swapping
-          ? 'Обмен…'
-          : `${career.club.name} · ${formatTimestamp(career.updated_at)}`}
+    note={matchSimOpen
+      ? matchSimPhase === 'live'
+        ? 'Симуляция · 1 минута в секунду'
+        : 'Симуляция матча'
+      : saving
+        ? 'Сохранение…'
+        : playing
+          ? 'Матч идёт…'
+          : swapping
+            ? 'Обмен…'
+            : `${career.club.name} · ${formatTimestamp(career.updated_at)}`}
   />
 </div>

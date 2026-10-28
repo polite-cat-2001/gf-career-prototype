@@ -153,6 +153,31 @@
     }
   }
 
+  async function previewSimulation() {
+    if (!career) return null
+    saveError = ''
+    try {
+      return await api.matchPreview(career.id)
+    } catch (caught) {
+      saveError = `Не удалось открыть симуляцию: ${caught.message}`
+      return null
+    }
+  }
+
+  async function simulateMatch() {
+    if (!career) return null
+    saveError = ''
+    try {
+      const payload = await api.simulateMatch(career.id)
+      career = payload.career
+      refreshSaves()
+      return payload.match
+    } catch (caught) {
+      saveError = `Не удалось симулировать матч: ${caught.message}`
+      return null
+    }
+  }
+
   async function startNextSeason() {
     if (!career) return null
     saveError = ''
@@ -203,6 +228,8 @@
     onsave={saveCareer}
     onswap={swapPlayers}
     onplay={playMatch}
+    onpreview={previewSimulation}
+    onsimulate={simulateMatch}
     onadvance={advanceCareer}
     onnextseason={startNextSeason}
     onexit={exitToMenu}

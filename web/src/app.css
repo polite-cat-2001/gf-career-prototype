@@ -273,6 +273,8 @@ img {
 /* Controls */
 
 .control-bar {
+  position: relative;
+  z-index: 1;
   flex: 0 0 auto;
   min-height: 50px;
   display: flex;
@@ -1622,7 +1624,430 @@ button.widget {
   color: var(--dim);
 }
 
+/* Match simulation */
+
+.app.is-simulating {
+  padding: 16px 24px 0;
+  background:
+    radial-gradient(90% 80% at 50% -6%, rgba(163, 203, 220, 0.3), transparent 68%),
+    radial-gradient(60% 50% at 10% 104%, rgba(67, 153, 122, 0.18), transparent 62%),
+    linear-gradient(180deg, #2b4a55 0%, #1c343c 58%, #142a32 100%);
+}
+
+.app.is-simulating .hub-topbar,
+.app.is-simulating .hub-screen {
+  display: none;
+}
+
+.sim-page {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding-bottom: 10px;
+}
+
+.sim-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.38fr);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.045)),
+    rgba(37, 65, 73, 0.72);
+  box-shadow:
+    0 26px 80px rgba(0, 0, 0, 0.34),
+    0 0 70px rgba(173, 214, 224, 0.08);
+  animation: result-rise 0.26s ease-out;
+}
+
+.sim-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 18px 24px 16px;
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(108deg, rgba(28, 53, 62, 0.96), rgba(20, 40, 47, 0.9));
+}
+
+.sim-header {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.sim-competition {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: #c3d6da;
+}
+
+.sim-scoreline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+}
+
+.sim-club {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sim-club.is-home {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.sim-club.is-away {
+  justify-content: flex-start;
+}
+
+.sim-club img {
+  width: clamp(34px, 5.4vh, 54px);
+  height: clamp(34px, 5.4vh, 54px);
+  flex: 0 0 auto;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.38));
+}
+
+.sim-club strong {
+  display: block;
+  overflow: hidden;
+  font-family: var(--font-heading);
+  font-size: clamp(16px, 2.5vh, 23px);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sim-club span {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lime);
+}
+
+.sim-centre {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 86px;
+}
+
+.sim-score {
+  font-family: var(--font-heading);
+  font-size: clamp(34px, 5.8vh, 54px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.sim-minute {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c3d6da;
+  white-space: nowrap;
+}
+
+.sim-date {
+  font-size: 11px;
+  color: #a9c0c5;
+}
+
+.sim-lineups {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  min-height: 0;
+  padding-top: 10px;
+}
+
+.sim-team-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sim-list-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 2px 5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sim-list-head span {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  color: #b6cbd0;
+  white-space: nowrap;
+}
+
+.sim-list-head strong {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--lime);
+}
+
+.sim-players {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+}
+
+.sim-player {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 21px;
+  padding: 1px 2px;
+}
+
+.sim-team-list.is-away .sim-player {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.sim-player.is-bench {
+  opacity: 0.84;
+}
+
+.sim-marks {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 13px;
+  flex: 0 0 auto;
+}
+
+.sim-name {
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sim-bench-label {
+  margin-top: 6px;
+  padding: 5px 2px 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #a9c0c5;
+}
+
+.sim-team-list.is-away .sim-bench-label {
+  text-align: right;
+}
+
+.sim-side {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 18px 18px 16px;
+  background:
+    linear-gradient(160deg, rgba(235, 245, 248, 0.16), rgba(255, 255, 255, 0.055)),
+    rgba(46, 74, 82, 0.76);
+}
+
+.sim-clock {
+  flex: 0 0 auto;
+  margin: -2px -2px 12px;
+  padding: 9px 10px;
+  border-radius: 3px;
+  background: rgba(238, 249, 252, 0.22);
+  font-family: var(--font-heading);
+  font-size: clamp(19px, 3vh, 25px);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.sim-feed {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+}
+
+.sim-feed-row {
+  display: grid;
+  grid-template-columns: 34px 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+}
+
+.sim-feed-row.is-injury .sim-feed-player {
+  color: var(--danger);
+}
+
+.sim-feed-row.is-penalty .sim-feed-player {
+  color: var(--lime);
+}
+
+.sim-feed-minute {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #c3d6da;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sim-feed-player {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sim-feed-club {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: #a9c0c5;
+}
+
+.sim-feed-empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 30px 10px;
+  color: #b6cbd0;
+  font-size: 12px;
+  text-align: center;
+}
+
+.sim-feed-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 0 7px rgba(200, 245, 105, 0.12);
+  animation: sim-pulse 1.6s ease-in-out infinite;
+}
+
+.sim-error,
+.sim-loading {
+  flex: 0 0 auto;
+  margin-top: 10px;
+  padding: 9px 11px;
+  border-radius: 4px;
+  font-size: 11.5px;
+}
+
+.sim-error {
+  border: 1px solid rgba(255, 156, 156, 0.3);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.sim-loading {
+  border: 1px solid rgba(200, 245, 105, 0.22);
+  background: var(--lime-soft);
+  color: var(--lime);
+  text-align: center;
+}
+
+.event-glyph {
+  flex: 0 0 auto;
+}
+
+.event-glyph.is-goal,
+.event-glyph.is-penalty {
+  color: var(--lime);
+}
+
+.event-glyph.is-yellow {
+  color: #f4d35e;
+}
+
+.event-glyph.is-red {
+  color: #ff6f6f;
+}
+
+.event-glyph.is-sub-in {
+  color: #6ee7b7;
+}
+
+.event-glyph.is-sub-out {
+  color: #f0a46b;
+}
+
+.event-glyph.is-injury {
+  color: var(--danger);
+}
+
+@keyframes sim-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
 /* Match result */
+
 
 .match-result {
   position: fixed;
