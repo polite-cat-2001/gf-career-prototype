@@ -95,6 +95,8 @@
   let anchorId = $state(null)
   let swapping = $state(false)
   let matchResult = $state(null)
+  let seasonReview = $state(false)
+  let reviewStep = $state(0)
   let simulating = $state(false)
   let advancing = $state(false)
   let simDate = $state(null)
@@ -104,6 +106,7 @@
   let summary = $derived(career.squad.summary)
   let lineup = $derived(career.squad.lineup)
   let season = $derived(career.season)
+  let review = $derived(season?.review ?? null)
   let nextMatch = $derived(season?.next ?? null)
   let displayDate = $derived(simulating && simDate ? simDate : career.date)
   let days = $derived(weekStrip(displayDate, 7))
@@ -187,12 +190,22 @@
     const sections = { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Разделы' }
     if (matchResult) {
       return [
+        { gamepad: ['A'], keyboard: ['Enter'], label: 'Продолжить' },
+        { gamepad: ['B'], keyboard: ['Esc'], label: 'Закрыть' },
+      ]
+    }
+    if (seasonReview) {
+      return [
         {
           gamepad: ['A'],
           keyboard: ['Enter'],
-          label: season?.complete ? 'Следующий сезон' : 'Продолжить',
+          label: reviewStep === 0 ? 'Далее' : 'Начать новый сезон',
         },
-        { gamepad: ['B'], keyboard: ['Esc'], label: 'Закрыть' },
+        {
+          gamepad: ['B'],
+          keyboard: ['Esc'],
+          label: reviewStep === 1 ? 'К таблице' : 'Закрыть',
+        },
       ]
     }
     if (simulating || advancing) {
@@ -249,7 +262,7 @@
   })
 
   function handleSave() {
-    if (!saving && !matchResult && !simulating && !advancing) onsave()
+    if (!saving && !matchResult && !seasonReview && !simulating && !advancing) onsave()
   }
 
   async function playMatch() {
@@ -266,6 +279,12 @@
     const end = new Date(`${to}T00:00:00Z`)
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0
     return Math.max(0, Math.round((end - start) / 86_400_000))
+  }
+
+  function nextSeasonLabel() {
+    const year = Number(season.season_start.slice(0, 4)) + 1
+    if (Number.isNaN(year)) return ''
+    return `${year}/${String((year + 1) % 100).padStart(2, '0')}`
   }
 
   function addDay(value) {
@@ -318,10 +337,7 @@
       return
     }
     if (!nextMatch) {
-      matchResult = null
-      await onnextseason()
-      await tick()
-      focusFirst()
+      openSeasonReview()
       return
     }
     if (isMatchDay) {
@@ -331,9 +347,39 @@
     startSimulation()
   }
 
-  async function nextSeasonFromResult() {
+  function openSeasonReview() {
+    if (!season?.complete || advancing) return
     matchResult = null
-    await onnextseason()
+    reviewStep = 0
+    seasonReview = true
+    tick().then(focusFirst)
+  }
+
+  function closeSeasonReview() {
+    seasonReview = false
+    reviewStep = 0
+    tick().then(focusFirst)
+  }
+
+  async function advanceSeasonReview() {
+    if (review?.next && reviewStep === 0) {
+      reviewStep = 1
+      await tick()
+      focusFirst()
+      return
+    }
+    await startNewSeason()
+  }
+
+  async function startNewSeason() {
+    if (advancing) return
+    advancing = true
+    const updated = await onnextseason()
+    advancing = false
+    if (!updated) return
+    seasonReview = false
+    reviewStep = 0
+    matchResult = null
     await tick()
     focusFirst()
   }
@@ -443,6 +489,15 @@
       return
     }
     if (advancing) return
+    if (seasonReview) {
+      if (reviewStep === 1) {
+        reviewStep = 0
+        tick().then(focusFirst)
+      } else {
+        closeSeasonReview()
+      }
+      return
+    }
     if (matchResult) {
       closeResult()
       return
@@ -476,7 +531,7 @@
   }
 
   function toggleDetails() {
-    if (matchResult) return
+    if (matchResult || seasonReview) return
     if (tab !== 'squad' || !focusedPlayer) return
     if (view === 'details') {
       closeDetails()
@@ -511,7 +566,7 @@
   }
 
   function switchTab(direction) {
-    if (simulating || advancing || matchResult) return
+    if (simulating || advancing || matchResult || seasonReview) return
     if (tab === 'squad' && view === 'details') {
       switchDetailsPage(direction)
       return
@@ -700,7 +755,7 @@
     {/if}
 
     {#if tab === 'centre'}
-      <div class="hub-grid" inert={matchResult ? true : undefined}>
+      <div class="hub-grid" inert={matchResult || seasonReview ? true : undefined}>
         {#if isMatchDay && nextMatch && !simulating && !advancing}
           <div class="match-actions" style="grid-area: next">
             <button class="match-action" data-nav data-autofocus onclick={playMatch}>
@@ -756,8 +811,12 @@
           onclick={handleNextWidget}
         >
           <div class="widget-head calendar-head">
-            <strong class="widget-title calendar-title">
-              {simulating ? 'Остановить' : 'Далее'}
+            <strong class="widget-title calendar-title" class:is-season={season.complete}>
+              {simulating
+                ? 'Остановить'
+                : season.complete
+                  ? 'Перейти в следующий сезон'
+                  : 'Далее'}
             </strong>
             <span class="calendar-month">{shortMonthLabel(displayDate)}</span>
           </div>
@@ -1183,11 +1242,174 @@
           class="result-continue"
           data-nav
           data-autofocus
-          onclick={season.complete ? nextSeasonFromResult : closeResult}
+          onclick={closeResult}
         >
-          <span>{season.complete ? 'Перейти в следующий сезон' : 'Продолжить'}</span>
+          <span>Продолжить</span>
           <span class="result-key">A</span>
         </button>
+      </section>
+    </div>
+  {/if}
+
+  {#if seasonReview && review}
+    <div class="match-result season-review">
+      <section class="review-card" aria-label="Итоги сезона">
+        <div class="review-head">
+          <span class="eyebrow">
+            {reviewStep === 0
+              ? `Итоги сезона · ${season.season_start.slice(0, 4)}`
+              : 'Новый сезон'}
+          </span>
+          <div class="review-title-row">
+            <h2>{reviewStep === 0 ? review.league.name : review.next.league.name}</h2>
+            {#if reviewStep === 0 && ownRow}
+              <span class="review-place">
+                {ownRow.position}-е место · {ownRow.points}
+                {plural(ownRow.points, 'очко', 'очка', 'очков')}
+              </span>
+            {:else if reviewStep === 1}
+              <span class="review-place">{nextSeasonLabel()}</span>
+            {/if}
+          </div>
+        </div>
+
+        {#if reviewStep === 0}
+          <div class="review-table-wrap">
+            <div class="review-table">
+              <div class="review-row review-row-head">
+                <span>#</span>
+                <span>Клуб</span>
+                <span>И</span>
+                <span>+/-</span>
+                <span>О</span>
+              </div>
+              {#each review.standings as row (row.club_id)}
+                <div
+                  class="review-row"
+                  class:is-club={row.club_id === career.club.id}
+                  class:is-up={review.promoted.some((club) => club.id === row.club_id)}
+                  class:is-down={review.relegated.some((club) => club.id === row.club_id)}
+                >
+                  <span class="review-pos">{row.position}</span>
+                  <span class="review-club">
+                    <img src={row.club_logo} alt="" onerror={hideBrokenImage} />
+                    <span>{row.club_name}</span>
+                  </span>
+                  <span>{row.played}</span>
+                  <span>{row.goal_difference > 0 ? `+${row.goal_difference}` : row.goal_difference}</span>
+                  <span class="review-points">{row.points}</span>
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          <div class="review-zones">
+            {#if review.promoted.length}
+              <div class="review-zone is-up">
+                <span class="review-zone-label">
+                  Поднялись в {review.promoted_to.name}
+                </span>
+                <div class="review-chips">
+                  {#each review.promoted as club (club.id)}
+                    <span class="review-chip">
+                      <img src={club.logo} alt="" onerror={hideBrokenImage} />
+                      {club.name}
+                    </span>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+            {#if review.relegated.length}
+              <div class="review-zone is-down">
+                <span class="review-zone-label">
+                  Вылетели в {review.relegated_to.name}
+                </span>
+                <div class="review-chips">
+                  {#each review.relegated as club (club.id)}
+                    <span class="review-chip">
+                      <img src={club.logo} alt="" onerror={hideBrokenImage} />
+                      {club.name}
+                    </span>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+          </div>
+
+          <button
+            class="result-continue"
+            data-nav
+            data-autofocus
+            onclick={advanceSeasonReview}
+          >
+            <span>Далее</span>
+            <span class="result-key">A</span>
+          </button>
+        {:else}
+          <div
+            class="review-transition"
+            class:is-up={review.movement === 'up'}
+            class:is-down={review.movement === 'down'}
+            class:is-stay={review.movement === null}
+          >
+            <span class="review-move-arrow">
+              {review.movement === 'up' ? '↑' : review.movement === 'down' ? '↓' : '→'}
+            </span>
+            <img class="review-move-crest" src={career.club.logo} alt="" onerror={hideBrokenImage} />
+            <div class="review-move-copy">
+              <strong>{career.club.name}</strong>
+              <span>
+                {review.movement === 'up'
+                  ? 'Повышение в'
+                  : review.movement === 'down'
+                    ? 'Вылет в'
+                    : 'Остались в'}
+                {review.next.league.name}
+              </span>
+            </div>
+          </div>
+
+          <div class="review-next-grid">
+            {#if review.next.from_above.length}
+              <div class="review-next-col">
+                <span class="review-next-label">
+                  Пришли из {review.next.above.name}
+                </span>
+                {#each review.next.from_above as item (item.club.id)}
+                  <div class="review-next-row">
+                    <img src={item.club.logo} alt="" onerror={hideBrokenImage} />
+                    <span>{item.club.name}</span>
+                    <small>{item.league.name}</small>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+            {#if review.next.from_below.length}
+              <div class="review-next-col">
+                <span class="review-next-label">
+                  Пришли из {review.next.below.name}
+                </span>
+                {#each review.next.from_below as item (item.club.id)}
+                  <div class="review-next-row">
+                    <img src={item.club.logo} alt="" onerror={hideBrokenImage} />
+                    <span>{item.club.name}</span>
+                    <small>{item.league.name}</small>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+
+          <button
+            class="result-continue"
+            data-nav
+            data-autofocus
+            onclick={startNewSeason}
+          >
+            <span>Начать новый сезон</span>
+            <span class="result-key">A</span>
+          </button>
+        {/if}
       </section>
     </div>
   {/if}

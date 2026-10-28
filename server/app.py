@@ -21,9 +21,10 @@ from server.career import (
     ensure_schedule,
     next_season,
     play_next_match,
+    season_transition,
+    squad_strength,
     swap_players,
 )
-from server.career.season import squad_strength
 
 RASTER_DIR = REPO_ROOT / "data" / "raster"
 WEB_DIST = REPO_ROOT / "web" / "dist"
@@ -215,6 +216,42 @@ class StandingRow(BaseModel):
     points: int
 
 
+class SeasonLeague(BaseModel):
+    id: str
+    name: str
+
+
+class SeasonClubRef(BaseModel):
+    id: str
+    name: str
+    logo: str = ""
+    position: int | None = None
+
+
+class SeasonMove(BaseModel):
+    club: SeasonClubRef
+    league: SeasonLeague
+
+
+class SeasonNextDivision(BaseModel):
+    league: SeasonLeague
+    above: SeasonLeague | None = None
+    below: SeasonLeague | None = None
+    from_above: list[SeasonMove]
+    from_below: list[SeasonMove]
+
+
+class SeasonReview(BaseModel):
+    league: SeasonLeague
+    standings: list[StandingRow]
+    promoted: list[SeasonClubRef]
+    relegated: list[SeasonClubRef]
+    promoted_to: SeasonLeague | None = None
+    relegated_to: SeasonLeague | None = None
+    movement: str | None = None
+    next: SeasonNextDivision | None = None
+
+
 class SeasonBlock(BaseModel):
     season_start: str
     round: int
@@ -224,6 +261,7 @@ class SeasonBlock(BaseModel):
     last_result: SeasonResult | None = None
     form: list[SeasonResult]
     standings: list[StandingRow]
+    review: SeasonReview | None = None
 
 
 class CareerSnapshot(BaseModel):
@@ -290,6 +328,70 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
 
         return resolve
 
+    league_catalog = {str(league["id"]): league for league in canon.leagues()}
+
+    def division_context(career, club):
+        league_id = career.league_id or str(club["league_id"])
+        league = league_catalog.get(league_id) or {
+            "id": league_id,
+            "name": club["league_name"],
+            "country_id": club["country_id"],
+            "tier": club["tier"],
+            "tier_rank": club["tier_rank"],
+        }
+        if career.league_club_ids is None:
+            career.league_id = league_id
+            career.league_club_ids = [
+                str(item["id"])
+                for item in canon.clubs(league_id=league_id, limit=1000)
+            ]
+        clubs = []
+        for club_id in career.league_club_ids:
+            item = canon.club(str(club_id))
+            if item is not None:
+                clubs.append(item)
+        if not any(str(item["id"]) == career.club_id for item in clubs):
+            clubs.append(club)
+
+        rank = int(league.get("tier_rank") or 0)
+        same_country = [
+            item
+            for item in league_catalog.values()
+            if item["country_id"] == league["country_id"] and int(item.get("tier_rank") or 0) != 99
+        ]
+        above_league = next(
+            (item for item in same_country if int(item["tier_rank"]) == rank - 1), None
+        )
+        below_league = next(
+            (item for item in same_country if int(item["tier_rank"]) == rank + 1), None
+        )
+        above2_league = next(
+            (item for item in same_country if int(item["tier_rank"]) == rank - 2), None
+        )
+        below2_league = next(
+            (item for item in same_country if int(item["tier_rank"]) == rank + 2), None
+        )
+        return {
+            "league": league,
+            "clubs": clubs,
+            "above_league": above_league,
+            "above_clubs": canon.clubs(league_id=above_league["id"], limit=1000)
+            if above_league
+            else [],
+            "below_league": below_league,
+            "below_clubs": canon.clubs(league_id=below_league["id"], limit=1000)
+            if below_league
+            else [],
+            "above2_league": above2_league,
+            "above2_clubs": canon.clubs(league_id=above2_league["id"], limit=1000)
+            if above2_league
+            else [],
+            "below2_league": below2_league,
+            "below2_clubs": canon.clubs(league_id=below2_league["id"], limit=1000)
+            if below2_league
+            else [],
+        }
+
     def snapshot(career):
         club = canon.club(career.club_id)
         if club is None:
@@ -303,14 +405,40 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 status_code=409,
                 detail=f"career {career.id} has no players in canon.db",
             )
-        league_clubs = canon.clubs(league_id=club["league_id"], limit=1000)
-        return build_snapshot(
+        context = division_context(career, club)
+        league = context["league"]
+        club_view = {
+            **club,
+            "league_id": league["id"],
+            "league_name": league["name"],
+            "tier": league["tier"],
+            "tier_rank": league["tier_rank"],
+        }
+        strength_for = strength_resolver()
+        result = build_snapshot(
             career,
-            club,
+            club_view,
             players,
-            league_clubs=league_clubs,
-            strength_for=strength_resolver(),
+            league_clubs=context["clubs"],
+            strength_for=strength_for,
         )
+        transition = season_transition(
+            career,
+            context["league"],
+            context["clubs"],
+            context["above_league"],
+            context["above_clubs"],
+            context["below_league"],
+            context["below_clubs"],
+            strength_for,
+            above2_league=context["above2_league"],
+            above2_clubs=context["above2_clubs"],
+            below2_league=context["below2_league"],
+            below2_clubs=context["below2_clubs"],
+        )
+        if transition is not None:
+            result["season"]["review"] = transition["review"]
+        return result
 
     app.add_middleware(
         CORSMiddleware,
@@ -387,7 +515,10 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             player_ids=[player["id"] for player in squad],
             seed=payload.seed,
         )
-        ensure_schedule(career, canon.clubs(league_id=club["league_id"], limit=1000))
+        league_clubs = canon.clubs(league_id=club["league_id"], limit=1000)
+        career.league_id = str(club["league_id"])
+        career.league_club_ids = [str(item["id"]) for item in league_clubs]
+        ensure_schedule(career, league_clubs)
         saves.save(career)
         return snapshot(career)
 
@@ -400,6 +531,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 club = canon.club(career.club_id)
                 if club is None:
                     continue
+                league = league_catalog.get(career.league_id or str(club["league_id"]))
                 items.append(
                     {
                         "id": career.id,
@@ -412,7 +544,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                         "club_id": club["id"],
                         "club_name": club["name"],
                         "club_logo": club["logo"],
-                        "league_name": club["league_name"],
+                        "league_name": league["name"] if league else club["league_name"],
                         "country_name": club["country_name"],
                         "compatible": True,
                     }
@@ -480,32 +612,51 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             club = canon.club(career.club_id)
             if club is None:
                 raise HTTPException(status_code=409, detail="career club is missing from canon.db")
+            context = division_context(career, club)
             try:
-                advance_to(
-                    career,
-                    payload.date,
-                    canon.clubs(league_id=club["league_id"], limit=1000),
-                )
+                advance_to(career, payload.date, context["clubs"])
             except SeasonError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
         elif payload.type == "next_season":
             club = canon.club(career.club_id)
             if club is None:
                 raise HTTPException(status_code=409, detail="career club is missing from canon.db")
+            context = division_context(career, club)
+            strength_for = strength_resolver()
+            transition = season_transition(
+                career,
+                context["league"],
+                context["clubs"],
+                context["above_league"],
+                context["above_clubs"],
+                context["below_league"],
+                context["below_clubs"],
+                strength_for,
+                above2_league=context["above2_league"],
+                above2_clubs=context["above2_clubs"],
+                below2_league=context["below2_league"],
+                below2_clubs=context["below2_clubs"],
+            )
             try:
-                next_season(career, canon.clubs(league_id=club["league_id"], limit=1000))
+                if transition is None:
+                    next_season(career, context["clubs"])
+                else:
+                    next_season(
+                        career,
+                        context["clubs"],
+                        league_id=transition["league_id"],
+                        next_league_clubs=transition["league_club_ids"],
+                        transition=transition["review"],
+                    )
             except SeasonError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
         elif payload.type == "play":
             club = canon.club(career.club_id)
             if club is None:
                 raise HTTPException(status_code=409, detail="career club is missing from canon.db")
+            context = division_context(career, club)
             try:
-                play_next_match(
-                    career,
-                    canon.clubs(league_id=club["league_id"], limit=1000),
-                    strength_resolver(),
-                )
+                play_next_match(career, context["clubs"], strength_resolver())
             except SeasonError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
         else:

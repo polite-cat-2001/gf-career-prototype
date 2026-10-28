@@ -46,6 +46,8 @@ class Career:
     manager: Manager
     club_id: str
     player_ids: list[str]
+    league_id: str | None = None
+    league_club_ids: list[str] | None = None
     date: str = START_DATE
     season_start: str = START_DATE
     created_at: str = field(default_factory=utc_now)
@@ -75,6 +77,10 @@ class Career:
             "player_ids": list(self.player_ids),
             "journal": list(self.journal),
         }
+        if self.league_id is not None:
+            payload["league_id"] = self.league_id
+        if self.league_club_ids is not None:
+            payload["league_club_ids"] = list(self.league_club_ids)
         if self.lineup is not None:
             payload["lineup"] = list(self.lineup)
         if self.bench_order is not None:
@@ -102,6 +108,10 @@ class Career:
             manager=Manager.from_save(raw["manager"]),
             club_id=str(raw["club_id"]),
             player_ids=[str(player_id) for player_id in raw["player_ids"]],
+            league_id=None if raw.get("league_id") is None else str(raw["league_id"]),
+            league_club_ids=None
+            if raw.get("league_club_ids") is None
+            else [str(club_id) for club_id in raw["league_club_ids"]],
             lineup=None if lineup is None else [str(player_id) for player_id in lineup],
             bench_order=None if bench is None else [str(player_id) for player_id in bench],
             schedule=None

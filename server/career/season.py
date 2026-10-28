@@ -13,6 +13,8 @@ class SeasonError(ValueError):
 
 
 SCHEDULE_VERSION = 2
+PROMOTION_PLACES = 3
+RELEGATION_PLACES = 3
 
 
 def squad_strength(players: list[dict]) -> float:
@@ -95,6 +97,146 @@ def next_fixture(career: Career) -> dict | None:
     return None
 
 
+def _unique_ids(club_ids: list[str]) -> list[str]:
+    return list(dict.fromkeys(str(club_id) for club_id in club_ids))
+
+
+def _club_ref(club: dict) -> dict:
+    return {
+        "id": str(club.get("id") or club.get("club_id") or ""),
+        "name": str(club.get("name") or club.get("club_name") or ""),
+        "logo": str(club.get("logo") or club.get("club_logo") or ""),
+    }
+
+
+def _row_ref(row: dict) -> dict:
+    return {
+        "id": str(row["club_id"]),
+        "name": str(row["club_name"]),
+        "logo": str(row["club_logo"]),
+        "position": int(row["position"]),
+    }
+
+
+def _league_ref(league: dict | None) -> dict | None:
+    if league is None:
+        return None
+    return {"id": str(league["id"]), "name": str(league["name"])}
+
+
+def _ranked_clubs(clubs: list[dict], strength_for: Callable[[str], float]) -> list[dict]:
+    return sorted(
+        clubs,
+        key=lambda club: (-strength_for(str(club["id"])), str(club.get("name") or "")),
+    )
+
+
+def season_transition(
+    career: Career,
+    league: dict,
+    league_clubs: list[dict],
+    above_league: dict | None,
+    above_clubs: list[dict],
+    below_league: dict | None,
+    below_clubs: list[dict],
+    strength_for: Callable[[str], float],
+    *,
+    above2_league: dict | None = None,
+    above2_clubs: list[dict] | None = None,
+    below2_league: dict | None = None,
+    below2_clubs: list[dict] | None = None,
+) -> dict | None:
+    if next_fixture(career) is not None:
+        return None
+
+    clubs = {str(club["id"]): club for club in league_clubs}
+    table = _standings(career, clubs)
+    current_ids = [str(club["id"]) for club in league_clubs]
+    promoted = [_row_ref(row) for row in table[:PROMOTION_PLACES]] if above_league else []
+    relegated = [_row_ref(row) for row in table[-RELEGATION_PLACES:]] if below_league else []
+
+    above = _ranked_clubs(above_clubs, strength_for)
+    below = _ranked_clubs(below_clubs, strength_for)
+    above2 = _ranked_clubs(above2_clubs or [], strength_for)
+    below2 = _ranked_clubs(below2_clubs or [], strength_for)
+    from_above = [_club_ref(club) for club in above[-RELEGATION_PLACES:]] if above_league else []
+    from_below = [_club_ref(club) for club in below[:PROMOTION_PLACES]] if below_league else []
+
+    promoted_ids = {row["id"] for row in promoted}
+    relegated_ids = {row["id"] for row in relegated}
+    from_above_ids = {club["id"] for club in from_above}
+    from_below_ids = {club["id"] for club in from_below}
+
+    if career.club_id in promoted_ids:
+        movement = "up"
+        next_league = above_league
+        next_above_league = above2_league
+        next_above = [_club_ref(club) for club in above2[-RELEGATION_PLACES:]] if above2_league else []
+        next_below_league = league
+        next_below = promoted
+        next_ids = [
+            str(club["id"]) for club in above_clubs if str(club["id"]) not in from_above_ids
+        ] + [row["id"] for row in promoted]
+    elif career.club_id in relegated_ids:
+        movement = "down"
+        next_league = below_league
+        next_above_league = league
+        next_above = relegated
+        next_below_league = below2_league
+        next_below = [_club_ref(club) for club in below2[:PROMOTION_PLACES]] if below2_league else []
+        next_ids = [
+            str(club["id"]) for club in below_clubs if str(club["id"]) not in from_below_ids
+        ] + [row["id"] for row in relegated]
+    else:
+        movement = None
+        next_league = league
+        next_above_league = above_league
+        next_above = from_above
+        next_below_league = below_league
+        next_below = from_below
+        next_ids = [
+            club_id
+            for club_id in current_ids
+            if club_id not in promoted_ids and club_id not in relegated_ids
+        ]
+        next_ids.extend(club["id"] for club in from_above)
+        next_ids.extend(club["id"] for club in from_below)
+
+    next_ids = _unique_ids(next_ids)
+    if career.club_id not in next_ids:
+        next_ids.append(career.club_id)
+
+    next_above_ref = _league_ref(next_above_league)
+    next_below_ref = _league_ref(next_below_league)
+    review = {
+        "league": _league_ref(league),
+        "standings": table,
+        "promoted": promoted,
+        "relegated": relegated,
+        "promoted_to": _league_ref(above_league) if promoted else None,
+        "relegated_to": _league_ref(below_league) if relegated else None,
+        "movement": movement,
+        "next": {
+            "league": _league_ref(next_league),
+            "above": next_above_ref,
+            "below": next_below_ref,
+            "from_above": [
+                {"club": club, "league": next_above_ref}
+                for club in next_above
+            ],
+            "from_below": [
+                {"club": club, "league": next_below_ref}
+                for club in next_below
+            ],
+        },
+    }
+    return {
+        "review": review,
+        "league_id": str(next_league["id"]),
+        "league_club_ids": next_ids,
+    }
+
+
 def _poisson(rng: random.Random, mean: float) -> int:
     limit = math.exp(-mean)
     goals = 0
@@ -148,7 +290,14 @@ def _shift_year(value: str, years: int = 1) -> str:
     return shifted.isoformat()
 
 
-def next_season(career: Career, league_clubs: list[dict]) -> None:
+def next_season(
+    career: Career,
+    league_clubs: list[dict],
+    *,
+    league_id: str | None = None,
+    next_league_clubs: list[str] | None = None,
+    transition: dict | None = None,
+) -> None:
     ensure_schedule(career, league_clubs)
     if next_fixture(career) is not None:
         raise SeasonError("season is not complete")
@@ -158,6 +307,8 @@ def next_season(career: Career, league_clubs: list[dict]) -> None:
     table = _standings(career, clubs)
     champion = table[0] if table else None
     own = next((row for row in table if row["club_id"] == career.club_id), None)
+    review = transition or {}
+    next_block = review.get("next") or {}
     career.journal.append(
         {
             "seq": len(career.journal) + 1,
@@ -167,21 +318,34 @@ def next_season(career: Career, league_clubs: list[dict]) -> None:
                 "champion": champion["club_name"] if champion else None,
                 "position": own["position"] if own else None,
                 "points": own["points"] if own else None,
+                "movement": review.get("movement"),
+                "league": next_block.get("league") or review.get("league"),
             },
         }
     )
 
     career.season_start = _shift_year(career.season_start)
     career.date = career.season_start
-    club_ids = [str(club["id"]) for club in league_clubs]
-    club_ids.append(career.club_id)
+    if next_league_clubs is not None:
+        career.league_id = league_id or career.league_id
+        career.league_club_ids = _unique_ids(next_league_clubs)
+        club_ids = list(career.league_club_ids)
+    else:
+        club_ids = [str(club["id"]) for club in league_clubs]
+        club_ids.append(career.club_id)
+        career.league_id = league_id or career.league_id
+        career.league_club_ids = _unique_ids(club_ids)
     career.schedule = build_schedule(club_ids, career.season_start)
+    career.schedule_version = SCHEDULE_VERSION
     career.results = {}
     career.journal.append(
         {
             "seq": len(career.journal) + 1,
             "type": "season.started",
-            "payload": {"season_start": career.season_start},
+            "payload": {
+                "season_start": career.season_start,
+                "league_id": career.league_id,
+            },
         }
     )
 

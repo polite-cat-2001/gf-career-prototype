@@ -21,6 +21,8 @@ from server.career.season import (
     next_season,
     play_next_match,
     season_state,
+    season_transition,
+    squad_strength,
 )
 from server.career.snapshot import build_snapshot
 
@@ -38,6 +40,8 @@ __all__ = [
     "next_season",
     "play_next_match",
     "season_state",
+    "season_transition",
+    "squad_strength",
     "swap_players",
     "SaveError",
     "SaveFormatError",
