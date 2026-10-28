@@ -790,20 +790,17 @@
           </div>
 
           {#if nextMatch}
+            {@const homeTeam = nextMatch.home ? career.club : nextMatch.opponent}
+            {@const awayTeam = nextMatch.home ? nextMatch.opponent : career.club}
             <div class="next-fixture">
               <div class="fixture-side">
-                <img class="fixture-crest" src={career.club.logo} alt="" onerror={hideBrokenImage} />
-                <span class="fixture-name">{career.club.name}</span>
+                <img class="fixture-crest" src={homeTeam.logo} alt="" onerror={hideBrokenImage} />
+                <span class="fixture-name">{homeTeam.name}</span>
               </div>
               <span class="fixture-vs">VS</span>
               <div class="fixture-side is-away">
-                <img
-                  class="fixture-crest"
-                  src={nextMatch.opponent.logo}
-                  alt=""
-                  onerror={hideBrokenImage}
-                />
-                <span class="fixture-name">{nextMatch.opponent.name}</span>
+                <span class="fixture-name">{awayTeam.name}</span>
+                <img class="fixture-crest" src={awayTeam.logo} alt="" onerror={hideBrokenImage} />
               </div>
             </div>
             <div class="calendar-foot">

@@ -1509,7 +1509,7 @@ button.widget {
 }
 
 .fixture-side.is-away {
-  flex-direction: row-reverse;
+  flex-direction: row;
   text-align: left;
 }
 
