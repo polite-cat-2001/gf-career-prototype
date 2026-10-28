@@ -1510,7 +1510,7 @@ button.widget {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  width: 44px;
+  width: 72px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: 5px;
@@ -1525,15 +1525,15 @@ button.widget {
 
 .pitch-player.is-preview {
   pointer-events: none;
-  width: 46px;
+  width: 80px;
 }
 
 .pitch-player.is-preview .player-photo {
-  height: 40px;
+  height: 46px;
 }
 
 .pitch-player.is-preview .player-name {
-  font-size: 8.5px;
+  font-size: 10px;
 }
 
 .player-photo {
@@ -1542,7 +1542,7 @@ button.widget {
   align-items: flex-end;
   justify-content: center;
   width: 100%;
-  height: 38px;
+  height: 46px;
   overflow: hidden;
   border-radius: 5px 5px 0 0;
 }
@@ -1567,7 +1567,7 @@ button.widget {
 
 .player-pos {
   font-family: var(--font-mono);
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: #8cff9e;
@@ -1575,7 +1575,7 @@ button.widget {
 
 .player-ovr {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
   color: #fff;
 }
@@ -1588,7 +1588,7 @@ button.widget {
 
 .player-name {
   display: block;
-  font-size: 8px;
+  font-size: 9.5px;
   font-weight: 700;
   line-height: 1.3;
   letter-spacing: 0.02em;
@@ -2492,17 +2492,51 @@ button.widget {
   }
 }
 
-@media (max-height: 780px) {
+@media (max-height: 910px) {
   .pitch-player {
-    width: 34px;
+    width: 62px;
   }
 
   .pitch-player.is-preview {
-    width: 40px;
+    width: 68px;
   }
 
   .pitch-player.is-preview .player-photo {
+    height: 38px;
+  }
+
+  .pitch-player.is-preview .player-name {
+    font-size: 8.5px;
+  }
+
+  .player-photo {
     height: 34px;
+  }
+
+  .player-pos {
+    font-size: 7px;
+  }
+
+  .player-ovr {
+    font-size: 9px;
+  }
+
+  .player-name {
+    font-size: 8px;
+  }
+}
+
+@media (max-height: 800px) {
+  .pitch-player {
+    width: 48px;
+  }
+
+  .pitch-player.is-preview {
+    width: 54px;
+  }
+
+  .pitch-player.is-preview .player-photo {
+    height: 30px;
   }
 
   .player-photo {
