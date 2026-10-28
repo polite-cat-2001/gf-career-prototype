@@ -47,10 +47,14 @@ class Career:
     club_id: str
     player_ids: list[str]
     date: str = START_DATE
+    season_start: str = START_DATE
     created_at: str = field(default_factory=utc_now)
     updated_at: str = field(default_factory=utc_now)
     lineup: list[str] | None = None
     bench_order: list[str] | None = None
+    schedule: list[dict] | None = None
+    schedule_version: int = 0
+    results: dict[str, dict] = field(default_factory=dict)
     journal: list[dict] = field(default_factory=list)
     version: int = SAVE_VERSION
 
@@ -63,6 +67,7 @@ class Career:
             "id": self.id,
             "seed": self.seed,
             "date": self.date,
+            "season_start": self.season_start,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "manager": self.manager.to_save(),
@@ -74,17 +79,24 @@ class Career:
             payload["lineup"] = list(self.lineup)
         if self.bench_order is not None:
             payload["bench"] = list(self.bench_order)
+        if self.schedule is not None:
+            payload["schedule"] = list(self.schedule)
+            payload["schedule_version"] = self.schedule_version
+        if self.results:
+            payload["results"] = dict(self.results)
         return payload
 
     @classmethod
     def from_save(cls, raw: dict) -> Career:
         lineup = raw.get("lineup")
         bench = raw.get("bench")
+        schedule = raw.get("schedule")
         return cls(
             version=int(raw["version"]),
             id=str(raw["id"]),
             seed=int(raw["seed"]),
             date=str(raw["date"]),
+            season_start=str(raw.get("season_start") or START_DATE),
             created_at=str(raw["created_at"]),
             updated_at=str(raw["updated_at"]),
             manager=Manager.from_save(raw["manager"]),
@@ -92,6 +104,26 @@ class Career:
             player_ids=[str(player_id) for player_id in raw["player_ids"]],
             lineup=None if lineup is None else [str(player_id) for player_id in lineup],
             bench_order=None if bench is None else [str(player_id) for player_id in bench],
+            schedule=None
+            if schedule is None
+            else [
+                {
+                    "id": str(fixture["id"]),
+                    "round": int(fixture["round"]),
+                    "date": str(fixture["date"]),
+                    "home": str(fixture["home"]),
+                    "away": str(fixture["away"]),
+                }
+                for fixture in schedule
+            ],
+            schedule_version=int(raw.get("schedule_version") or 0),
+            results={
+                str(fixture_id): {
+                    "home": int(score["home"]),
+                    "away": int(score["away"]),
+                }
+                for fixture_id, score in (raw.get("results") or {}).items()
+            },
             journal=list(raw.get("journal", [])),
         )
 

@@ -19,7 +19,9 @@ function visible(element) {
 }
 
 function navItems() {
-  return Array.from(document.querySelectorAll(NAV_SELECTOR)).filter(visible)
+  return Array.from(document.querySelectorAll(NAV_SELECTOR)).filter(
+    (element) => visible(element) && !element.closest('[inert]'),
+  )
 }
 
 export function focusFirst() {

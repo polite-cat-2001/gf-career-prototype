@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import Callable
+
 from server.career.core import Career
+from server.career.season import season_state
 
 ROLE_ORDER = {
     "GK": 0,
@@ -149,10 +152,18 @@ def _groups(players: list[dict]) -> list[dict]:
     ]
 
 
-def build_snapshot(career: Career, club: dict, players: list[dict]) -> dict:
+def build_snapshot(
+    career: Career,
+    club: dict,
+    players: list[dict],
+    league_clubs: list[dict] | None = None,
+    strength_for: Callable[[str], float] | None = None,
+) -> dict:
     squad = _sort_players(players)
     for player in squad:
         player.setdefault("fatigue", 100)
+    clubs = league_clubs or []
+    strength = strength_for or (lambda _club_id: 55.0)
     return {
         "version": career.version,
         "id": career.id,
@@ -167,4 +178,5 @@ def build_snapshot(career: Career, club: dict, players: list[dict]) -> dict:
             "groups": _groups(squad),
             "lineup": lineup_for(squad, career.lineup, career.bench_order),
         },
+        "season": season_state(career, clubs, strength),
     }

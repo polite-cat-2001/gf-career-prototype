@@ -14,10 +14,16 @@ from server.career import (
     SaveNotFound,
     SaveStore,
     SaveVersionError,
+    SeasonError,
+    advance_to,
     build_snapshot,
     create_career,
+    ensure_schedule,
+    next_season,
+    play_next_match,
     swap_players,
 )
+from server.career.season import squad_strength
 
 RASTER_DIR = REPO_ROOT / "data" / "raster"
 WEB_DIST = REPO_ROOT / "web" / "dist"
@@ -124,6 +130,7 @@ class CareerActionRequest(BaseModel):
     type: str
     player_a: str | None = None
     player_b: str | None = None
+    date: str | None = None
 
 
 class ManagerInfo(BaseModel):
@@ -164,6 +171,61 @@ class SquadBlock(BaseModel):
     lineup: Lineup
 
 
+class SeasonClub(BaseModel):
+    id: str
+    name: str
+    logo: str = ""
+
+
+class SeasonOpponent(SeasonClub):
+    strength: float
+
+
+class SeasonNext(BaseModel):
+    fixture_id: str
+    date: str
+    round: int
+    home: bool
+    opponent: SeasonOpponent
+
+
+class SeasonResult(BaseModel):
+    fixture_id: str
+    date: str
+    round: int
+    home: bool
+    goals_for: int
+    goals_against: int
+    outcome: str
+    opponent: SeasonClub
+
+
+class StandingRow(BaseModel):
+    position: int
+    club_id: str
+    club_name: str
+    club_logo: str = ""
+    played: int
+    won: int
+    drawn: int
+    lost: int
+    goals_for: int
+    goals_against: int
+    goal_difference: int
+    points: int
+
+
+class SeasonBlock(BaseModel):
+    season_start: str
+    round: int
+    rounds_total: int
+    complete: bool
+    next: SeasonNext | None = None
+    last_result: SeasonResult | None = None
+    form: list[SeasonResult]
+    standings: list[StandingRow]
+
+
 class CareerSnapshot(BaseModel):
     version: int
     id: str
@@ -174,6 +236,7 @@ class CareerSnapshot(BaseModel):
     manager: ManagerInfo
     club: Club
     squad: SquadBlock
+    season: SeasonBlock
 
 
 def _int_or_zero(value) -> int:
@@ -217,6 +280,16 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         except SaveFormatError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
+    def strength_resolver():
+        cache: dict[str, float] = {}
+
+        def resolve(club_id: str) -> float:
+            if club_id not in cache:
+                cache[club_id] = squad_strength(canon.squad(club_id))
+            return cache[club_id]
+
+        return resolve
+
     def snapshot(career):
         club = canon.club(career.club_id)
         if club is None:
@@ -230,7 +303,14 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 status_code=409,
                 detail=f"career {career.id} has no players in canon.db",
             )
-        return build_snapshot(career, club, players)
+        league_clubs = canon.clubs(league_id=club["league_id"], limit=1000)
+        return build_snapshot(
+            career,
+            club,
+            players,
+            league_clubs=league_clubs,
+            strength_for=strength_resolver(),
+        )
 
     app.add_middleware(
         CORSMiddleware,
@@ -307,6 +387,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             player_ids=[player["id"] for player in squad],
             seed=payload.seed,
         )
+        ensure_schedule(career, canon.clubs(league_id=club["league_id"], limit=1000))
         saves.save(career)
         return snapshot(career)
 
@@ -385,15 +466,50 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
     @app.post("/api/careers/{career_id}/actions", response_model=CareerSnapshot)
     def apply_action(career_id: str, payload: CareerActionRequest):
         career = load_career(career_id)
-        if payload.type != "swap":
+        if payload.type == "swap":
+            if not payload.player_a or not payload.player_b:
+                raise HTTPException(status_code=422, detail="swap requires player_a and player_b")
+            players = canon.players_by_ids(career.player_ids)
+            try:
+                swap_players(career, players, payload.player_a, payload.player_b)
+            except ActionError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+        elif payload.type == "advance":
+            if not payload.date:
+                raise HTTPException(status_code=422, detail="advance requires date")
+            club = canon.club(career.club_id)
+            if club is None:
+                raise HTTPException(status_code=409, detail="career club is missing from canon.db")
+            try:
+                advance_to(
+                    career,
+                    payload.date,
+                    canon.clubs(league_id=club["league_id"], limit=1000),
+                )
+            except SeasonError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+        elif payload.type == "next_season":
+            club = canon.club(career.club_id)
+            if club is None:
+                raise HTTPException(status_code=409, detail="career club is missing from canon.db")
+            try:
+                next_season(career, canon.clubs(league_id=club["league_id"], limit=1000))
+            except SeasonError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+        elif payload.type == "play":
+            club = canon.club(career.club_id)
+            if club is None:
+                raise HTTPException(status_code=409, detail="career club is missing from canon.db")
+            try:
+                play_next_match(
+                    career,
+                    canon.clubs(league_id=club["league_id"], limit=1000),
+                    strength_resolver(),
+                )
+            except SeasonError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+        else:
             raise HTTPException(status_code=422, detail=f"unknown action type: {payload.type}")
-        if not payload.player_a or not payload.player_b:
-            raise HTTPException(status_code=422, detail="swap requires player_a and player_b")
-        players = canon.players_by_ids(career.player_ids)
-        try:
-            swap_players(career, players, payload.player_a, payload.player_b)
-        except ActionError as error:
-            raise HTTPException(status_code=422, detail=str(error)) from error
         career.touch()
         saves.save(career)
         return snapshot(career)

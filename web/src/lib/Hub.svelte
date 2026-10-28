@@ -8,17 +8,20 @@
   import {
     attributeGroups,
     compareTone,
+    competitionLabel,
     formatDate,
     formatTimestamp,
     formatValue,
     hideBrokenImage,
-    monthLabel,
     ovrClass,
     playerInitialName,
+    plural,
     posTone,
     positionLabel,
     radarValues,
     seasonLabel,
+    shortDate,
+    shortMonthLabel,
     shortRole,
     statTone,
     tierLabel,
@@ -28,10 +31,14 @@
   let {
     career,
     saving = false,
+    playing = false,
     saveNotice = '',
     saveError = '',
     onsave,
     onswap,
+    onplay,
+    onadvance,
+    onnextseason,
     onexit,
   } = $props()
 
@@ -87,11 +94,57 @@
   let focusPlayerId = $state(null)
   let anchorId = $state(null)
   let swapping = $state(false)
-  let soonNotice = $state('')
-  let soonTimer = null
+  let matchResult = $state(null)
+  let simulating = $state(false)
+  let advancing = $state(false)
+  let simDate = $state(null)
+  let simStart = $state(null)
+  let simTimer = null
 
   let summary = $derived(career.squad.summary)
   let lineup = $derived(career.squad.lineup)
+  let season = $derived(career.season)
+  let nextMatch = $derived(season?.next ?? null)
+  let displayDate = $derived(simulating && simDate ? simDate : career.date)
+  let days = $derived(weekStrip(displayDate, 7))
+  let trackDays = $derived(simulating && simStart ? weekStrip(simStart, 14) : days)
+  let trackIndex = $derived(
+    simulating && simStart && trackDays.length
+      ? Math.max(0, Math.min(daysBetween(simStart, displayDate), trackDays.length - 1))
+      : 0,
+  )
+  let trackWidth = $derived((trackDays.length / 7) * 100)
+  let trackShift = $derived(trackDays.length ? (trackIndex / trackDays.length) * 100 : 0)
+  let isMatchDay = $derived(Boolean(nextMatch && displayDate >= nextMatch.date))
+  let daysToMatch = $derived(nextMatch ? daysBetween(displayDate, nextMatch.date) : 0)
+  let ownRow = $derived(
+    season?.standings.find((row) => row.club_id === career.club.id) ?? null,
+  )
+  let tableRows = $derived.by(() => {
+    const rows = season?.standings ?? []
+    if (!rows.length) return []
+    const visible = rows.slice(0, 5)
+    if (ownRow && !visible.includes(ownRow)) {
+      visible[4] = { ...ownRow, gapBefore: true }
+    }
+    return visible
+  })
+  let tableRound = $derived(
+    season ? (season.next ? Math.max(0, season.round - 1) : season.rounds_total) : 0,
+  )
+  let centreAction = $derived(
+    advancing
+      ? 'Сохраняем дату…'
+      : simulating
+        ? 'Остановить'
+        : playing
+          ? 'Матч идёт…'
+          : !nextMatch
+            ? 'Перейти в следующий сезон'
+            : isMatchDay
+              ? 'Играть матч'
+              : 'Перемотать',
+  )
   let squadPlayers = $derived([...lineup.slots.map((slot) => slot.player), ...lineup.bench])
   let focusedPlayer = $derived(
     squadPlayers.find((player) => player.id === focusPlayerId) ?? lineup.slots[0]?.player ?? null,
@@ -128,11 +181,23 @@
     }))
   })
   let radar = $derived(focusedPlayer ? radarValues(focusedPlayer.stats) : [])
-  let days = $derived(weekStrip(career.date))
 
   let hints = $derived.by(() => {
     const start = { gamepad: ['Start'], keyboard: ['S'], label: 'Сохранить' }
     const sections = { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Разделы' }
+    if (matchResult) {
+      return [
+        {
+          gamepad: ['A'],
+          keyboard: ['Enter'],
+          label: season?.complete ? 'Следующий сезон' : 'Продолжить',
+        },
+        { gamepad: ['B'], keyboard: ['Esc'], label: 'Закрыть' },
+      ]
+    }
+    if (simulating || advancing) {
+      return [{ gamepad: ['A'], keyboard: ['Enter'], label: centreAction }]
+    }
     if (tab === 'squad' && view === 'details') {
       return [
         { gamepad: ['B'], keyboard: ['Esc'], label: 'К полю' },
@@ -154,7 +219,11 @@
     }
     const list = [sections]
     if (tab === 'centre') {
-      list.push({ gamepad: ['A'], keyboard: ['Enter'], label: 'Открыть' })
+      list.push({
+        gamepad: ['A'],
+        keyboard: ['Enter'],
+        label: isMatchDay ? 'Выбрать' : centreAction,
+      })
       list.push({ gamepad: ['B'], keyboard: ['Esc'], label: 'В меню' })
     } else {
       list.push({ gamepad: ['A'], keyboard: ['Enter'], label: 'План игры' })
@@ -175,19 +244,104 @@
       stopTabs()
       stopSave()
       stopDetails()
+      if (simTimer) clearInterval(simTimer)
     }
   })
 
   function handleSave() {
-    if (!saving) onsave()
+    if (!saving && !matchResult && !simulating && !advancing) onsave()
   }
 
-  function showSoon(message) {
-    soonNotice = message
-    clearTimeout(soonTimer)
-    soonTimer = setTimeout(() => {
-      soonNotice = ''
-    }, 2400)
+  async function playMatch() {
+    if (playing || !isMatchDay) return
+    const updated = await onplay()
+    if (!updated) return
+    matchResult = updated.season.last_result
+    await tick()
+    focusFirst()
+  }
+
+  function daysBetween(from, to) {
+    const start = new Date(`${from}T00:00:00Z`)
+    const end = new Date(`${to}T00:00:00Z`)
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0
+    return Math.max(0, Math.round((end - start) / 86_400_000))
+  }
+
+  function addDay(value) {
+    const parsed = new Date(`${value}T00:00:00Z`)
+    parsed.setUTCDate(parsed.getUTCDate() + 1)
+    return parsed.toISOString().slice(0, 10)
+  }
+
+  function startSimulation() {
+    if (!nextMatch || isMatchDay || advancing) return
+    simDate = career.date
+    simStart = career.date
+    simulating = true
+    if (simTimer) clearInterval(simTimer)
+    simTimer = setInterval(tickSimulation, 1000)
+  }
+
+  function tickSimulation() {
+    if (!simulating || !nextMatch) return
+    const next = addDay(simDate)
+    if (next >= nextMatch.date) {
+      simDate = nextMatch.date
+      stopSimulation()
+      return
+    }
+    simDate = next
+  }
+
+  async function stopSimulation() {
+    if (advancing) return
+    if (simTimer) {
+      clearInterval(simTimer)
+      simTimer = null
+    }
+    const target = simDate ?? career.date
+    advancing = true
+    await onadvance(target)
+    advancing = false
+    simulating = false
+    simDate = null
+    simStart = null
+    await tick()
+    focusFirst()
+  }
+
+  async function handleNextWidget() {
+    if (advancing) return
+    if (simulating) {
+      stopSimulation()
+      return
+    }
+    if (!nextMatch) {
+      matchResult = null
+      await onnextseason()
+      await tick()
+      focusFirst()
+      return
+    }
+    if (isMatchDay) {
+      await playMatch()
+      return
+    }
+    startSimulation()
+  }
+
+  async function nextSeasonFromResult() {
+    matchResult = null
+    await onnextseason()
+    await tick()
+    focusFirst()
+  }
+
+  async function closeResult() {
+    matchResult = null
+    await tick()
+    focusFirst()
   }
 
   function average(values) {
@@ -284,6 +438,15 @@
   }
 
   function handleBack() {
+    if (simulating) {
+      stopSimulation()
+      return
+    }
+    if (advancing) return
+    if (matchResult) {
+      closeResult()
+      return
+    }
     if (tab === 'squad') {
       if (view === 'details') {
         closeDetails()
@@ -313,6 +476,7 @@
   }
 
   function toggleDetails() {
+    if (matchResult) return
     if (tab !== 'squad' || !focusedPlayer) return
     if (view === 'details') {
       closeDetails()
@@ -336,6 +500,7 @@
   }
 
   async function setTab(next) {
+    if (simulating || advancing) return
     if (!enabledTabs.includes(next)) return
     tab = next
     view = 'overview'
@@ -346,6 +511,7 @@
   }
 
   function switchTab(direction) {
+    if (simulating || advancing || matchResult) return
     if (tab === 'squad' && view === 'details') {
       switchDetailsPage(direction)
       return
@@ -533,43 +699,152 @@
       <div class="notice hub-notice">{saveNotice}</div>
     {/if}
 
-    {#if soonNotice && !saveNotice && !saveError}
-      <div class="notice hub-notice">{soonNotice}</div>
-    {/if}
-
     {#if tab === 'centre'}
-      <div class="hub-grid">
+      <div class="hub-grid" inert={matchResult ? true : undefined}>
+        {#if isMatchDay && nextMatch && !simulating && !advancing}
+          <div class="match-actions" style="grid-area: next">
+            <button class="match-action" data-nav data-autofocus onclick={playMatch}>
+              <div class="match-action-head">
+                <div>
+                  <span class="eyebrow">Матч</span>
+                  <strong class="match-action-title">Играть</strong>
+                </div>
+                <img
+                  class="match-action-crest"
+                  src={nextMatch.opponent.logo}
+                  alt=""
+                  onerror={hideBrokenImage}
+                />
+              </div>
+              <span class="match-action-meta">
+                Тур {nextMatch.round} · {shortDate(nextMatch.date)} · {nextMatch.home
+                  ? 'Дома'
+                  : 'В гостях'}
+              </span>
+              <div class="match-action-foot">
+                <span>vs {nextMatch.opponent.name}</span>
+                <span>{career.club.league_name}</span>
+              </div>
+            </button>
+
+            <button class="match-action" data-nav onclick={playMatch}>
+              <div class="match-action-head">
+                <div>
+                  <span class="eyebrow">Матч</span>
+                  <strong class="match-action-title">Симуляция</strong>
+                </div>
+                <Icon name="clock" size={34} />
+              </div>
+              <span class="match-action-meta">
+                Тур {nextMatch.round} · {shortDate(nextMatch.date)} · {nextMatch.home
+                  ? 'Дома'
+                  : 'В гостях'}
+              </span>
+              <div class="match-action-foot">
+                <span>vs {nextMatch.opponent.name}</span>
+                <span>{career.club.league_name}</span>
+              </div>
+            </button>
+          </div>
+        {:else}
         <button
           class="widget widget-next"
+          class:is-simulating={simulating}
           style="grid-area: next"
           data-nav
           data-autofocus
-          onclick={() => showSoon('Календарь и перемотка появятся в тикете #3')}
+          onclick={handleNextWidget}
         >
-          <div class="widget-head">
-            <div>
-              <span class="eyebrow">Далее</span>
-              <strong class="widget-title">{monthLabel(career.date)}</strong>
+          <div class="widget-head calendar-head">
+            <strong class="widget-title calendar-title">
+              {simulating ? 'Остановить' : 'Далее'}
+            </strong>
+            <span class="calendar-month">{shortMonthLabel(displayDate)}</span>
+          </div>
+
+          <div class="day-window">
+            <div
+              class="day-track"
+              class:is-sliding={simulating}
+              style={`width:${trackWidth}%; --cells:${trackDays.length}; --shift:${trackShift}%`}
+            >
+              {#each trackDays as day (day.key)}
+                <div
+                  class="day"
+                  class:today={day.key === displayDate}
+                  class:is-match={nextMatch && day.key === nextMatch.date}
+                >
+                  <span class="day-week">{day.weekday}</span>
+                  <span class="day-num">{day.day}</span>
+                  {#if nextMatch && day.key === nextMatch.date}
+                    <img
+                      class="day-crest"
+                      src={nextMatch.opponent.logo}
+                      alt=""
+                      onerror={hideBrokenImage}
+                    />
+                  {/if}
+                </div>
+              {/each}
             </div>
-            <span class="soon-tag">нужен #3</span>
           </div>
-          <div class="day-strip">
-            {#each days as day (day.key)}
-              <div class="day" class:today={day.today}>
-                <span class="day-week">{day.weekday}</span>
-                <span class="day-num">{day.day}</span>
+
+          {#if nextMatch}
+            <div class="next-fixture">
+              <div class="fixture-side">
+                <img class="fixture-crest" src={career.club.logo} alt="" onerror={hideBrokenImage} />
+                <span class="fixture-name">{career.club.name}</span>
               </div>
-            {/each}
-          </div>
-          <div class="next-meta">
-            <span>Сезон {seasonLabel(career.date)}</span>
-            <span>{career.club.league_name}</span>
-          </div>
-          <div class="widget-action-bar is-disabled">
-            <span>Продолжить</span>
-            <span>после календаря</span>
-          </div>
+              <span class="fixture-vs">VS</span>
+              <div class="fixture-side is-away">
+                <img
+                  class="fixture-crest"
+                  src={nextMatch.opponent.logo}
+                  alt=""
+                  onerror={hideBrokenImage}
+                />
+                <span class="fixture-name">{nextMatch.opponent.name}</span>
+              </div>
+            </div>
+            <div class="calendar-foot">
+              <span class="next-meta">
+                {seasonLabel(displayDate)} · {competitionLabel(career.club.league_name)} · Тур
+                {nextMatch.round} · {nextMatch.home ? 'Дома' : 'В гостях'}
+              </span>
+              {#if season.form.length}
+                <div class="form-pills">
+                  {#each season.form as item (item.fixture_id)}
+                    <span
+                      class="form-pill"
+                      class:is-win={item.outcome === 'W'}
+                      class:is-draw={item.outcome === 'D'}
+                      class:is-loss={item.outcome === 'L'}
+                      title={`${item.opponent.name} ${item.goals_for}:${item.goals_against}`}
+                    >
+                      {item.outcome === 'W' ? 'В' : item.outcome === 'D' ? 'Н' : 'П'}
+                    </span>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          {:else}
+            <div class="season-final">
+              <span class="season-final-title">Сезон завершён</span>
+              {#if ownRow}
+                <span>
+                  {ownRow.position}-е место · {ownRow.points}
+                  {plural(ownRow.points, 'очко', 'очка', 'очков')} · {ownRow.played}
+                  {plural(ownRow.played, 'матч', 'матча', 'матчей')}
+                </span>
+              {/if}
+            </div>
+            <div class="widget-action-bar season-cta">
+              <span>Перейти в следующий сезон</span>
+              <span>A</span>
+            </div>
+          {/if}
         </button>
+        {/if}
 
         <section class="widget widget-centre is-soon" style="grid-area: centre">
           <div class="widget-head">
@@ -584,13 +859,32 @@
           <div class="widget-dots" aria-hidden="true"><i class="active"></i><i></i><i></i></div>
         </section>
 
-        <section class="widget widget-table is-soon" style="grid-area: table">
+        <section class="widget widget-table" style="grid-area: table">
           <div class="widget-head">
             <strong class="widget-title widget-title-sm">Таблицы</strong>
-            <span class="soon-tag">нужен #3</span>
+            <span class="soon-tag">{tableRound ? `Тур ${tableRound}` : 'Старт'}</span>
           </div>
-          <Icon name="table" size={56} />
-          <p class="widget-note">Место, очки и разница мячей появятся с календарём лиги.</p>
+          <div class="mini-table">
+            <div class="mini-row mini-head">
+              <span>#</span>
+              <span>Клуб</span>
+              <span>И</span>
+              <span>Р</span>
+              <span>О</span>
+            </div>
+            {#each tableRows as row (row.club_id)}
+              {#if row.gapBefore}
+                <div class="mini-gap" aria-hidden="true">⋯</div>
+              {/if}
+              <div class="mini-row" class:is-club={row.club_id === career.club.id}>
+                <span class="mini-pos">{row.position}</span>
+                <span class="mini-name">{row.club_name}</span>
+                <span>{row.played}</span>
+                <span>{row.goal_difference > 0 ? `+${row.goal_difference}` : row.goal_difference}</span>
+                <span class="mini-pts">{row.points}</span>
+              </div>
+            {/each}
+          </div>
         </section>
 
         <section class="widget widget-news is-soon" style="grid-area: news">
@@ -838,9 +1132,78 @@
     {/if}
   </main>
 
+  {#if matchResult}
+    {@const leftTeam = matchResult.home ? career.club : matchResult.opponent}
+    {@const rightTeam = matchResult.home ? matchResult.opponent : career.club}
+    {@const leftGoals = matchResult.home ? matchResult.goals_for : matchResult.goals_against}
+    {@const rightGoals = matchResult.home ? matchResult.goals_against : matchResult.goals_for}
+    <div class="match-result">
+      <section class="result-card" aria-label="Результат матча">
+        <span class="eyebrow">
+          Тур {matchResult.round} · {matchResult.home ? 'Дома' : 'В гостях'} · {shortDate(
+            matchResult.date,
+          )}
+        </span>
+        <div class="result-scoreline">
+          <div class="result-team">
+            <img src={leftTeam.logo} alt="" onerror={hideBrokenImage} />
+            <span>{leftTeam.name}</span>
+          </div>
+          <strong class="result-score">{leftGoals} : {rightGoals}</strong>
+          <div class="result-team is-right">
+            <img src={rightTeam.logo} alt="" onerror={hideBrokenImage} />
+            <span>{rightTeam.name}</span>
+          </div>
+        </div>
+        <div
+          class="result-outcome"
+          class:is-win={matchResult.outcome === 'W'}
+          class:is-draw={matchResult.outcome === 'D'}
+          class:is-loss={matchResult.outcome === 'L'}
+        >
+          {matchResult.outcome === 'W'
+            ? 'Победа'
+            : matchResult.outcome === 'D'
+              ? 'Ничья'
+              : 'Поражение'}
+        </div>
+        {#if ownRow}
+          <div class="result-meta">
+            <span>{ownRow.position}-е место в таблице</span>
+            <span>
+              {ownRow.points}
+              {plural(ownRow.points, 'очко', 'очка', 'очков')} · {ownRow.played}
+              {plural(ownRow.played, 'матч', 'матча', 'матчей')}
+            </span>
+          </div>
+        {/if}
+        {#if nextMatch}
+          <div class="result-next">
+            Далее: {nextMatch.opponent.name} · {shortDate(nextMatch.date)}
+          </div>
+        {/if}
+        <button
+          class="result-continue"
+          data-nav
+          data-autofocus
+          onclick={season.complete ? nextSeasonFromResult : closeResult}
+        >
+          <span>{season.complete ? 'Перейти в следующий сезон' : 'Продолжить'}</span>
+          <span class="result-key">A</span>
+        </button>
+      </section>
+    </div>
+  {/if}
+
   <Controls
     {hints}
     showDefaults={false}
-    note={saving ? 'Сохранение…' : swapping ? 'Обмен…' : `${career.club.name} · ${formatTimestamp(career.updated_at)}`}
+    note={saving
+      ? 'Сохранение…'
+      : playing
+        ? 'Матч идёт…'
+        : swapping
+          ? 'Обмен…'
+          : `${career.club.name} · ${formatTimestamp(career.updated_at)}`}
   />
 </div>

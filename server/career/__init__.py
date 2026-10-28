@@ -14,6 +14,14 @@ from server.career.saves import (
     SaveStore,
     SaveVersionError,
 )
+from server.career.season import (
+    SeasonError,
+    advance_to,
+    ensure_schedule,
+    next_season,
+    play_next_match,
+    season_state,
+)
 from server.career.snapshot import build_snapshot
 
 __all__ = [
@@ -22,8 +30,14 @@ __all__ = [
     "ActionError",
     "Career",
     "Manager",
+    "SeasonError",
+    "advance_to",
     "create_career",
+    "ensure_schedule",
     "new_seed",
+    "next_season",
+    "play_next_match",
+    "season_state",
     "swap_players",
     "SaveError",
     "SaveFormatError",

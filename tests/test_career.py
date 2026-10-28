@@ -22,6 +22,22 @@ def create_career(client: TestClient, name: str = "Ada Lovelace", seed: int | No
     return response.json()
 
 
+def advance_to_match(client: TestClient, snapshot: dict) -> dict:
+    response = client.post(
+        f"/api/careers/{snapshot['id']}/actions",
+        json={"type": "advance", "date": snapshot["season"]["next"]["date"]},
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def play_match(client: TestClient, snapshot: dict) -> dict:
+    advance_to_match(client, snapshot)
+    response = client.post(f"/api/careers/{snapshot['id']}/actions", json={"type": "play"})
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
 def test_create_returns_full_snapshot(client: TestClient):
     snapshot = create_career(client)
 
@@ -157,6 +173,216 @@ def test_create_rejects_blank_manager_name(client: TestClient):
             "manager_name": "   ",
             "manager_nationality_id": ENGLAND,
         },
+    )
+    assert response.status_code == 422
+
+
+def test_create_builds_league_schedule(client: TestClient):
+    snapshot = create_career(client)
+    season = snapshot["season"]
+
+    assert season["season_start"] == "2026-07-01"
+    assert season["round"] == 1
+    assert season["rounds_total"] == 38
+    assert season["complete"] is False
+    assert season["last_result"] is None
+    assert season["form"] == []
+    assert season["next"]["round"] == 1
+    assert season["next"]["date"] == "2026-07-08"
+    assert season["next"]["opponent"]["id"] != ARSENAL
+    assert season["next"]["opponent"]["strength"] > 0
+    assert len(season["standings"]) == 20
+    assert all(row["played"] == 0 and row["points"] == 0 for row in season["standings"])
+
+
+def test_play_round_simulates_results_and_updates_table(client: TestClient, saves_dir: Path):
+    created = create_career(client)
+    played = play_match(client, created)
+    season = played["season"]
+
+    result = season["last_result"]
+    assert result["round"] == 1
+    assert result["outcome"] in {"W", "D", "L"}
+    assert season["form"] == [result]
+    assert season["next"]["round"] == 2
+    assert season["round"] == 2
+    assert played["date"] == "2026-07-09"
+
+    standings = season["standings"]
+    assert sum(row["played"] for row in standings) == 20
+    assert sum(row["won"] for row in standings) == sum(row["lost"] for row in standings)
+    assert sum(row["points"] for row in standings) == 3 * sum(row["won"] for row in standings) + sum(
+        row["drawn"] for row in standings
+    )
+    own = next(row for row in standings if row["club_id"] == ARSENAL)
+    assert own["played"] == 1
+
+    raw = json.loads((saves_dir / f"{created['id']}.json").read_text(encoding="utf-8"))
+    assert len(raw["schedule"]) == 380
+    assert len(raw["results"]) == 10
+    assert raw["date"] == "2026-07-09"
+    assert raw["journal"][-1]["type"] == "match.played"
+    assert raw["journal"][-1]["payload"]["fixture_id"] == result["fixture_id"]
+    assert raw["results"][result["fixture_id"]]["home"] == (
+        result["goals_for"] if result["home"] else result["goals_against"]
+    )
+
+    loaded = client.get(f"/api/careers/{created['id']}")
+    assert loaded.status_code == 200
+    assert loaded.json()["season"] == season
+
+
+def test_same_seed_replays_the_same_round(client: TestClient):
+    first = create_career(client, name="First", seed=777)
+    second = create_career(client, name="Second", seed=777)
+    for snapshot in (first, second):
+        snapshot["played"] = play_match(client, snapshot)["season"]
+
+    assert first["played"]["last_result"] == second["played"]["last_result"]
+    assert first["played"]["standings"] == second["played"]["standings"]
+
+
+def test_play_uses_schedule_even_for_saves_without_one(client: TestClient, saves_dir: Path):
+    created = create_career(client)
+    path = saves_dir / f"{created['id']}.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw.pop("schedule")
+    raw.pop("results", None)
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = client.get(f"/api/careers/{created['id']}")
+    assert loaded.status_code == 200, loaded.text
+    assert loaded.json()["season"]["round"] == 1
+
+    advance_to_match(client, loaded.json())
+    response = client.post(f"/api/careers/{created['id']}/actions", json={"type": "play"})
+    assert response.status_code == 200, response.text
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert len(saved["schedule"]) == 380
+    assert len(saved["results"]) == 10
+
+
+def test_swap_then_play_keeps_the_new_lineup(client: TestClient):
+    created = create_career(client)
+    lineup = created["squad"]["lineup"]
+    bench_player = lineup["bench"][0]
+    starter = lineup["slots"][5]["player"]
+    client.post(
+        f"/api/careers/{created['id']}/actions",
+        json={"type": "swap", "player_a": starter["id"], "player_b": bench_player["id"]},
+    )
+
+    response = play_match(client, created)
+    updated = response["squad"]["lineup"]
+    assert updated["slots"][5]["player"]["id"] == bench_player["id"]
+
+
+def test_advance_moves_day_by_day_and_stops_at_match_day(client: TestClient):
+    created = create_career(client)
+    career_id = created["id"]
+    assert created["date"] == "2026-07-01"
+
+    stopped = client.post(
+        f"/api/careers/{career_id}/actions",
+        json={"type": "advance", "date": "2026-07-04"},
+    )
+    assert stopped.status_code == 200, stopped.text
+    assert stopped.json()["date"] == "2026-07-04"
+    assert stopped.json()["season"]["next"]["date"] == "2026-07-08"
+
+    backwards = client.post(
+        f"/api/careers/{career_id}/actions",
+        json={"type": "advance", "date": "2026-07-02"},
+    )
+    assert backwards.status_code == 422
+
+    skipped = client.post(
+        f"/api/careers/{career_id}/actions",
+        json={"type": "advance", "date": "2026-07-09"},
+    )
+    assert skipped.status_code == 422
+
+    too_early = client.post(f"/api/careers/{career_id}/actions", json={"type": "play"})
+    assert too_early.status_code == 422
+
+    at_match = client.post(
+        f"/api/careers/{career_id}/actions",
+        json={"type": "advance", "date": "2026-07-08"},
+    )
+    assert at_match.status_code == 200
+    played = client.post(f"/api/careers/{career_id}/actions", json={"type": "play"})
+    assert played.status_code == 200, played.text
+    assert played.json()["date"] == "2026-07-09"
+
+
+def test_next_season_resets_results_and_moves_calendar(client: TestClient, saves_dir: Path):
+    created = create_career(client)
+    path = saves_dir / f"{created['id']}.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw["results"] = {fixture["id"]: {"home": 1, "away": 0} for fixture in raw["schedule"]}
+    raw["date"] = "2027-03-01"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = client.get(f"/api/careers/{created['id']}")
+    assert loaded.status_code == 200, loaded.text
+    season = loaded.json()["season"]
+    assert season["complete"] is True
+    assert season["next"] is None
+
+    response = client.post(
+        f"/api/careers/{created['id']}/actions", json={"type": "next_season"}
+    )
+    assert response.status_code == 200, response.text
+    started = response.json()
+    assert started["date"] == "2027-07-01"
+    assert started["season"]["season_start"] == "2027-07-01"
+    assert started["season"]["round"] == 1
+    assert started["season"]["complete"] is False
+    assert started["season"]["next"]["date"] == "2027-07-08"
+    assert all(row["played"] == 0 and row["points"] == 0 for row in started["season"]["standings"])
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved.get("results", {}) == {}
+    assert saved["season_start"] == "2027-07-01"
+    assert saved["schedule"][0]["date"] == "2027-07-08"
+    assert [entry["type"] for entry in saved["journal"][-2:]] == [
+        "season.completed",
+        "season.started",
+    ]
+
+
+def test_old_schedule_gets_balanced_home_and_away(client: TestClient, saves_dir: Path):
+    created = create_career(client)
+    path = saves_dir / f"{created['id']}.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw.pop("schedule_version")
+    for fixture in raw["schedule"]:
+        if ARSENAL in (fixture["home"], fixture["away"]):
+            opponent = fixture["away"] if fixture["home"] == ARSENAL else fixture["home"]
+            fixture["home"] = ARSENAL
+            fixture["away"] = opponent
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = client.get(f"/api/careers/{created['id']}")
+    assert loaded.status_code == 200, loaded.text
+    next_date = loaded.json()["season"]["next"]["date"]
+    response = client.post(
+        f"/api/careers/{created['id']}/actions",
+        json={"type": "advance", "date": next_date},
+    )
+    assert response.status_code == 200, response.text
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["schedule_version"] == 2
+    home = sum(1 for fixture in saved["schedule"] if fixture["home"] == ARSENAL)
+    away = sum(1 for fixture in saved["schedule"] if fixture["away"] == ARSENAL)
+    assert home == away == 19
+
+
+def test_next_season_is_refused_until_the_season_is_complete(client: TestClient):
+    created = create_career(client)
+    response = client.post(
+        f"/api/careers/{created['id']}/actions", json={"type": "next_season"}
     )
     assert response.status_code == 422
 

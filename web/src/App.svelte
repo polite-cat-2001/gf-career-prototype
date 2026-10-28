@@ -13,6 +13,7 @@
   let savesError = $state('')
   let career = $state(null)
   let saving = $state(false)
+  let playing = $state(false)
   let saveNotice = $state('')
   let saveError = $state('')
   let noticeTimer = null
@@ -124,6 +125,48 @@
     }
   }
 
+  async function playMatch() {
+    if (!career || playing) return null
+    playing = true
+    saveError = ''
+    try {
+      career = await api.playMatch(career.id)
+      refreshSaves()
+      return career
+    } catch (caught) {
+      saveError = `Не удалось сыграть матч: ${caught.message}`
+      return null
+    } finally {
+      playing = false
+    }
+  }
+
+  async function advanceCareer(date) {
+    if (!career) return null
+    saveError = ''
+    try {
+      career = await api.advanceCareer(career.id, date)
+      return career
+    } catch (caught) {
+      saveError = `Не удалось перемотать календарь: ${caught.message}`
+      return null
+    }
+  }
+
+  async function startNextSeason() {
+    if (!career) return null
+    saveError = ''
+    try {
+      career = await api.nextSeason(career.id)
+      announce('Начат новый сезон')
+      refreshSaves()
+      return career
+    } catch (caught) {
+      saveError = `Не удалось начать новый сезон: ${caught.message}`
+      return null
+    }
+  }
+
   async function exitToMenu() {
     screen = 'start'
     career = null
@@ -154,10 +197,14 @@
   <Hub
     {career}
     {saving}
+    {playing}
     {saveNotice}
     {saveError}
     onsave={saveCareer}
     onswap={swapPlayers}
+    onplay={playMatch}
+    onadvance={advanceCareer}
+    onnextseason={startNextSeason}
     onexit={exitToMenu}
   />
 {/if}

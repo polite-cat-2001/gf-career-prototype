@@ -44,4 +44,10 @@ export const api = {
       player_a: playerA,
       player_b: playerB,
     }),
+  playMatch: (careerId) =>
+    post(`/api/careers/${encodeURIComponent(careerId)}/actions`, { type: 'play' }),
+  advanceCareer: (careerId, date) =>
+    post(`/api/careers/${encodeURIComponent(careerId)}/actions`, { type: 'advance', date }),
+  nextSeason: (careerId) =>
+    post(`/api/careers/${encodeURIComponent(careerId)}/actions`, { type: 'next_season' }),
 }

@@ -1,5 +1,13 @@
-export function formatValue(value) {
-  const number = Number(value) || 0
+export function plural(value, one, few, many) {
+  const number = Math.abs(Number(value) || 0) % 100
+  const last = number % 10
+  if (number > 10 && number < 20) return many
+  if (last === 1) return one
+  if (last >= 2 && last <= 4) return few
+  return many
+}
+
+export function formatValue(value) {  const number = Number(value) || 0
   if (number >= 1_000_000_000) return `${(number / 1_000_000_000).toFixed(1)} млрд €`
   if (number >= 1_000_000) return `${(number / 1_000_000).toFixed(number >= 10_000_000 ? 0 : 1)} млн €`
   if (number >= 1_000) return `${Math.round(number / 1_000)} тыс. €`
@@ -208,14 +216,47 @@ export function monthLabel(value) {
   return new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' }).format(parsed)
 }
 
+export function shortMonthLabel(value) {
+  if (!value) return '—'
+  const parsed = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return value
+  return new Intl.DateTimeFormat('ru-RU', { month: 'short', year: 'numeric' })
+    .format(parsed)
+    .replace(/\s*г\.$/, '')
+    .replace(/\./g, '')
+    .toUpperCase()
+}
+
+const COMPETITION_SHORT = {
+  'Premier League': 'АПЛ',
+  Championship: 'Чемпионшип',
+  Bundesliga: 'Бундеслига',
+  '2. Bundesliga': '2. Бундеслига',
+  LaLiga: 'Ла Лига',
+  'LaLiga 2': 'Ла Лига 2',
+  'Serie A': 'Серия А',
+  'Serie B': 'Серия B',
+  'Ligue 1': 'Лига 1',
+  'Ligue 2': 'Лига 2',
+  Eredivisie: 'Эредивизи',
+  'Primeira Liga': 'Примейра',
+  'UEFA Champions League': 'ЛЧ',
+  'UEFA Europa League': 'ЛЕ',
+}
+
+export function competitionLabel(name) {
+  return COMPETITION_SHORT[name] || name || '—'
+}
+
 export function weekStrip(value, count = 5) {
   const start = new Date(`${value}T00:00:00`)
   if (Number.isNaN(start.getTime())) return []
   return Array.from({ length: count }, (_, index) => {
     const day = new Date(start)
     day.setDate(start.getDate() + index)
+    const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
     return {
-      key: day.toISOString().slice(0, 10),
+      key,
       weekday: new Intl.DateTimeFormat('ru-RU', { weekday: 'short' }).format(day),
       day: day.getDate(),
       today: index === 0,
