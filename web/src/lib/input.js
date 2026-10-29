@@ -6,6 +6,7 @@ export const inputDevice = writable('keyboard')
 
 const NAV_SELECTOR = '[data-nav]:not([disabled])'
 const DIRECTIONS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
+const DEFENDER_ROLES = new Set(['CB', 'LB', 'RB', 'LWB', 'RWB', 'SW'])
 
 let initialized = false
 let pollTimer = null
@@ -48,6 +49,49 @@ function isTyping() {
 
 function cycle(direction) {
   triggerCycle(direction)
+}
+
+function moveWithinPitch(current, direction) {
+  if (direction !== 'down') return false
+  const pitch = current.closest('.pitch-plan-large')
+  if (!pitch) return false
+  const cards = Array.from(pitch.querySelectorAll(NAV_SELECTOR)).filter(visible)
+  const rect = current.getBoundingClientRect()
+  const centreX = rect.left + rect.width / 2
+  const centreY = rect.top + rect.height / 2
+
+  if (DEFENDER_ROLES.has(current.dataset.role)) {
+    const keeper = cards.find((element) => {
+      if (element.dataset.role !== 'GK') return false
+      const other = element.getBoundingClientRect()
+      return other.top + other.height / 2 > centreY + 10
+    })
+    if (keeper) {
+      keeper.focus({ preventScroll: true })
+      keeper.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+      return true
+    }
+  }
+
+  let best = null
+  let bestScore = Infinity
+  for (const element of cards) {
+    if (element === current) continue
+    const other = element.getBoundingClientRect()
+    const dx = other.left + other.width / 2 - centreX
+    const dy = other.top + other.height / 2 - centreY
+    if (dy <= 10) continue
+    const score = dy + Math.abs(dx) * 1.8
+    if (score < bestScore) {
+      bestScore = score
+      best = element
+    }
+  }
+
+  if (!best) return false
+  best.focus({ preventScroll: true })
+  best.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  return true
 }
 
 function moveToBenchFromPitch(current, direction) {
@@ -144,6 +188,7 @@ export function moveFocus(direction) {
     return
   }
 
+  if (moveWithinPitch(current, direction)) return
   if (moveToBenchFromPitch(current, direction)) return
   if (moveGridFocus(current, direction)) return
 

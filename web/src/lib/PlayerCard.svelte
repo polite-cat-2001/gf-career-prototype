@@ -28,6 +28,7 @@
   class:is-unavailable={player.available === false}
   data-nav={interactive ? '' : undefined}
   data-player={interactive ? player.id : undefined}
+  data-role={interactive ? role : undefined}
   role={interactive ? undefined : 'presentation'}
   type={interactive ? 'button' : undefined}
   style={positionStyle}
