@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import random
 import re
+from datetime import date, timedelta
 
+from server.career.condition import INJURY_DAYS, INJURY_TYPES
 from server.career.core import Career
 from server.career.snapshot import lineup_for
 
@@ -42,8 +44,9 @@ def build_lineup(
     players: list[dict],
     order: list[str] | None = None,
     bench_order: list[str] | None = None,
+    blocked_ids: set[str] | None = None,
 ) -> dict:
-    raw = lineup_for(players, order, bench_order)
+    raw = lineup_for(players, order, bench_order, blocked_ids)
     return {
         "formation": raw["formation"],
         "slots": [
@@ -56,7 +59,11 @@ def build_lineup(
             }
             for slot in raw["slots"]
         ],
-        "bench": [player_ref(player) for player in raw["bench"][:MATCHDAY_BENCH]],
+        "bench": [
+            player_ref(player)
+            for player in raw["bench"]
+            if player["id"] not in set(blocked_ids or ())
+        ][:MATCHDAY_BENCH],
     }
 
 
@@ -106,6 +113,19 @@ def _scorer_weight(player: dict) -> float:
     return 0.6
 
 
+def _assist_weight(player: dict) -> float:
+    role = player.get("role")
+    if role == "GK":
+        return 0.0
+    if role in {"AM", "LM", "RM"}:
+        return 5.0
+    if role in {"CM", "CF"}:
+        return 3.0
+    if role == "DM":
+        return 1.2
+    return 0.5
+
+
 def _pick_weighted(rng: random.Random, players: list[dict], weight_for) -> dict | None:
     weighted = [(player, weight_for(player)) for player in players]
     weighted = [(player, weight) for player, weight in weighted if weight > 0]
@@ -121,13 +141,46 @@ def _pick_weighted(rng: random.Random, players: list[dict], weight_for) -> dict 
     return weighted[-1][0]
 
 
+ROLE_FAMILY = {
+    "GK": 0,
+    "CB": 1,
+    "LB": 1,
+    "RB": 1,
+    "DM": 2,
+    "CM": 2,
+    "AM": 2,
+    "LM": 3,
+    "RM": 3,
+    "CF": 4,
+}
+
+
+def _replacement_for(bench: list[dict], role: str | None, used_ids: set[str]) -> dict | None:
+    candidates = [player for player in bench if player["id"] not in used_ids]
+    if not candidates:
+        return None
+
+    def score(player: dict) -> tuple[int, float]:
+        candidate_role = player.get("role")
+        if candidate_role == role:
+            return (0, -float(player.get("overall") or 0))
+        if role == "GK" or candidate_role == "GK":
+            return (9, -float(player.get("overall") or 0))
+        distance = abs(
+            ROLE_FAMILY.get(str(candidate_role), 2) - ROLE_FAMILY.get(str(role), 2)
+        )
+        return (1 + distance, -float(player.get("overall") or 0))
+
+    return min(candidates, key=score)
+
+
 def _substitutions(
     rng: random.Random,
     team: str,
     lineup: dict,
 ) -> list[dict]:
     starters = [slot["player"] for slot in lineup["slots"]]
-    bench = lineup["bench"]
+    bench = [player for player in lineup["bench"] if player.get("role") != "GK"]
     if len(bench) < 2:
         return []
     outfield = [player for player in starters if player.get("role") != "GK"]
@@ -189,8 +242,78 @@ def build_match_simulation(
         "home": _substitutions(rng, "home", setup["home_lineup"]),
         "away": _substitutions(rng, "away", setup["away_lineup"]),
     }
+
+    injuries = rng.choices([0, 1, 2], weights=[64, 29, 7], k=1)[0]
+    injured_ids: set[str] = set()
+    injury_events = []
+    for _ in range(injuries):
+        side = rng.choice(["home", "away"])
+        minute = rng.randint(12, 86)
+        active = _active_players(setup[f"{side}_lineup"], subs[side], minute)
+        candidates = [player for player in active if player["id"] not in injured_ids]
+        if not candidates:
+            continue
+        player = rng.choice(candidates)
+        injured_ids.add(player["id"])
+        days = rng.choice(INJURY_DAYS)
+        until = (date.fromisoformat(str(fixture["date"])) + timedelta(days=days)).isoformat()
+        event = {
+            "minute": minute,
+            "type": "injury",
+            "team": side,
+            "player": player,
+            "injury_type": rng.choice(INJURY_TYPES),
+            "injury_until": until,
+        }
+        injury_events.append(event)
+
+    accepted_injuries = []
+    for injury in injury_events:
+        side = injury["team"]
+        player = injury["player"]
+        minute = int(injury["minute"])
+        side_subs = subs[side]
+        active_ids = {
+            active["id"]
+            for active in _active_players(setup[f"{side}_lineup"], side_subs, minute)
+        }
+        if player["id"] not in active_ids:
+            continue
+        accepted_injuries.append(injury)
+        if len(side_subs) >= 5:
+            continue
+        side_subs[:] = [
+            event
+            for event in side_subs
+            if not (
+                (event.get("player_out") or {}).get("id") == player["id"]
+                and int(event["minute"]) > minute
+            )
+        ]
+        incoming = {
+            (event.get("player") or {}).get("id") for event in side_subs
+        }
+        replacement = _replacement_for(
+            setup[f"{side}_lineup"]["bench"],
+            player.get("role"),
+            {str(player_id) for player_id in incoming if player_id},
+        )
+        if replacement is None:
+            continue
+        side_subs.append(
+            {
+                "minute": minute,
+                "type": "sub",
+                "team": side,
+                "player": replacement,
+                "player_out": player,
+            }
+        )
+
     for side in ("home", "away"):
+        subs[side].sort(key=lambda event: int(event["minute"]))
         events.extend(subs[side])
+    events.extend(accepted_injuries)
 
     goal_sides = ["home"] * final_home + ["away"] * final_away
     rng.shuffle(goal_sides)
@@ -199,12 +322,18 @@ def build_match_simulation(
         active = _active_players(setup[f"{side}_lineup"], subs[side], minute)
         scorer = _pick_weighted(rng, active, _scorer_weight)
         if scorer is not None:
+            event_type = "penalty" if rng.random() < 0.14 else "goal"
+            assist = None
+            if event_type == "goal":
+                candidates = [player for player in active if player["id"] != scorer["id"]]
+                assist = _pick_weighted(rng, candidates, _assist_weight)
             events.append(
                 {
                     "minute": minute,
-                    "type": "penalty" if rng.random() < 0.14 else "goal",
+                    "type": event_type,
                     "team": side,
                     "player": scorer,
+                    "assist": assist,
                 }
             )
 
@@ -238,18 +367,6 @@ def build_match_simulation(
                 events.append(
                     {"minute": minute, "type": "red", "team": side, "player": player}
                 )
-
-    injuries = rng.choices([0, 1, 2], weights=[64, 29, 7], k=1)[0]
-    for _ in range(injuries):
-        side = rng.choice(["home", "away"])
-        minute = rng.randint(12, 86)
-        active = _active_players(setup[f"{side}_lineup"], subs[side], minute)
-        if not active:
-            continue
-        player = rng.choice(active)
-        events.append(
-            {"minute": minute, "type": "injury", "team": side, "player": player}
-        )
 
     events.sort(
         key=lambda event: (

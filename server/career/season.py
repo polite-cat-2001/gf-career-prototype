@@ -5,6 +5,7 @@ import random
 from datetime import date, timedelta
 from typing import Callable
 
+from server.career.condition import reset_season_state
 from server.career.core import START_DATE, Career
 
 
@@ -338,6 +339,7 @@ def next_season(
     career.schedule = build_schedule(club_ids, career.season_start)
     career.schedule_version = SCHEDULE_VERSION
     career.results = {}
+    reset_season_state(career)
     career.journal.append(
         {
             "seq": len(career.journal) + 1,
@@ -439,7 +441,11 @@ def _recent_form(career: Career, clubs: dict[str, dict], limit: int = 5) -> list
     return [_match_summary(career, fixture, clubs) for fixture in played[-limit:]]
 
 
-def _standings(career: Career, clubs: dict[str, dict]) -> list[dict]:
+def _standings(
+    career: Career,
+    clubs: dict[str, dict],
+    exclude_round: int | None = None,
+) -> list[dict]:
     table = {
         club_id: {
             "club_id": club_id,
@@ -457,6 +463,8 @@ def _standings(career: Career, clubs: dict[str, dict]) -> list[dict]:
         for club_id, club in clubs.items()
     }
     for fixture in career.schedule or []:
+        if exclude_round is not None and int(fixture["round"]) == exclude_round:
+            continue
         score = career.results.get(fixture["id"])
         if score is None:
             continue
@@ -503,10 +511,91 @@ def _standings(career: Career, clubs: dict[str, dict]) -> list[dict]:
     return ordered
 
 
+def _last_played_round(career: Career) -> int | None:
+    rounds = [
+        int(fixture["round"])
+        for fixture in career.schedule or []
+        if fixture["id"] in career.results
+        and career.club_id in (fixture["home"], fixture["away"])
+    ]
+    return max(rounds) if rounds else None
+
+
+def matchday_state(
+    career: Career,
+    clubs: dict[str, dict],
+    competition_name: str = "",
+) -> dict | None:
+    round_no = _last_played_round(career)
+    if round_no is None:
+        return None
+    fixtures = [
+        fixture
+        for fixture in career.schedule or []
+        if int(fixture["round"]) == round_no
+    ]
+    if not fixtures:
+        return None
+
+    before = _standings(career, clubs, exclude_round=round_no)
+    after = _standings(career, clubs)
+    previous = {row["club_id"]: row["position"] for row in before}
+    for row in after:
+        previous_position = previous.get(row["club_id"])
+        row["previous_position"] = previous_position
+        row["delta"] = (
+            previous_position - row["position"]
+            if round_no > 1 and previous_position is not None
+            else 0
+        )
+
+    results = []
+    for fixture in fixtures:
+        score = career.results.get(fixture["id"])
+        if score is None:
+            continue
+        home = clubs.get(fixture["home"], {})
+        away = clubs.get(fixture["away"], {})
+        results.append(
+            {
+                "fixture_id": fixture["id"],
+                "home": {
+                    "id": str(fixture["home"]),
+                    "name": str(home.get("name") or fixture["home"]),
+                    "logo": str(home.get("logo") or ""),
+                },
+                "away": {
+                    "id": str(fixture["away"]),
+                    "name": str(away.get("name") or fixture["away"]),
+                    "logo": str(away.get("logo") or ""),
+                },
+                "score": {"home": int(score["home"]), "away": int(score["away"])},
+                "own": career.club_id in (fixture["home"], fixture["away"]),
+            }
+        )
+
+    own_fixture = next(
+        (
+            fixture
+            for fixture in fixtures
+            if career.club_id in (fixture["home"], fixture["away"])
+        ),
+        None,
+    )
+    return {
+        "round": round_no,
+        "date": str(own_fixture["date"]) if own_fixture else str(fixtures[0]["date"]),
+        "competition": competition_name,
+        "results": results,
+        "standings": after,
+    }
+
+
 def season_state(
     career: Career,
     league_clubs: list[dict],
     strength_for: Callable[[str], float],
+    competition_name: str = "",
 ) -> dict:
     ensure_schedule(career, league_clubs)
     clubs = {str(club["id"]): club for club in league_clubs}
@@ -545,4 +634,5 @@ def season_state(
         "last_result": _last_result(career, clubs),
         "form": _recent_form(career, clubs),
         "standings": _standings(career, clubs),
+        "last_matchday": matchday_state(career, clubs, competition_name),
     }

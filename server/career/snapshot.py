@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from typing import Callable
 
+from server.career.condition import (
+    blocked_player_ids,
+    effective_overall,
+    ensure_player_states,
+    player_view,
+    recover_condition,
+)
 from server.career.core import Career
 from server.career.season import season_state
 
@@ -47,32 +54,34 @@ def _pick_player(players: list[dict], preferred_roles: list[str], used: set[str]
     return max(candidates, key=lambda player: float(player.get("overall") or 0)) if candidates else None
 
 
-def _auto_starters(players: list[dict]) -> list[dict]:
-    used: set[str] = set()
-    starters = []
-    for slot in LINEUP_SLOTS:
-        player = _pick_player(players, slot["roles"], used)
-        if player is None:
-            break
-        used.add(player["id"])
-        starters.append(player)
-    return starters
-
-
 def lineup_for(
     players: list[dict],
     order: list[str] | None = None,
     bench_order: list[str] | None = None,
+    blocked_ids: set[str] | None = None,
 ) -> dict:
+    blocked = set(blocked_ids or ())
     by_id = {player["id"]: player for player in players}
+    available = [player for player in players if player["id"] not in blocked]
+    order_ids = [str(player_id) for player_id in (order or [])]
     starters: list[dict] = []
-    if order:
-        for player_id in order:
-            player = by_id.get(str(player_id))
-            if player is not None and player not in starters:
-                starters.append(player)
-    if len(starters) != len(LINEUP_SLOTS):
-        starters = _auto_starters(players)
+    used: set[str] = set()
+    for index, slot in enumerate(LINEUP_SLOTS):
+        player = None
+        if index < len(order_ids):
+            candidate = by_id.get(order_ids[index])
+            if (
+                candidate is not None
+                and candidate["id"] not in blocked
+                and candidate["id"] not in used
+            ):
+                player = candidate
+        if player is None:
+            player = _pick_player(available, slot["roles"], used)
+        if player is None:
+            break
+        starters.append(player)
+        used.add(player["id"])
 
     slots = []
     for slot, player in zip(LINEUP_SLOTS, starters):
@@ -108,6 +117,18 @@ def lineup_for(
             reverse=True,
         )
     return {"formation": FORMATION, "slots": slots, "bench": bench}
+
+
+def lineup_strength(career: Career, players: list[dict]) -> float:
+    ensure_player_states(career, [str(player["id"]) for player in players])
+    recover_condition(career, career.date)
+    blocked = blocked_player_ids(career)
+    raw = lineup_for(players, career.lineup, career.bench_order, blocked)
+    ratings = [
+        effective_overall(slot["player"], career.player_state.get(str(slot["player"]["id"])))
+        for slot in raw["slots"]
+    ]
+    return sum(ratings) / len(ratings) if ratings else 55.0
 
 
 def _sort_players(players: list[dict]) -> list[dict]:
@@ -159,11 +180,22 @@ def build_snapshot(
     league_clubs: list[dict] | None = None,
     strength_for: Callable[[str], float] | None = None,
 ) -> dict:
+    ensure_player_states(career, [str(player["id"]) for player in players])
+    recover_condition(career, career.date)
     squad = _sort_players(players)
     for player in squad:
-        player.setdefault("fatigue", 100)
+        state = career.player_state[str(player["id"])]
+        player.update(player_view(player, state))
+        player["effective_overall"] = effective_overall(player, state)
+    blocked = blocked_player_ids(career)
     clubs = league_clubs or []
     strength = strength_for or (lambda _club_id: 55.0)
+    raw_lineup = lineup_for(squad, career.lineup, career.bench_order, blocked)
+    available_bench = [
+        player for player in raw_lineup["bench"] if player["id"] not in blocked
+    ]
+    matchday_bench = available_bench[:7]
+    bench_ids = {player["id"] for player in matchday_bench}
     return {
         "version": career.version,
         "id": career.id,
@@ -176,7 +208,18 @@ def build_snapshot(
         "squad": {
             "summary": _summary(squad),
             "groups": _groups(squad),
-            "lineup": lineup_for(squad, career.lineup, career.bench_order),
+            "lineup": {
+                **raw_lineup,
+                "bench": matchday_bench,
+                "reserve": [
+                    player for player in raw_lineup["bench"] if player["id"] not in bench_ids
+                ],
+            },
         },
-        "season": season_state(career, clubs, strength),
+        "season": season_state(
+            career,
+            clubs,
+            strength,
+            competition_name=str(club.get("league_name") or ""),
+        ),
     }

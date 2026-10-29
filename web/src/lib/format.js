@@ -291,6 +291,17 @@ export function playerInitialName(player) {
   return `${initial}${surname}`.toUpperCase()
 }
 
+export function statusLabel(player) {
+  if (player?.injury) {
+    return `Травма: ${player.injury.type} · до ${formatDate(player.injury.until)}`
+  }
+  if (player?.suspension) {
+    const matches = player.suspension.matches
+    return `Дисквалификация: ${matches} ${plural(matches, 'матч', 'матча', 'матчей')}`
+  }
+  return ''
+}
+
 export function posTone(role) {
   if (role === 'GK') return 'pos-gk'
   if (['CB', 'LB', 'RB'].includes(role)) return 'pos-def'

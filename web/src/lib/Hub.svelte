@@ -1,9 +1,12 @@
 <script>
   import { onMount, tick } from 'svelte'
   import { registerBack, registerDetails, registerPrimary, registerSave, registerTabs } from './actions.js'
+  import BenchDrawer from './BenchDrawer.svelte'
   import Controls from './Controls.svelte'
   import Icon from './Icon.svelte'
   import MatchScreen from './MatchScreen.svelte'
+  import MatchdayScreen from './MatchdayScreen.svelte'
+  import PlayerCard from './PlayerCard.svelte'
   import Tabs from './Tabs.svelte'
   import { focusElement, focusFirst } from './input.js'
   import {
@@ -25,6 +28,7 @@
     shortMonthLabel,
     shortRole,
     statTone,
+    statusLabel,
     tierLabel,
     weekStrip,
   } from './format.js'
@@ -66,6 +70,7 @@
     { id: 'general', label: 'Общая информация' },
     { id: 'stats-one', label: 'Статы 1' },
     { id: 'stats-two', label: 'Статы 2' },
+    { id: 'season', label: 'Сезон' },
   ]
 
   const INFO_LABELS = [
@@ -97,7 +102,10 @@
   let focusPlayerId = $state(null)
   let anchorId = $state(null)
   let swapping = $state(false)
-  let matchResult = $state(null)
+  let benchFocused = $state(false)
+  let matchdayOpen = $state(false)
+  let matchdayStep = $state('results')
+  let matchdaySnapshot = $state(null)
   let seasonReview = $state(false)
   let reviewStep = $state(0)
   let simulating = $state(false)
@@ -119,6 +127,7 @@
   let season = $derived(career.season)
   let review = $derived(season?.review ?? null)
   let nextMatch = $derived(season?.next ?? null)
+  let matchdayData = $derived(matchdaySnapshot ?? season?.last_matchday ?? null)
   let displayDate = $derived(simulating && simDate ? simDate : career.date)
   let days = $derived(weekStrip(displayDate, 7))
   let trackDays = $derived(simulating && simStart ? weekStrip(simStart, 14) : days)
@@ -159,7 +168,11 @@
               ? 'Играть матч'
               : 'Перемотать',
   )
-  let squadPlayers = $derived([...lineup.slots.map((slot) => slot.player), ...lineup.bench])
+  let squadPlayers = $derived([
+    ...lineup.slots.map((slot) => slot.player),
+    ...lineup.bench,
+    ...(lineup.reserve ?? []),
+  ])
   let focusedPlayer = $derived(
     squadPlayers.find((player) => player.id === focusPlayerId) ?? lineup.slots[0]?.player ?? null,
   )
@@ -169,9 +182,11 @@
   let comparing = $derived(
     Boolean(anchorPlayer && focusedPlayer && anchorPlayer.id !== focusedPlayer.id),
   )
-  let canSwap = $derived(comparing)
+  let canSwap = $derived(
+    comparing && anchorPlayer?.available !== false && focusedPlayer?.available !== false,
+  )
   let anchorRadar = $derived(anchorPlayer ? radarValues(anchorPlayer.stats) : [])
-  let teamAverage = $derived(average(lineup.slots.map((slot) => slot.player.overall)))
+  let teamAverage = $derived(average(lineup.slots.map((slot) => slot.player.effective_overall ?? slot.player.overall)))
   let teamStrength = $derived(Math.round(teamAverage))
   let projectedTeamAverage = $derived(teamAfterSwap())
   let teamDelta = $derived(comparing ? projectedTeamAverage - teamAverage : 0)
@@ -184,6 +199,25 @@
         ? profileGroups.filter((group) => group.id === 'technical')
         : [],
   )
+  let seasonRows = $derived.by(() => {
+    if (!focusedPlayer) return []
+    const right = focusedPlayer.season_stats ?? {}
+    const left = anchorPlayer ? (anchorPlayer.season_stats ?? {}) : null
+    return [
+      ['apps', 'Матчи'],
+      ['starts', 'В старте'],
+      ['minutes', 'Минуты'],
+      ['goals', 'Голы'],
+      ['assists', 'Ассисты'],
+      ['yellow', 'Жёлтые'],
+      ['red', 'Красные'],
+    ].map(([key, label]) => ({
+      key,
+      label,
+      left: left ? left[key] ?? 0 : right[key] ?? 0,
+      right: comparing ? right[key] ?? 0 : null,
+    }))
+  })
   let infoRows = $derived.by(() => {
     if (!focusedPlayer) return []
     const right = infoValues(focusedPlayer)
@@ -199,6 +233,17 @@
   let hints = $derived.by(() => {
     const start = { gamepad: ['Start'], keyboard: ['S'], label: 'Сохранить' }
     const sections = { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Разделы' }
+    if (matchdayOpen) {
+      return matchdayStep === 'results'
+        ? [
+            { gamepad: ['A'], keyboard: ['Enter'], label: 'Таблица' },
+            { gamepad: ['B'], keyboard: ['Esc'], label: 'В хаб' },
+          ]
+        : [
+            { gamepad: ['A'], keyboard: ['Enter'], label: 'Продолжить' },
+            { gamepad: ['B'], keyboard: ['Esc'], label: 'К результатам' },
+          ]
+    }
     if (matchSimOpen) {
       if (matchSimPhase === 'live') {
         return [
@@ -219,12 +264,6 @@
           label: matchSimLoading ? 'Загрузка…' : 'Начать симуляцию',
         },
         { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
-      ]
-    }
-    if (matchResult) {
-      return [
-        { gamepad: ['A'], keyboard: ['Enter'], label: 'Продолжить' },
-        { gamepad: ['B'], keyboard: ['Esc'], label: 'Закрыть' },
       ]
     }
     if (seasonReview) {
@@ -300,11 +339,11 @@
   function handleSave() {
     if (
       !saving &&
-      !matchResult &&
       !seasonReview &&
       !simulating &&
       !advancing &&
-      !matchSimOpen
+      !matchSimOpen &&
+      !matchdayOpen
     ) {
       onsave()
     }
@@ -395,16 +434,48 @@
       finishMatchSimulation()
       return
     }
-    closeMatchSimulation()
+    openMatchday()
   }
 
   async function playMatch() {
     if (playing || !isMatchDay) return
     const updated = await onplay()
     if (!updated) return
-    matchResult = updated.season.last_result
+    openMatchday(updated.season.last_matchday)
+  }
+
+  function openMatchday(data = null) {
+    const nextData = data ?? matchdayData
+    if (!nextData) {
+      closeMatchSimulation()
+      return
+    }
+    matchdaySnapshot = nextData
+    matchSimOpen = false
+    matchSimPhase = 'setup'
+    matchSimSetup = null
+    matchSimResult = null
+    matchSimMinute = 0
+    matchSimError = ''
+    matchdayStep = 'results'
+    matchdayOpen = true
+    tick().then(() => document.activeElement?.blur())
+  }
+
+  async function closeMatchday() {
+    matchdayOpen = false
+    matchdayStep = 'results'
+    matchdaySnapshot = null
     await tick()
     focusFirst()
+  }
+
+  function advanceMatchday() {
+    if (matchdayStep === 'results') {
+      matchdayStep = 'table'
+      return
+    }
+    closeMatchday()
   }
 
   function daysBetween(from, to) {
@@ -482,7 +553,6 @@
 
   function openSeasonReview() {
     if (!season?.complete || advancing) return
-    matchResult = null
     reviewStep = 0
     seasonReview = true
     tick().then(focusFirst)
@@ -512,13 +582,6 @@
     if (!updated) return
     seasonReview = false
     reviewStep = 0
-    matchResult = null
-    await tick()
-    focusFirst()
-  }
-
-  async function closeResult() {
-    matchResult = null
     await tick()
     focusFirst()
   }
@@ -543,9 +606,13 @@
     const focusedSlot = starterIds.indexOf(focusedPlayer.id)
     if (anchorSlot !== -1 && focusedSlot !== -1) return teamAverage
     if (anchorSlot === -1 && focusedSlot === -1) return teamAverage
-    const overalls = lineup.slots.map((slot) => slot.player.overall)
-    if (anchorSlot !== -1) overalls[anchorSlot] = focusedPlayer.overall
-    if (focusedSlot !== -1) overalls[focusedSlot] = anchorPlayer.overall
+    const overalls = lineup.slots.map((slot) => slot.player.effective_overall ?? slot.player.overall)
+    if (anchorSlot !== -1) {
+      overalls[anchorSlot] = focusedPlayer.effective_overall ?? focusedPlayer.overall
+    }
+    if (focusedSlot !== -1) {
+      overalls[focusedSlot] = anchorPlayer.effective_overall ?? anchorPlayer.overall
+    }
     return average(overalls)
   }
 
@@ -617,6 +684,14 @@
   }
 
   function handleBack() {
+    if (matchdayOpen) {
+      if (matchdayStep === 'table') {
+        matchdayStep = 'results'
+      } else {
+        closeMatchday()
+      }
+      return
+    }
     if (matchSimOpen) {
       if (matchSimLoading || matchSimPhase !== 'setup') return
       closeMatchSimulation()
@@ -636,10 +711,6 @@
       }
       return
     }
-    if (matchResult) {
-      closeResult()
-      return
-    }
     if (tab === 'squad') {
       if (view === 'details') {
         closeDetails()
@@ -647,7 +718,9 @@
       }
       if (view === 'plan') {
         if (anchorId) {
+          const anchor = anchorId
           anchorId = null
+          tick().then(() => focusPlayer(anchor))
           return
         }
         backToOverview()
@@ -669,12 +742,17 @@
   }
 
   function handlePrimaryAction() {
+    if (matchdayOpen) {
+      advanceMatchday()
+      return true
+    }
     if (!matchSimOpen) return false
     activateMatchSimulation()
     return true
   }
 
   function handleDetails() {
+    if (matchdayOpen) return
     if (matchSimOpen) {
       if (matchSimPhase === 'live') finishMatchSimulation()
       return
@@ -683,13 +761,15 @@
   }
 
   function toggleDetails() {
-    if (matchResult || seasonReview) return
+    if (matchdayOpen || seasonReview) return
     if (tab !== 'squad' || !focusedPlayer) return
     if (view === 'details') {
       closeDetails()
       return
     }
     if (view === 'plan') {
+      anchorId = null
+      benchFocused = false
       detailsPage = 0
       view = 'details'
       tick().then(() => {
@@ -701,24 +781,26 @@
   async function backToOverview() {
     view = 'overview'
     anchorId = null
+    benchFocused = false
     focusPlayerId = null
     await tick()
     focusFirst()
   }
 
   async function setTab(next) {
-    if (simulating || advancing || matchSimOpen) return
+    if (simulating || advancing || matchSimOpen || matchdayOpen) return
     if (!enabledTabs.includes(next)) return
     tab = next
     view = 'overview'
     anchorId = null
+    benchFocused = false
     focusPlayerId = null
     await tick()
     focusFirst()
   }
 
   function switchTab(direction) {
-    if (simulating || advancing || matchResult || seasonReview || matchSimOpen) return
+    if (simulating || advancing || seasonReview || matchSimOpen || matchdayOpen) return
     if (tab === 'squad' && view === 'details') {
       switchDetailsPage(direction)
       return
@@ -738,6 +820,7 @@
     tab = 'squad'
     view = 'plan'
     anchorId = null
+    benchFocused = false
     focusPlayerId = playerId ?? lineup.slots[0]?.player.id ?? null
     await tick()
     focusPlayer(focusPlayerId)
@@ -750,7 +833,7 @@
   }
 
   async function activatePlayer(player) {
-    if (swapping) return
+    if (swapping || player.available === false) return
     if (!anchorId) {
       anchorId = player.id
       focusPlayerId = player.id
@@ -809,7 +892,7 @@
   }
 </script>
 
-<div class="app" class:is-simulating={matchSimOpen}>
+<div class="app" class:is-simulating={matchSimOpen || matchdayOpen}>
   <header class="topbar hub-topbar">
     <div class="brand">
       <div class="brand-mark">GF</div>
@@ -868,9 +951,20 @@
         <div class="head-photo-block">
           <span class="player-photo-large">
             <img src={player.photo} alt="" onerror={hideBrokenImage} />
+            {#if player.injury || player.suspension}
+              <span
+                class="player-status-flag"
+                class:is-injury={Boolean(player.injury)}
+                title={statusLabel(player)}
+              >
+                {player.injury ? '+' : '!'}
+              </span>
+            {/if}
           </span>
-          <span class="photo-fatigue" title={`Усталость ${player.fatigue}`}>
-            <span class="fatigue-bar"><i style={`width:${player.fatigue}%`}></i></span>
+          <span class="photo-fatigue" title={`Кондиция ${player.fatigue}%`}>
+            <span class="fatigue-bar" class:is-low={player.fatigue < 50}>
+              <i style={`width:${player.fatigue}%`}></i>
+            </span>
           </span>
         </div>
         <div class="head-info" class:right={mirrored}>
@@ -896,6 +990,12 @@
               <span class="rating-dash">–</span>
             {/if}
           </div>
+          <div class="head-season">
+            <span>{player.season_stats?.apps ?? 0} М</span>
+            <span>{player.season_stats?.goals ?? 0} Г</span>
+            <span>{player.season_stats?.assists ?? 0} А</span>
+            <span>{player.season_stats?.minutes ?? 0} мин</span>
+          </div>
         </div>
       </div>
     {/snippet}
@@ -907,7 +1007,7 @@
     {/if}
 
     {#if tab === 'centre'}
-      <div class="hub-grid" inert={matchResult || seasonReview || matchSimOpen ? true : undefined}>
+      <div class="hub-grid" inert={seasonReview || matchSimOpen || matchdayOpen ? true : undefined}>
         {#if isMatchDay && nextMatch && !simulating && !advancing}
           <div class="match-actions" style="grid-area: next">
             <button class="match-action" data-nav data-autofocus onclick={playMatch}>
@@ -1136,22 +1236,12 @@
               <polygon points="25,98 75,98 70,80 30,80"></polygon>
             </svg>
             {#each lineup.slots as slot (slot.position + slot.player.id)}
-              <span
-                class="pitch-player is-preview"
-                style={`left:${pitchX(slot.x, slot.y)}%; top:${pitchY(slot.y)}%`}
-              >
-                <span class="player-photo">
-                  <img src={slot.player.photo} alt="" loading="lazy" onerror={hideBrokenImage} />
-                </span>
-                <span class="player-plate">
-                  <span class="player-pos {posTone(slot.role)}">{shortRole(slot.role)}</span>
-                  <span class="player-ovr">{Math.round(slot.player.overall)}</span>
-                </span>
-                <span class="player-name-wrap">
-                  <span class="player-name">{playerInitialName(slot.player)}</span>
-                </span>
-                <span class="fatigue-bar"><i style={`width:${slot.player.fatigue}%`}></i></span>
-              </span>
+              <PlayerCard
+                player={slot.player}
+                role={slot.role}
+                preview
+                positionStyle={`left:${pitchX(slot.x, slot.y)}%; top:${pitchY(slot.y)}%`}
+              />
             {/each}
             {@render strengthBadge()}
           </div>
@@ -1185,7 +1275,7 @@
       </div>
     {:else if tab === 'squad' && (view === 'plan' || view === 'details') && focusedPlayer}
       <div class="plan">
-        <div class="plan-stage">
+        <div class="plan-stage" class:has-drawer={view === 'plan'}>
           <nav class="plan-tabs" aria-label="План игры">
             {#each planTabs as item (item.label)}
               <span class="plan-tab" class:active={item.active}>{item.label}</span>
@@ -1220,6 +1310,20 @@
               {#if detailsPage === 0}
                 <div class="details-list details-info">
                   {#each infoRows as row (row.label)}
+                    <div class="details-row info-row" class:is-compare={comparing}>
+                      <span class="info-value">{row.left}</span>
+                      <span class="details-label">{row.label}</span>
+                      {#if comparing}
+                        <span class="info-value right">{row.right}</span>
+                      {:else}
+                        <span class="details-spacer"></span>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
+              {:else if detailsPage === 3}
+                <div class="details-list details-info">
+                  {#each seasonRows as row (row.key)}
                     <div class="details-row info-row" class:is-compare={comparing}>
                       <span class="info-value">{row.left}</span>
                       <span class="details-label">{row.label}</span>
@@ -1273,63 +1377,39 @@
                 <polygon points="25,98 75,98 70,80 30,80"></polygon>
               </svg>
               {#each lineup.slots as slot (slot.position + slot.player.id)}
-                <button
-                  class="pitch-player"
-                  class:is-anchor={anchorId === slot.player.id}
-                  data-nav
-                  data-player={slot.player.id}
-                  style={`left:${pitchX(slot.x, slot.y)}%; top:${pitchY(slot.y)}%`}
+                <PlayerCard
+                  player={slot.player}
+                  role={slot.role}
+                  interactive
+                  selected={anchorId === slot.player.id}
+                  positionStyle={`left:${pitchX(slot.x, slot.y)}%; top:${pitchY(slot.y)}%`}
                   onfocus={(event) => {
                     focusPlayerId = slot.player.id
+                    benchFocused = false
                     revealName(event)
                   }}
                   onmouseenter={revealName}
                   onclick={() => activatePlayer(slot.player)}
-                >
-                  <span class="player-photo">
-                    <img src={slot.player.photo} alt="" loading="lazy" onerror={hideBrokenImage} />
-                  </span>
-                  <span class="player-plate">
-                    <span class="player-pos {posTone(slot.role)}">{shortRole(slot.role)}</span>
-                    <span class="player-ovr">{Math.round(slot.player.overall)}</span>
-                  </span>
-                  <span class="player-name-wrap">
-                    <span class="player-name">{playerInitialName(slot.player)}</span>
-                  </span>
-                  <span class="fatigue-bar"><i style={`width:${slot.player.fatigue}%`}></i></span>
-                </button>
+                />
               {/each}
               {@render strengthBadge()}
             </div>
 
-            <div class="bench-panel">
-              <div class="bench-head">
-                <strong>Запасные</strong>
-                <span>{lineup.bench.length} игроков</span>
-              </div>
-              <div class="bench-row scroll-area">
-                {#each lineup.bench as player (player.id)}
-                  <button
-                    class="bench-card"
-                    class:is-anchor={anchorId === player.id}
-                    data-nav
-                    data-player={player.id}
-                    onfocus={() => (focusPlayerId = player.id)}
-                    onclick={() => activatePlayer(player)}
-                  >
-                    <span class="bench-top">
-                      <span class="player-pos {posTone(player.role)}">{shortRole(player.role)}</span>
-                      <span class="bench-ovr">{Math.round(player.overall)}</span>
-                    </span>
-                    <span class="bench-photo">
-                      <img src={player.photo} alt="" loading="lazy" onerror={hideBrokenImage} />
-                    </span>
-                    <span class="bench-name">{player.name}</span>
-                    <span class="fatigue-bar"><i style={`width:${player.fatigue}%`}></i></span>
-                  </button>
-                {/each}
-              </div>
-            </div>
+          {/if}
+
+          {#if view === 'plan'}
+            <BenchDrawer
+              bench={lineup.bench}
+              reserve={lineup.reserve ?? []}
+              open={benchFocused}
+              selectedId={anchorId}
+              onfocus={(player) => {
+                benchFocused = true
+                focusPlayerId = player.id
+              }}
+              onactivate={activatePlayer}
+              onleave={() => (benchFocused = false)}
+            />
           {/if}
         </div>
 
@@ -1340,68 +1420,6 @@
     {/if}
   </main>
 
-  {#if matchResult}
-    {@const leftTeam = matchResult.home ? career.club : matchResult.opponent}
-    {@const rightTeam = matchResult.home ? matchResult.opponent : career.club}
-    {@const leftGoals = matchResult.home ? matchResult.goals_for : matchResult.goals_against}
-    {@const rightGoals = matchResult.home ? matchResult.goals_against : matchResult.goals_for}
-    <div class="match-result">
-      <section class="result-card" aria-label="Результат матча">
-        <span class="eyebrow">
-          Тур {matchResult.round} · {matchResult.home ? 'Дома' : 'В гостях'} · {shortDate(
-            matchResult.date,
-          )}
-        </span>
-        <div class="result-scoreline">
-          <div class="result-team">
-            <img src={leftTeam.logo} alt="" onerror={hideBrokenImage} />
-            <span>{leftTeam.name}</span>
-          </div>
-          <strong class="result-score">{leftGoals} : {rightGoals}</strong>
-          <div class="result-team is-right">
-            <img src={rightTeam.logo} alt="" onerror={hideBrokenImage} />
-            <span>{rightTeam.name}</span>
-          </div>
-        </div>
-        <div
-          class="result-outcome"
-          class:is-win={matchResult.outcome === 'W'}
-          class:is-draw={matchResult.outcome === 'D'}
-          class:is-loss={matchResult.outcome === 'L'}
-        >
-          {matchResult.outcome === 'W'
-            ? 'Победа'
-            : matchResult.outcome === 'D'
-              ? 'Ничья'
-              : 'Поражение'}
-        </div>
-        {#if ownRow}
-          <div class="result-meta">
-            <span>{ownRow.position}-е место в таблице</span>
-            <span>
-              {ownRow.points}
-              {plural(ownRow.points, 'очко', 'очка', 'очков')} · {ownRow.played}
-              {plural(ownRow.played, 'матч', 'матча', 'матчей')}
-            </span>
-          </div>
-        {/if}
-        {#if nextMatch}
-          <div class="result-next">
-            Далее: {nextMatch.opponent.name} · {shortDate(nextMatch.date)}
-          </div>
-        {/if}
-        <button
-          class="result-continue"
-          data-nav
-          data-autofocus
-          onclick={closeResult}
-        >
-          <span>Продолжить</span>
-          <span class="result-key">A</span>
-        </button>
-      </section>
-    </div>
-  {/if}
 
   {#if seasonReview && review}
     <div class="match-result season-review">
@@ -1577,19 +1595,27 @@
     />
   {/if}
 
+  {#if matchdayOpen && matchdayData}
+    <MatchdayScreen step={matchdayStep} matchday={matchdayData} clubId={career.club.id} />
+  {/if}
+
   <Controls
     {hints}
     showDefaults={false}
-    note={matchSimOpen
-      ? matchSimPhase === 'live'
-        ? 'Симуляция · 1 минута в секунду'
-        : 'Симуляция матча'
-      : saving
-        ? 'Сохранение…'
-        : playing
-          ? 'Матч идёт…'
-          : swapping
-            ? 'Обмен…'
-            : `${career.club.name} · ${formatTimestamp(career.updated_at)}`}
+    note={matchdayOpen
+      ? matchdayStep === 'results'
+        ? 'Результаты дня'
+        : 'Таблица после тура'
+      : matchSimOpen
+        ? matchSimPhase === 'live'
+          ? 'Симуляция · 1 минута в секунду'
+          : 'Симуляция матча'
+        : saving
+          ? 'Сохранение…'
+          : playing
+            ? 'Матч идёт…'
+            : swapping
+              ? 'Обмен…'
+              : `${career.club.name} · ${formatTimestamp(career.updated_at)}`}
   />
 </div>

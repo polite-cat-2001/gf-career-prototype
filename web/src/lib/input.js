@@ -50,6 +50,86 @@ function cycle(direction) {
   triggerCycle(direction)
 }
 
+function moveToBenchFromPitch(current, direction) {
+  if (direction !== 'down') return false
+  const pitch = current.closest('.pitch-plan-large')
+  if (!pitch) return false
+  const cards = Array.from(pitch.querySelectorAll(NAV_SELECTOR)).filter(visible)
+  const rect = current.getBoundingClientRect()
+  const centreY = rect.top + rect.height / 2
+  const hasCardBelow = cards.some((element) => {
+    if (element === current) return false
+    const other = element.getBoundingClientRect()
+    return other.top + other.height / 2 > centreY + 10
+  })
+  if (hasCardBelow) return false
+  const bench = document.querySelector('[data-nav-grid]')
+  const first = bench?.querySelector(NAV_SELECTOR)
+  if (!first) return false
+  first.focus({ preventScroll: true })
+  first.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  return true
+}
+
+function focusGridItem(item) {
+  item.focus({ preventScroll: true })
+  item.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
+
+function moveGridFocus(current, direction) {
+  const region = current.closest('[data-nav-grid]')
+  const grid = current.closest('.bench-grid')
+  if (!region || !grid) return false
+  const grids = Array.from(region.querySelectorAll('.bench-grid'))
+  const gridIndex = grids.indexOf(grid)
+  const items = Array.from(grid.querySelectorAll(NAV_SELECTOR)).filter(visible)
+  const index = items.indexOf(current)
+  if (index === -1) return false
+  const columns = getComputedStyle(grid)
+    .gridTemplateColumns.split(' ')
+    .filter(Boolean).length
+
+  if (direction === 'left' || direction === 'right') {
+    const target = items[index + (direction === 'right' ? 1 : -1)]
+    if (!target) return true
+    focusGridItem(target)
+    return true
+  }
+
+  const targetIndex = index + (direction === 'down' ? columns : -columns)
+  if (targetIndex >= 0 && targetIndex < items.length) {
+    focusGridItem(items[targetIndex])
+    return true
+  }
+
+  if (direction === 'down' && targetIndex >= items.length) {
+    const nextGrid = grids[gridIndex + 1]
+    const first = nextGrid?.querySelector(NAV_SELECTOR)
+    if (first) {
+      focusGridItem(first)
+      return true
+    }
+    return true
+  }
+
+  if (direction === 'up' && targetIndex < 0) {
+    const previousGrid = grids[gridIndex - 1]
+    if (!previousGrid) return false
+    const previousItems = Array.from(previousGrid.querySelectorAll(NAV_SELECTOR)).filter(visible)
+    const column = index % columns
+    const lastRowStart = Math.max(
+      0,
+      previousItems.length - (previousItems.length % columns || columns),
+    )
+    const target = previousItems[lastRowStart + column] || previousItems[previousItems.length - 1]
+    if (!target) return false
+    focusGridItem(target)
+    return true
+  }
+
+  return true
+}
+
 export function moveFocus(direction) {
   const items = navItems()
   if (!items.length) return
@@ -63,6 +143,9 @@ export function moveFocus(direction) {
     cycle(direction)
     return
   }
+
+  if (moveToBenchFromPitch(current, direction)) return
+  if (moveGridFocus(current, direction)) return
 
   const currentRect = current.getBoundingClientRect()
   const cx = currentRect.left + currentRect.width / 2
@@ -95,7 +178,8 @@ export function moveFocus(direction) {
     }
 
     if (forward <= 8) continue
-    const score = forward + sideways * 1.8
+    const sidewaysWeight = direction === 'left' || direction === 'right' ? 4 : 1.8
+    const score = forward + sideways * sidewaysWeight
     if (score < bestScore) {
       bestScore = score
       best = item

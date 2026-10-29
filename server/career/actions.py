@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+from server.career.condition import (
+    blocked_player_ids,
+    ensure_player_states,
+    is_available,
+    recover_condition,
+)
 from server.career.core import Career
 from server.career.snapshot import lineup_for
 
@@ -21,8 +27,18 @@ def swap_players(career: Career, players: list[dict], player_a: str, player_b: s
     squad_ids = {player["id"] for player in players}
     if player_a not in squad_ids or player_b not in squad_ids:
         raise ActionError("player is not in this squad")
+    ensure_player_states(career, [str(player["id"]) for player in players])
+    recover_condition(career, career.date)
+    if not is_available(career, player_a) or not is_available(career, player_b):
+        raise ActionError("player is unavailable")
 
-    lineup = lineup_for(players, career.lineup, career.bench_order)
+    blocked = blocked_player_ids(career)
+    lineup = lineup_for(
+        players,
+        career.lineup,
+        career.bench_order,
+        blocked,
+    )
     starters = [slot["player"]["id"] for slot in lineup["slots"]]
     bench = [player["id"] for player in lineup["bench"]]
 

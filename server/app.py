@@ -29,6 +29,13 @@ from server.career import (
     squad_strength,
     swap_players,
 )
+from server.career.condition import (
+    apply_match_outcome,
+    blocked_player_ids,
+    ensure_player_states,
+    recover_condition,
+)
+from server.career.snapshot import lineup_for, lineup_strength
 
 RASTER_DIR = REPO_ROOT / "data" / "raster"
 WEB_DIST = REPO_ROOT / "web" / "dist"
@@ -93,6 +100,26 @@ class Club(BaseModel):
     founded_on: str | None = None
 
 
+class PlayerInjury(BaseModel):
+    type: str
+    until: str
+
+
+class PlayerSuspension(BaseModel):
+    matches: int
+    reason: str
+
+
+class PlayerSeasonStats(BaseModel):
+    apps: int = 0
+    starts: int = 0
+    minutes: int = 0
+    goals: int = 0
+    assists: int = 0
+    yellow: int = 0
+    red: int = 0
+
+
 class PlayerSummary(BaseModel):
     id: str
     name: str
@@ -117,6 +144,11 @@ class PlayerSummary(BaseModel):
     role: str | None = None
     photo: str
     fatigue: int = 100
+    effective_overall: float | None = None
+    injury: PlayerInjury | None = None
+    suspension: PlayerSuspension | None = None
+    season_stats: PlayerSeasonStats | None = None
+    available: bool = True
     stats: dict[str, float] | None = None
 
 
@@ -168,6 +200,7 @@ class Lineup(BaseModel):
     formation: str
     slots: list[LineupSlot]
     bench: list[PlayerSummary]
+    reserve: list[PlayerSummary] = []
 
 
 class SquadBlock(BaseModel):
@@ -218,6 +251,29 @@ class StandingRow(BaseModel):
     goals_against: int
     goal_difference: int
     points: int
+    previous_position: int | None = None
+    delta: int = 0
+
+
+class MatchdayScore(BaseModel):
+    home: int
+    away: int
+
+
+class MatchdayResult(BaseModel):
+    fixture_id: str
+    home: SeasonClub
+    away: SeasonClub
+    score: MatchdayScore
+    own: bool = False
+
+
+class MatchdayBlock(BaseModel):
+    round: int
+    date: str
+    competition: str = ""
+    results: list[MatchdayResult]
+    standings: list[StandingRow]
 
 
 class SeasonLeague(BaseModel):
@@ -265,6 +321,7 @@ class SeasonBlock(BaseModel):
     last_result: SeasonResult | None = None
     form: list[SeasonResult]
     standings: list[StandingRow]
+    last_matchday: MatchdayBlock | None = None
     review: SeasonReview | None = None
 
 
@@ -334,6 +391,9 @@ class MatchEvent(BaseModel):
     team: str
     player: MatchPlayer
     player_out: MatchPlayer | None = None
+    assist: MatchPlayer | None = None
+    injury_type: str | None = None
+    injury_until: str | None = None
 
 
 class MatchSimulation(MatchSetup):
@@ -390,12 +450,15 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         except SaveFormatError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
-    def strength_resolver():
+    def strength_resolver(career=None, players=None):
         cache: dict[str, float] = {}
 
         def resolve(club_id: str) -> float:
             if club_id not in cache:
-                cache[club_id] = squad_strength(canon.squad(club_id))
+                if career is not None and players and club_id == career.club_id:
+                    cache[club_id] = lineup_strength(career, players)
+                else:
+                    cache[club_id] = squad_strength(canon.squad(club_id))
             return cache[club_id]
 
         return resolve
@@ -485,25 +548,48 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         our_players = canon.players_by_ids(career.player_ids, with_stats=True)
         if not our_players:
             raise HTTPException(status_code=409, detail="career squad is missing from canon.db")
-        home_players = (
-            our_players if fixture["home"] == career.club_id else canon.squad(fixture["home"])
-        )
-        away_players = (
-            our_players if fixture["away"] == career.club_id else canon.squad(fixture["away"])
-        )
-        home_order = career.lineup if fixture["home"] == career.club_id else None
-        home_bench = career.bench_order if fixture["home"] == career.club_id else None
-        away_order = career.lineup if fixture["away"] == career.club_id else None
-        away_bench = career.bench_order if fixture["away"] == career.club_id else None
+        ensure_player_states(career, [str(player["id"]) for player in our_players])
+        recover_condition(career, career.date)
+        blocked = blocked_player_ids(career)
+        own_home = fixture["home"] == career.club_id
+        home_players = our_players if own_home else canon.squad(fixture["home"])
+        away_players = our_players if not own_home else canon.squad(fixture["away"])
+        home_order = career.lineup if own_home else None
+        home_bench = career.bench_order if own_home else None
+        away_order = career.lineup if not own_home else None
+        away_bench = career.bench_order if not own_home else None
         setup = build_match_setup(
             career,
             fixture,
             str(context["league"]["name"]),
             clubs,
-            build_lineup(home_players, home_order, home_bench),
-            build_lineup(away_players, away_order, away_bench),
+            build_lineup(home_players, home_order, home_bench, blocked if own_home else None),
+            build_lineup(away_players, away_order, away_bench, None if own_home else blocked),
         )
         return fixture, setup
+
+    def prepare_own_lineup(career, players):
+        ensure_player_states(career, [str(player["id"]) for player in players])
+        recover_condition(career, career.date)
+        blocked = blocked_player_ids(career)
+        lineup = lineup_for(players, career.lineup, career.bench_order, blocked)
+        career.lineup = [slot["player"]["id"] for slot in lineup["slots"]]
+        career.bench_order = [player["id"] for player in lineup["bench"]]
+        return lineup
+
+    def play_own_match(career, context):
+        players = canon.players_by_ids(career.player_ids, with_stats=True)
+        if not players:
+            raise HTTPException(status_code=409, detail="career squad is missing from canon.db")
+        prepare_own_lineup(career, players)
+        fixture, setup = match_setup(career, context)
+        play_next_match(career, context["clubs"], strength_resolver(career, players))
+        score = career.results.get(fixture["id"])
+        if score is None:
+            raise HTTPException(status_code=409, detail="match produced no result")
+        match = build_match_simulation(career, fixture, setup, score)
+        apply_match_outcome(career, fixture, setup, match)
+        return fixture, setup, match
 
     def snapshot(career):
         club = canon.club(career.club_id)
@@ -527,7 +613,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             "tier": league["tier"],
             "tier_rank": league["tier_rank"],
         }
-        strength_for = strength_resolver()
+        strength_for = strength_resolver(career, players)
         result = build_snapshot(
             career,
             club_view,
@@ -718,17 +804,10 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         if club is None:
             raise HTTPException(status_code=409, detail="career club is missing from canon.db")
         context = division_context(loaded, club)
-        fixture, setup = match_setup(loaded, context)
         try:
-            played = play_next_match(loaded, context["clubs"], strength_resolver())
+            _, _, match = play_own_match(loaded, context)
         except SeasonError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
-        if played["id"] != fixture["id"]:
-            raise HTTPException(status_code=409, detail="next fixture changed during simulation")
-        score = loaded.results.get(fixture["id"])
-        if score is None:
-            raise HTTPException(status_code=409, detail="simulation produced no result")
-        match = build_match_simulation(loaded, fixture, setup, score)
         loaded.touch()
         saves.save(loaded)
         return {"career": snapshot(loaded), "match": match}
@@ -762,6 +841,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 advance_to(career, payload.date, context["clubs"])
             except SeasonError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
+            recover_condition(career, career.date)
         elif payload.type == "next_season":
             club = canon.club(career.club_id)
             if club is None:
@@ -801,7 +881,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 raise HTTPException(status_code=409, detail="career club is missing from canon.db")
             context = division_context(career, club)
             try:
-                play_next_match(career, context["clubs"], strength_resolver())
+                play_own_match(career, context)
             except SeasonError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
         else:
