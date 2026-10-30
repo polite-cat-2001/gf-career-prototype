@@ -59,6 +59,9 @@ class Career:
     results: dict[str, dict] = field(default_factory=dict)
     player_state: dict[str, dict] = field(default_factory=dict)
     player_contracts: dict[str, dict] = field(default_factory=dict)
+    player_values: dict[str, int] = field(default_factory=dict)
+    player_ages: dict[str, int] = field(default_factory=dict)
+    balance: int | None = None
     condition_date: str | None = None
     journal: list[dict] = field(default_factory=list)
     version: int = SAVE_VERSION
@@ -112,6 +115,16 @@ class Career:
                 player_id: dict(contract)
                 for player_id, contract in self.player_contracts.items()
             }
+        if self.player_values:
+            payload["player_values"] = {
+                player_id: int(value) for player_id, value in self.player_values.items()
+            }
+        if self.player_ages:
+            payload["player_ages"] = {
+                player_id: int(age) for player_id, age in self.player_ages.items()
+            }
+        if self.balance is not None:
+            payload["balance"] = int(self.balance)
         if self.condition_date is not None:
             payload["condition_date"] = self.condition_date
         return payload
@@ -168,6 +181,15 @@ class Career:
                 for player_id, contract in (raw.get("player_contracts") or {}).items()
                 if isinstance(contract, dict)
             },
+            player_values={
+                str(player_id): int(value)
+                for player_id, value in (raw.get("player_values") or {}).items()
+            },
+            player_ages={
+                str(player_id): int(age)
+                for player_id, age in (raw.get("player_ages") or {}).items()
+            },
+            balance=None if raw.get("balance") is None else int(raw["balance"]),
             condition_date=raw.get("condition_date"),
             journal=list(raw.get("journal", [])),
         )

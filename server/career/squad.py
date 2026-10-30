@@ -46,6 +46,16 @@ ROLE_THRESHOLDS = (
     (1.01, "prospect"),
 )
 MIN_MARKET_VALUE = 50_000
+STARTING_BALANCE_RATIO = 0.25
+STARTING_BALANCE_MIN = 1_000_000
+VALUE_AGE_FACTORS = (
+    (21, 1.15),
+    (24, 1.08),
+    (27, 1.02),
+    (30, 0.94),
+    (33, 0.84),
+    (99, 0.68),
+)
 
 
 def expected_share(role_id: str | None) -> float:
@@ -137,7 +147,91 @@ def _weekly_wage(career: Career, player: dict, player_id: str) -> int:
 def _release_clause(career: Career, player: dict, player_id: str) -> int:
     value = max(int(player.get("market_value") or 0), MIN_MARKET_VALUE)
     multiplier = _rng(career, player_id, "clause").uniform(1.2, 2.0)
-    return _round_money(value * multiplier)
+    rounded = _round_money(value * multiplier)
+    return max(int(value * 1.2), min(int(value * 2.0), rounded))
+
+
+def _player_age(player: dict) -> int:
+    age = player.get("age")
+    return int(age) if isinstance(age, (int, float)) else 25
+
+
+def _age_value_factor(age: int) -> float:
+    for max_age, factor in VALUE_AGE_FACTORS:
+        if age <= max_age:
+            return factor
+    return VALUE_AGE_FACTORS[-1][1]
+
+
+def _ovr_value_factor(overall) -> float:
+    return max(0.8, min(1.25, 1 + (float(overall or 0) - 70) * 0.01))
+
+
+def _minutes_value_factor(minutes: int, expected: int) -> float:
+    if expected <= 0:
+        return 1.0
+    ratio = max(0.0, min(2.0, minutes / expected))
+    return 0.85 + 0.15 * ratio
+
+
+def _rolled_value(
+    career: Career,
+    player: dict,
+    player_id: str,
+    age: int,
+) -> int:
+    value = int(career.player_values.get(player_id) or player.get("market_value") or 0)
+    value = max(MIN_MARKET_VALUE, value)
+    state = career.player_state.get(player_id) or {}
+    stats = state.get("stats") or {}
+    minutes = int(stats.get("minutes") or 0)
+    expected = int(state.get("expected_minutes") or 0)
+    rolled = (
+        value
+        * _age_value_factor(age)
+        * _ovr_value_factor(player.get("overall"))
+        * _minutes_value_factor(minutes, expected)
+    )
+    return max(MIN_MARKET_VALUE, _round_money(rolled))
+
+
+def ensure_player_finances(career: Career, players: list[dict]) -> None:
+    for player in players:
+        player_id = str(player["id"])
+        value = int(career.player_values.get(player_id) or player.get("market_value") or 0)
+        value = max(MIN_MARKET_VALUE, value)
+        career.player_values[player_id] = value
+        career.player_ages.setdefault(player_id, _player_age(player))
+        player["market_value"] = value
+        player["age"] = career.player_ages[player_id]
+    if career.balance is None:
+        total = sum(int(player.get("market_value") or 0) for player in players)
+        career.balance = max(STARTING_BALANCE_MIN, _round_money(total * STARTING_BALANCE_RATIO))
+
+
+def finance_view(career: Career, players: list[dict]) -> dict:
+    total = sum(int(player.get("market_value") or 0) for player in players)
+    weekly = sum(
+        int((career.player_contracts.get(str(player["id"])) or {}).get("weekly_wage") or 0)
+        for player in players
+    )
+    return {
+        "balance": int(career.balance or 0),
+        "total_market_value": total,
+        "weekly_wage_bill": weekly,
+    }
+
+
+def rollover_player_values(career: Career, players: list[dict]) -> None:
+    ensure_player_finances(career, players)
+    for player in players:
+        player_id = str(player["id"])
+        age = int(career.player_ages.get(player_id) or _player_age(player)) + 1
+        value = _rolled_value(career, player, player_id, age)
+        career.player_values[player_id] = value
+        career.player_ages[player_id] = age
+        player["market_value"] = value
+        player["age"] = age
 
 
 def ensure_player_contracts(career: Career, players: list[dict]) -> None:

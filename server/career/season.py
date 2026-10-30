@@ -7,6 +7,7 @@ from typing import Callable
 
 from server.career.condition import reset_season_state
 from server.career.core import START_DATE, Career
+from server.career.squad import rollover_player_values
 
 
 class SeasonError(ValueError):
@@ -298,6 +299,7 @@ def next_season(
     league_id: str | None = None,
     next_league_clubs: list[str] | None = None,
     transition: dict | None = None,
+    players: list[dict] | None = None,
 ) -> None:
     ensure_schedule(career, league_clubs)
     if next_fixture(career) is not None:
@@ -339,6 +341,8 @@ def next_season(
     career.schedule = build_schedule(club_ids, career.season_start)
     career.schedule_version = SCHEDULE_VERSION
     career.results = {}
+    if players:
+        rollover_player_values(career, players)
     reset_season_state(career)
     career.journal.append(
         {

@@ -16,7 +16,10 @@ from server.career.squad import (
     ROLE_BY_ID,
     SQUAD_ROLES,
     ensure_player_contracts,
+    ensure_player_finances,
+    finance_view,
     morale_percent,
+    rollover_player_values,
 )
 
 ARSENAL = "11"
@@ -299,6 +302,9 @@ def test_old_save_without_contracts_gets_defaults(client: TestClient, saves_dir:
     raw = json.loads(path.read_text(encoding="utf-8"))
     raw.pop("player_contracts", None)
     raw.pop("player_state", None)
+    raw.pop("player_values", None)
+    raw.pop("player_ages", None)
+    raw.pop("balance", None)
     path.write_text(json.dumps(raw), encoding="utf-8")
 
     loaded = client.get(f"/api/careers/{created['id']}")
@@ -313,3 +319,110 @@ def test_old_save_without_contracts_gets_defaults(client: TestClient, saves_dir:
     assert all(player["squad_role"] in ROLE_BY_ID for player in players)
     assert all(player["contract"]["years"] >= 1 for player in players)
     assert all(player["morale"] == 100 for player in players)
+    assert all(player["market_value"] > 0 for player in players)
+    assert snapshot["squad"]["finance"]["balance"] > 0
+
+
+def test_release_clause_stays_inside_the_multiplier_range():
+    players = [
+        {
+            "id": f"p{index}",
+            "name": f"P{index}",
+            "overall": 70,
+            "age": 27,
+            "market_value": 1_234_567 + index,
+        }
+        for index in range(50)
+    ]
+    career = Career(
+        id="c" * 32,
+        seed=7,
+        manager=Manager(name="Test", nationality_id="1", nationality="Test"),
+        club_id="home",
+        player_ids=[player["id"] for player in players],
+    )
+
+    ensure_player_contracts(career, players)
+
+    for player in players:
+        contract = career.player_contracts[player["id"]]
+        value = player["market_value"]
+        assert int(value * 1.2) <= contract["release_clause"] <= int(value * 2.0)
+
+
+def test_finance_view_sums_values_and_weekly_wages():
+    career, _, _ = make_career()
+    players = make_players("h")
+
+    ensure_player_finances(career, players)
+    view = finance_view(career, players)
+
+    assert view["balance"] > 0
+    assert view["total_market_value"] == sum(player["market_value"] for player in players)
+    assert view["weekly_wage_bill"] == sum(
+        career.player_contracts[player["id"]]["weekly_wage"] for player in players
+    )
+
+
+def test_values_stay_put_until_the_season_rolls_over():
+    career, _, _ = make_career()
+    players = make_players("h")
+
+    ensure_player_finances(career, players)
+    before = {player["id"]: player["market_value"] for player in players}
+
+    ensure_player_finances(career, players)
+
+    assert {player["id"]: player["market_value"] for player in players} == before
+    assert career.balance is not None
+
+
+def test_season_rollover_revalues_from_age_overall_and_minutes():
+    player = {
+        "id": "veteran",
+        "name": "Veteran",
+        "overall": 75,
+        "age": 34,
+        "market_value": 1_000_000,
+    }
+    career = Career(
+        id="d" * 32,
+        seed=7,
+        manager=Manager(name="Test", nationality_id="1", nationality="Test"),
+        club_id="home",
+        player_ids=[player["id"]],
+    )
+    ensure_player_contracts(career, [player])
+    ensure_player_finances(career, [player])
+    career.player_state[player["id"]] = {
+        "stats": {"minutes": 1800},
+        "expected_minutes": 1800,
+    }
+
+    rollover_player_values(career, [player])
+
+    assert career.player_ages[player["id"]] == 35
+    assert player["age"] == 35
+    assert player["market_value"] == 710_000
+    assert career.player_values[player["id"]] == 710_000
+
+
+def test_api_snapshot_exposes_finance_summary(client: TestClient):
+    snapshot = create_career(client)
+    finance = snapshot["squad"]["finance"]
+    players = [
+        player
+        for group in snapshot["squad"]["groups"]
+        for player in group["players"]
+    ]
+
+    assert finance["balance"] > 0
+    assert finance["total_market_value"] == sum(
+        player["market_value"] for player in players
+    )
+    assert finance["weekly_wage_bill"] == sum(
+        player["contract"]["weekly_wage"] for player in players
+    )
+    assert finance["total_market_value"] == snapshot["squad"]["summary"]["total_market_value"]
+    assert all(player["age"] is not None for player in players)
+    assert all(player["market_value"] > 0 for player in players)

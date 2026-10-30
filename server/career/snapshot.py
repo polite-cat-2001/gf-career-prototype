@@ -12,7 +12,12 @@ from server.career.condition import (
 )
 from server.career.core import Career
 from server.career.season import season_state
-from server.career.squad import contract_view, ensure_player_contracts
+from server.career.squad import (
+    contract_view,
+    ensure_player_contracts,
+    ensure_player_finances,
+    finance_view,
+)
 
 ROLE_ORDER = {
     "GK": 0,
@@ -191,6 +196,7 @@ def build_snapshot(
     strength_for: Callable[[str], float] | None = None,
 ) -> dict:
     ensure_player_states(career, [str(player["id"]) for player in players])
+    ensure_player_finances(career, players)
     ensure_player_contracts(career, players)
     recover_condition(career, career.date)
     squad = _sort_players(players)
@@ -226,6 +232,7 @@ def build_snapshot(
         "club": club,
         "squad": {
             "summary": _summary(squad),
+            "finance": finance_view(career, squad),
             "groups": _groups(squad),
             "lineup": {
                 **raw_lineup,

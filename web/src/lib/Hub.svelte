@@ -82,9 +82,9 @@
   ]
 
   const centreTabs = [
-    { id: 'status', label: 'Статус', ready: true },
-    { id: 'stats', label: 'Статистика', ready: true },
-    { id: 'attributes', label: 'Характеристики', ready: true },
+    { id: 'status', label: 'Статус' },
+    { id: 'stats', label: 'Статистика' },
+    { id: 'attributes', label: 'Характеристики' },
     { id: 'finance', label: 'Финансы' },
   ]
 
@@ -214,6 +214,13 @@
     centreAttributeGroups.find((group) => group.id === centreAttributePage) ??
       centreAttributeGroups[0] ??
       null,
+  )
+  let finance = $derived(
+    career.squad.finance ?? {
+      balance: 0,
+      total_market_value: summary?.total_market_value ?? 0,
+      weekly_wage_bill: 0,
+    },
   )
   let focusedPlayer = $derived(
     squadPlayers.find((player) => player.id === focusPlayerId) ?? lineup.slots[0]?.player ?? null,
@@ -1496,7 +1503,6 @@
             <button
               class="centre-tab"
               class:active={centreTab === item.id}
-              class:is-pending={!item.ready}
               data-nav
               onclick={() => setCentreTab(item.id)}
             >
@@ -1786,10 +1792,138 @@
             {/if}
           </div>
         {:else}
-          <div class="centre-empty">
-            <Icon name="users" size={64} />
-            <strong>{centreTabs.find((item) => item.id === centreTab)?.label}</strong>
-            <span>Таб заполнится в следующем срезе центра составов.</span>
+          <div class="centre-finance">
+            <div class="finance-summary">
+              <div class="finance-stat">
+                <span>Баланс клуба</span>
+                <strong>{formatValue(finance.balance)}</strong>
+              </div>
+              <div class="finance-stat">
+                <span>Стоимость состава</span>
+                <strong>{formatValue(finance.total_market_value)}</strong>
+              </div>
+              <div class="finance-stat">
+                <span>Зарплатная ведомость</span>
+                <strong>{formatValue(finance.weekly_wage_bill)} <i>/ нед.</i></strong>
+              </div>
+            </div>
+
+            <div class="finance-body">
+              <section class="finance-table" aria-label="Финансы игроков">
+                <div class="finance-head" aria-hidden="true">
+                  <span>Поз</span>
+                  <span>Игрок</span>
+                  <span>Возр.</span>
+                  <span>Стоимость</span>
+                  <span>Зарплата</span>
+                  <span>Контракт</span>
+                </div>
+                <div class="finance-list scroll-area">
+                  {#each centrePlayers as player, index (player.id)}
+                    <button
+                      class="finance-row"
+                      data-nav
+                      data-current={player.id === centrePlayerId ? '' : undefined}
+                      data-autofocus={index === 0 ? '' : undefined}
+                      onfocus={() => (centrePlayerId = player.id)}
+                      onclick={() => (centrePlayerId = player.id)}
+                    >
+                      <span class="pos-badge {posTone(player.role)}">{shortRole(player.role)}</span>
+                      <span class="finance-name-cell">
+                        <span class="finance-row-photo">
+                          <img src={player.photo} alt="" onerror={hideBrokenImage} />
+                          {#if player.injury || player.suspension}
+                            <span
+                              class="player-status-flag"
+                              class:is-injury={Boolean(player.injury)}
+                              title={statusLabel(player)}
+                            >
+                              {player.injury ? '+' : '!'}
+                            </span>
+                          {/if}
+                        </span>
+                        <span class="finance-name">{playerInitialName(player)}</span>
+                      </span>
+                      <span class="finance-cell">{player.age ?? '—'}</span>
+                      <span class="finance-cell is-value">{formatValue(player.market_value)}</span>
+                      <span class="finance-cell">{formatValue(player.contract?.weekly_wage ?? 0)}</span>
+                      <span class="finance-cell">
+                        {player.contract?.years ?? 1}
+                        {plural(player.contract?.years ?? 1, 'год', 'года', 'лет')}
+                      </span>
+                    </button>
+                  {/each}
+                </div>
+              </section>
+
+              {#if centrePlayer}
+                <aside class="centre-panel finance-panel scroll-area" aria-label="Финансы игрока">
+                  {@render centreProfile('Финансы игрока')}
+
+                  <div class="finance-player-meta">
+                    <span class="pos-badge {posTone(centrePlayer.role)}">
+                      {shortRole(centrePlayer.role)}
+                    </span>
+                    <span>Возраст {centrePlayer.age ?? '—'}</span>
+                    <span>{centrePlayer.squad_role_short}</span>
+                    <span>
+                      Настрой
+                      {centrePlayer.expected_minutes > 0
+                        ? `${moraleFace(centrePlayer.morale)} ${centrePlayer.morale}%`
+                        : '—'}
+                    </span>
+                  </div>
+
+                  <section class="centre-block">
+                    <div class="centre-block-head">Финансы</div>
+                    {@render centreRow('Стоимость', formatValue(centrePlayer.market_value))}
+                    {@render centreRow(
+                      'Зарплата',
+                      `${formatValue(centrePlayer.contract?.weekly_wage ?? 0)} / нед.`,
+                    )}
+                    {@render centreRow(
+                      'Отступные',
+                      formatValue(centrePlayer.contract?.release_clause ?? 0),
+                    )}
+                  </section>
+
+                  <section class="centre-block">
+                    <div class="centre-block-head">Контракт</div>
+                    {@render centreRow(
+                      'Срок',
+                      `${centrePlayer.contract?.years ?? 1} ${plural(
+                        centrePlayer.contract?.years ?? 1,
+                        'год',
+                        'года',
+                        'лет',
+                      )}`,
+                    )}
+                    {@render centreRow('Амплуа', centrePlayer.squad_role_label ?? '—')}
+                  </section>
+
+                  <section class="centre-block">
+                    <div class="centre-block-head">Статус</div>
+                    {#if centrePlayer.injury}
+                      {@render centreRow('Травма', centrePlayer.injury.type)}
+                      {@render centreRow('Возвращение', formatDate(centrePlayer.injury.until))}
+                    {:else if centrePlayer.suspension}
+                      {@render centreRow(
+                        'Дисквалификация',
+                        `${centrePlayer.suspension.matches} ${plural(
+                          centrePlayer.suspension.matches,
+                          'матч',
+                          'матча',
+                          'матчей',
+                        )}`,
+                      )}
+                    {:else}
+                      {@render centreRow('Доступность', 'Готов к игре')}
+                    {/if}
+                    {@render centreRow('Кондиция', `${centrePlayer.fatigue}%`)}
+                  </section>
+                </aside>
+              {/if}
+            </div>
           </div>
         {/if}
       </div>

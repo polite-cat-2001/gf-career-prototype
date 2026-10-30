@@ -320,6 +320,11 @@ def test_advance_moves_day_by_day_and_stops_at_match_day(client: TestClient):
 
 def test_next_season_resets_results_and_moves_calendar(client: TestClient, saves_dir: Path):
     created = create_career(client)
+    before = {
+        player["id"]: (player["age"], player["market_value"])
+        for group in created["squad"]["groups"]
+        for player in group["players"]
+    }
     path = saves_dir / f"{created['id']}.json"
     raw = json.loads(path.read_text(encoding="utf-8"))
     raw["results"] = {fixture["id"]: {"home": 1, "away": 0} for fixture in raw["schedule"]}
@@ -343,6 +348,14 @@ def test_next_season_resets_results_and_moves_calendar(client: TestClient, saves
     assert started["season"]["complete"] is False
     assert started["season"]["next"]["date"] == "2027-07-08"
     assert all(row["played"] == 0 and row["points"] == 0 for row in started["season"]["standings"])
+
+    after = {
+        player["id"]: (player["age"], player["market_value"])
+        for group in started["squad"]["groups"]
+        for player in group["players"]
+    }
+    assert all(after[player_id][0] == age + 1 for player_id, (age, _) in before.items())
+    assert any(after[player_id][1] != value for player_id, (_, value) in before.items())
 
     saved = json.loads(path.read_text(encoding="utf-8"))
     assert saved.get("results", {}) == {}

@@ -36,7 +36,7 @@ from server.career.condition import (
     recover_condition,
 )
 from server.career.snapshot import lineup_for, lineup_strength
-from server.career.squad import ensure_player_contracts
+from server.career.squad import ensure_player_contracts, ensure_player_finances
 
 RASTER_DIR = REPO_ROOT / "data" / "raster"
 WEB_DIST = REPO_ROOT / "web" / "dist"
@@ -205,6 +205,12 @@ class SquadSummary(BaseModel):
     total_market_value: int
 
 
+class SquadFinance(BaseModel):
+    balance: int
+    total_market_value: int
+    weekly_wage_bill: int
+
+
 class SquadGroup(BaseModel):
     role: str
     players: list[PlayerSummary]
@@ -227,6 +233,7 @@ class Lineup(BaseModel):
 
 class SquadBlock(BaseModel):
     summary: SquadSummary
+    finance: SquadFinance
     groups: list[SquadGroup]
     lineup: Lineup
 
@@ -748,6 +755,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         career.league_club_ids = [str(item["id"]) for item in league_clubs]
         ensure_schedule(career, league_clubs)
         ensure_player_contracts(career, squad)
+        ensure_player_finances(career, squad)
         saves.save(career)
         return snapshot(career)
 
@@ -878,6 +886,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 raise HTTPException(status_code=409, detail="career club is missing from canon.db")
             context = division_context(career, club)
             strength_for = strength_resolver()
+            players = canon.players_by_ids(career.player_ids)
             transition = season_transition(
                 career,
                 context["league"],
@@ -894,7 +903,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             )
             try:
                 if transition is None:
-                    next_season(career, context["clubs"])
+                    next_season(career, context["clubs"], players=players)
                 else:
                     next_season(
                         career,
@@ -902,6 +911,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                         league_id=transition["league_id"],
                         next_league_clubs=transition["league_club_ids"],
                         transition=transition["review"],
+                        players=players,
                     )
             except SeasonError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
