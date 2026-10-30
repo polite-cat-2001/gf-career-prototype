@@ -36,6 +36,7 @@ from server.career.condition import (
     recover_condition,
 )
 from server.career.snapshot import lineup_for, lineup_strength
+from server.career.squad import ensure_player_contracts
 
 RASTER_DIR = REPO_ROOT / "data" / "raster"
 WEB_DIST = REPO_ROOT / "web" / "dist"
@@ -120,6 +121,12 @@ class PlayerSeasonStats(BaseModel):
     red: int = 0
 
 
+class PlayerContract(BaseModel):
+    years: int
+    weekly_wage: int
+    release_clause: int
+
+
 class PlayerSummary(BaseModel):
     id: str
     name: str
@@ -150,6 +157,14 @@ class PlayerSummary(BaseModel):
     season_stats: PlayerSeasonStats | None = None
     available: bool = True
     stats: dict[str, float] | None = None
+    squad_role: str | None = None
+    squad_role_label: str | None = None
+    squad_role_short: str | None = None
+    expected_share: float | None = None
+    actual_minutes: int = 0
+    expected_minutes: int = 0
+    morale: int = 100
+    contract: PlayerContract | None = None
 
 
 class PlayerDetail(PlayerSummary):
@@ -581,6 +596,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         players = canon.players_by_ids(career.player_ids, with_stats=True)
         if not players:
             raise HTTPException(status_code=409, detail="career squad is missing from canon.db")
+        ensure_player_contracts(career, players)
         prepare_own_lineup(career, players)
         fixture, setup = match_setup(career, context)
         play_next_match(career, context["clubs"], strength_resolver(career, players))
@@ -718,6 +734,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         career.league_id = str(club["league_id"])
         career.league_club_ids = [str(item["id"]) for item in league_clubs]
         ensure_schedule(career, league_clubs)
+        ensure_player_contracts(career, squad)
         saves.save(career)
         return snapshot(career)
 

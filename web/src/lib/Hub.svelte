@@ -17,6 +17,7 @@
     formatTimestamp,
     formatValue,
     hideBrokenImage,
+    moraleFace,
     ovrClass,
     playerInitialName,
     plural,
@@ -73,6 +74,13 @@
     { id: 'season', label: 'Сезон' },
   ]
 
+  const centreTabs = [
+    { id: 'status', label: 'Статус', ready: true },
+    { id: 'stats', label: 'Статистика' },
+    { id: 'attributes', label: 'Характеристики' },
+    { id: 'finance', label: 'Финансы' },
+  ]
+
   const INFO_LABELS = [
     { key: 'position', label: 'Амплуа' },
     { key: 'age', label: 'Возраст' },
@@ -90,7 +98,7 @@
   const squadTiles = [
     { id: 'club', label: 'Состав клуба', note: 'Текущий состав на матч', selected: true },
     { id: 'national', label: 'Сборная', note: 'Сейчас вы не являетесь тренером сборной', icon: 'globe', disabled: true },
-    { id: 'centre', label: 'Центр составов', note: 'Статус, статистика и финансы — #4', icon: 'users', disabled: true },
+    { id: 'centre', label: 'Центр составов', note: 'Статус, статистика и финансы', icon: 'users' },
     { id: 'national-squad', label: 'Выбор состава сборной', note: 'Доступно только для сборных', icon: 'globe', disabled: true },
     { id: 'main-squads', label: 'Основные составы', note: 'Несколько составов — #4', icon: 'layers', disabled: true },
     { id: 'change', label: 'Изменить игрока', note: 'Заблокировано', icon: 'lock', disabled: true },
@@ -99,6 +107,8 @@
   let tab = $state('centre')
   let view = $state('overview')
   let detailsPage = $state(0)
+  let centreTab = $state('status')
+  let centrePlayerId = $state(null)
   let focusPlayerId = $state(null)
   let anchorId = $state(null)
   let swapping = $state(false)
@@ -173,6 +183,12 @@
     ...lineup.bench,
     ...(lineup.reserve ?? []),
   ])
+  let centrePlayers = $derived(
+    career.squad.groups.flatMap((group) => group.players),
+  )
+  let centrePlayer = $derived(
+    centrePlayers.find((player) => player.id === centrePlayerId) ?? centrePlayers[0] ?? null,
+  )
   let focusedPlayer = $derived(
     squadPlayers.find((player) => player.id === focusPlayerId) ?? lineup.slots[0]?.player ?? null,
   )
@@ -282,6 +298,14 @@
     }
     if (simulating || advancing) {
       return [{ gamepad: ['A'], keyboard: ['Enter'], label: centreAction }]
+    }
+    if (tab === 'squad' && view === 'centre') {
+      return [
+        { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Игрок' },
+        { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Вкладки' },
+        { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+        start,
+      ]
     }
     if (tab === 'squad' && view === 'details') {
       return [
@@ -712,6 +736,10 @@
       return
     }
     if (tab === 'squad') {
+      if (view === 'centre') {
+        backToOverview()
+        return
+      }
       if (view === 'details') {
         closeDetails()
         return
@@ -757,12 +785,14 @@
       if (matchSimPhase === 'live') finishMatchSimulation()
       return
     }
+    if (tab === 'squad' && view === 'centre') return
     toggleDetails()
   }
 
   function toggleDetails() {
     if (matchdayOpen || seasonReview) return
     if (tab !== 'squad' || !focusedPlayer) return
+    if (view === 'centre') return
     if (view === 'details') {
       closeDetails()
       return
@@ -795,12 +825,18 @@
     anchorId = null
     benchFocused = false
     focusPlayerId = null
+    centrePlayerId = null
+    centreTab = 'status'
     await tick()
     focusFirst()
   }
 
   function switchTab(direction) {
     if (simulating || advancing || seasonReview || matchSimOpen || matchdayOpen) return
+    if (tab === 'squad' && view === 'centre') {
+      switchCentreTab(direction)
+      return
+    }
     if (tab === 'squad' && view === 'details') {
       switchDetailsPage(direction)
       return
@@ -814,6 +850,36 @@
   function switchDetailsPage(direction) {
     const offset = direction === 'right' ? 1 : -1
     detailsPage = (detailsPage + offset + detailPages.length) % detailPages.length
+  }
+
+  async function openSquadCentre() {
+    tab = 'squad'
+    view = 'centre'
+    centreTab = 'status'
+    anchorId = null
+    benchFocused = false
+    focusPlayerId = null
+    centrePlayerId = centrePlayers[0]?.id ?? null
+    await tick()
+    focusFirst()
+  }
+
+  async function setCentreTab(next) {
+    if (next === centreTab) return
+    centreTab = next
+    await tick()
+    if (next === 'status') {
+      focusFirst()
+      return
+    }
+    document.querySelector('.centre-tab.active')?.focus({ preventScroll: true })
+  }
+
+  function switchCentreTab(direction) {
+    const index = centreTabs.findIndex((item) => item.id === centreTab)
+    const offset = direction === 'right' ? 1 : -1
+    const next = centreTabs[(index + offset + centreTabs.length) % centreTabs.length]
+    setCentreTab(next.id)
   }
 
   async function openPlan(playerId = null) {
@@ -902,7 +968,11 @@
       </div>
     </div>
 
-    <Tabs {tabs} active={tab} onselect={setTab} />
+    {#if tab === 'squad' && view === 'centre'}
+      <div></div>
+    {:else}
+      <Tabs {tabs} active={tab} onselect={setTab} />
+    {/if}
 
     <div class="hub-club-strip">
       <img class="strip-crest" src={career.club.logo} alt="" onerror={hideBrokenImage} />
@@ -941,6 +1011,13 @@
         {#if comparing && teamDelta < -0.05}
           <span class="team-delta down" aria-label="Сила состава упадёт">▼</span>
         {/if}
+      </div>
+    {/snippet}
+
+    {#snippet centreRow(label, value)}
+      <div class="centre-info-row">
+        <span>{label}</span>
+        <strong>{value}</strong>
       </div>
     {/snippet}
 
@@ -1263,6 +1340,12 @@
                 </span>
                 <span class="squad-tile-note">{career.club.name}</span>
               </div>
+            {:else if tile.id === 'centre'}
+              <button class="squad-tile" data-nav onclick={openSquadCentre}>
+                <span class="squad-tile-label">{tile.label}</span>
+                <span class="squad-tile-icon"><Icon name={tile.icon} size={44} /></span>
+                <span class="squad-tile-note">{tile.note}</span>
+              </button>
             {:else}
               <div class="squad-tile is-disabled" aria-disabled="true">
                 <span class="squad-tile-label">{tile.label}</span>
@@ -1272,6 +1355,201 @@
             {/if}
           {/each}
         </div>
+      </div>
+    {:else if tab === 'squad' && view === 'centre'}
+      <div class="centre">
+        <nav class="centre-tabs" aria-label="Центр составов">
+          {#each centreTabs as item (item.id)}
+            <button
+              class="centre-tab"
+              class:active={centreTab === item.id}
+              class:is-pending={!item.ready}
+              data-nav
+              onclick={() => setCentreTab(item.id)}
+            >
+              {item.label}
+            </button>
+          {/each}
+        </nav>
+
+        {#if centreTab === 'status'}
+          <div class="centre-body">
+            <section class="centre-list scroll-area" aria-label="Игроки состава">
+              {#each centrePlayers as player, index (player.id)}
+                <button
+                  class="centre-player-row"
+                  data-nav
+                  data-autofocus={index === 0 ? '' : undefined}
+                  onfocus={() => (centrePlayerId = player.id)}
+                  onclick={() => (centrePlayerId = player.id)}
+                >
+                  <span class="centre-row-photo">
+                    <img src={player.photo} alt="" onerror={hideBrokenImage} />
+                    {#if player.injury || player.suspension}
+                      <span
+                        class="player-status-flag"
+                        class:is-injury={Boolean(player.injury)}
+                        title={statusLabel(player)}
+                      >
+                        {player.injury ? '+' : '!'}
+                      </span>
+                    {/if}
+                  </span>
+                  <span class="centre-row-main">
+                    <span class="centre-row-name">{playerInitialName(player)}</span>
+                    <span class="centre-row-meta">
+                      <span class="pos-badge {posTone(player.role)}">{shortRole(player.role)}</span>
+                      <span>{player.squad_role_short}</span>
+                    </span>
+                  </span>
+                  <strong class="centre-row-ovr {ovrClass(player.overall)}">
+                    {Math.round(player.overall)}
+                  </strong>
+                  <span
+                    class="centre-row-face"
+                    title={player.expected_minutes > 0
+                      ? `Настрой ${player.morale}%`
+                      : 'Нет данных о настрое'}
+                  >
+                    {player.expected_minutes > 0 ? moraleFace(player.morale) : '—'}
+                  </span>
+                </button>
+              {/each}
+            </section>
+
+            {#if centrePlayer}
+              <aside class="centre-panel scroll-area" aria-label="Карточка игрока">
+                <div class="centre-profile">
+                  <span class="centre-photo">
+                    <img src={centrePlayer.photo} alt="" onerror={hideBrokenImage} />
+                    {#if centrePlayer.injury || centrePlayer.suspension}
+                      <span
+                        class="player-status-flag"
+                        class:is-injury={Boolean(centrePlayer.injury)}
+                        title={statusLabel(centrePlayer)}
+                      >
+                        {centrePlayer.injury ? '+' : '!'}
+                      </span>
+                    {/if}
+                  </span>
+                  <div class="centre-profile-info">
+                    <span class="eyebrow">Статус игрока</span>
+                    <strong class="centre-name">{playerInitialName(centrePlayer)}</strong>
+                    <span class="centre-sub">
+                      {positionLabel(centrePlayer.position)} · {shortRole(centrePlayer.role)} ·
+                      {Math.round(centrePlayer.overall)} OVR
+                    </span>
+                  </div>
+                </div>
+
+                <div class="centre-morale-block">
+                  <div class="centre-morale-head">
+                    <span>Настрой</span>
+                    <span class="centre-morale-value">
+                      <span class="centre-morale-face">
+                        {centrePlayer.expected_minutes > 0
+                          ? moraleFace(centrePlayer.morale)
+                          : '—'}
+                      </span>
+                      <strong
+                        class:is-none={centrePlayer.expected_minutes <= 0}
+                        class:is-good={centrePlayer.expected_minutes > 0 &&
+                          centrePlayer.morale >= 70}
+                        class:is-ok={centrePlayer.expected_minutes > 0 &&
+                          centrePlayer.morale >= 40 &&
+                          centrePlayer.morale < 70}
+                        class:is-low={centrePlayer.expected_minutes > 0 &&
+                          centrePlayer.morale < 40}
+                      >
+                        {centrePlayer.expected_minutes > 0 ? `${centrePlayer.morale}%` : ''}
+                      </strong>
+                    </span>
+                  </div>
+                  <div class="centre-morale-meta">
+                    {#if centrePlayer.expected_minutes > 0}
+                      <span>
+                        Факт {centrePlayer.actual_minutes} · План {centrePlayer.expected_minutes} мин
+                      </span>
+                    {:else}
+                      <span>Ожидаемые минуты появятся после матчей</span>
+                    {/if}
+                    <span>
+                      Ожидается {Math.round((centrePlayer.expected_share ?? 0) * 100)}% времени
+                    </span>
+                  </div>
+                </div>
+
+                <section class="centre-block">
+                  <div class="centre-block-head">Личные данные</div>
+                  {@render centreRow('Возраст', centrePlayer.age ?? '—')}
+                  {@render centreRow(
+                    'Гражданство',
+                    centrePlayer.citizenship.join(', ') || '—',
+                  )}
+                  {@render centreRow(
+                    'Рост',
+                    centrePlayer.height ? `${centrePlayer.height} см` : '—',
+                  )}
+                  {@render centreRow(
+                    'Вес',
+                    centrePlayer.weight ? `${centrePlayer.weight} кг` : '—',
+                  )}
+                  {@render centreRow('Рабочая нога', centrePlayer.foot || '—')}
+                  {@render centreRow('Номер', centrePlayer.shirt_number ?? '—')}
+                </section>
+
+                <section class="centre-block">
+                  <div class="centre-block-head">Контракт</div>
+                  {@render centreRow('Амплуа', centrePlayer.squad_role_label ?? '—')}
+                  {@render centreRow(
+                    'Срок',
+                    `${centrePlayer.contract?.years ?? 1} ${plural(
+                      centrePlayer.contract?.years ?? 1,
+                      'год',
+                      'года',
+                      'лет',
+                    )}`,
+                  )}
+                  {@render centreRow(
+                    'Зарплата',
+                    `${formatValue(centrePlayer.contract?.weekly_wage ?? 0)} / нед.`,
+                  )}
+                  {@render centreRow(
+                    'Отступные',
+                    formatValue(centrePlayer.contract?.release_clause ?? 0),
+                  )}
+                </section>
+
+                <section class="centre-block">
+                  <div class="centre-block-head">Доступность</div>
+                  {#if centrePlayer.injury}
+                    {@render centreRow('Травма', centrePlayer.injury.type)}
+                    {@render centreRow('Возвращение', formatDate(centrePlayer.injury.until))}
+                  {:else if centrePlayer.suspension}
+                    {@render centreRow(
+                      'Дисквалификация',
+                      `${centrePlayer.suspension.matches} ${plural(
+                        centrePlayer.suspension.matches,
+                        'матч',
+                        'матча',
+                        'матчей',
+                      )}`,
+                    )}
+                  {:else}
+                    {@render centreRow('Состояние', 'Готов к игре')}
+                  {/if}
+                  {@render centreRow('Кондиция', `${centrePlayer.fatigue}%`)}
+                </section>
+              </aside>
+            {/if}
+          </div>
+        {:else}
+          <div class="centre-empty">
+            <Icon name="users" size={64} />
+            <strong>{centreTabs.find((item) => item.id === centreTab)?.label}</strong>
+            <span>Таб заполнится в следующем срезе центра составов.</span>
+          </div>
+        {/if}
       </div>
     {:else if tab === 'squad' && (view === 'plan' || view === 'details') && focusedPlayer}
       <div class="plan">

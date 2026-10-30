@@ -11,6 +11,7 @@ from server.career.condition import (
 )
 from server.career.core import Career
 from server.career.season import season_state
+from server.career.squad import contract_view, ensure_player_contracts
 
 ROLE_ORDER = {
     "GK": 0,
@@ -181,11 +182,13 @@ def build_snapshot(
     strength_for: Callable[[str], float] | None = None,
 ) -> dict:
     ensure_player_states(career, [str(player["id"]) for player in players])
+    ensure_player_contracts(career, players)
     recover_condition(career, career.date)
     squad = _sort_players(players)
     for player in squad:
         state = career.player_state[str(player["id"])]
         player.update(player_view(player, state))
+        player.update(contract_view(career, player, state))
         player["effective_overall"] = effective_overall(player, state)
     blocked = blocked_player_ids(career)
     clubs = league_clubs or []

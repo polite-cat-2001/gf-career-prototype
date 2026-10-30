@@ -4,6 +4,7 @@ import random
 from datetime import date, timedelta
 
 from server.career.core import Career
+from server.career.squad import role_share
 
 FATIGUE_PER_MATCH = 35
 FATIGUE_PER_SUB = 15
@@ -33,6 +34,8 @@ def default_player_state() -> dict:
         "injury": None,
         "suspension": None,
         "stats": empty_stats(),
+        "available_matches": 0,
+        "expected_minutes": 0,
     }
 
 
@@ -42,6 +45,8 @@ def ensure_player_states(career: Career, player_ids: list[str]) -> None:
         state.setdefault("fatigue", 100)
         state.setdefault("injury", None)
         state.setdefault("suspension", None)
+        state.setdefault("available_matches", 0)
+        state.setdefault("expected_minutes", 0)
         stats = state.setdefault("stats", empty_stats())
         for key in STAT_KEYS:
             stats.setdefault(key, 0)
@@ -141,6 +146,17 @@ def apply_match_outcome(career: Career, fixture: dict, setup: dict, match: dict)
         if int((state.get("suspension") or {}).get("matches") or 0) > 0
     }
 
+    for player_id in (str(player_id) for player_id in career.player_ids):
+        state = career.player_state.get(player_id)
+        if state is None or state.get("injury"):
+            continue
+        if int((state.get("suspension") or {}).get("matches") or 0) > 0:
+            continue
+        state["available_matches"] = int(state.get("available_matches") or 0) + 1
+        state["expected_minutes"] = int(state.get("expected_minutes") or 0) + round(
+            90 * role_share(career, player_id)
+        )
+
     minutes = {player["id"]: 90 for player in starters}
     stats = {player["id"]: _player_state(career, player["id"])["stats"] for player in starters}
     for player in bench:
@@ -214,4 +230,6 @@ def reset_season_state(career: Career) -> None:
         state["injury"] = None
         state["suspension"] = None
         state["stats"] = empty_stats()
+        state["available_matches"] = 0
+        state["expected_minutes"] = 0
     career.condition_date = career.season_start

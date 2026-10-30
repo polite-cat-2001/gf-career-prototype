@@ -190,6 +190,13 @@ export function radarValues(stats) {
   })
 }
 
+export function moraleFace(value) {
+  const morale = Number(value) || 0
+  if (morale >= 70) return '🙂'
+  if (morale >= 40) return '😐'
+  return '🙁'
+}
+
 export function statTone(value) {
   if (value >= 85) return 'elite'
   if (value >= 75) return 'good'

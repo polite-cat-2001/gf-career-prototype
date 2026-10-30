@@ -58,6 +58,7 @@ class Career:
     schedule_version: int = 0
     results: dict[str, dict] = field(default_factory=dict)
     player_state: dict[str, dict] = field(default_factory=dict)
+    player_contracts: dict[str, dict] = field(default_factory=dict)
     condition_date: str | None = None
     journal: list[dict] = field(default_factory=list)
     version: int = SAVE_VERSION
@@ -99,6 +100,11 @@ class Career:
                     "stats": dict(state.get("stats") or {}),
                 }
                 for player_id, state in self.player_state.items()
+            }
+        if self.player_contracts:
+            payload["player_contracts"] = {
+                player_id: dict(contract)
+                for player_id, contract in self.player_contracts.items()
             }
         if self.condition_date is not None:
             payload["condition_date"] = self.condition_date
@@ -150,6 +156,11 @@ class Career:
                 str(player_id): dict(state)
                 for player_id, state in (raw.get("player_state") or {}).items()
                 if isinstance(state, dict)
+            },
+            player_contracts={
+                str(player_id): dict(contract)
+                for player_id, contract in (raw.get("player_contracts") or {}).items()
+                if isinstance(contract, dict)
             },
             condition_date=raw.get("condition_date"),
             journal=list(raw.get("journal", [])),
