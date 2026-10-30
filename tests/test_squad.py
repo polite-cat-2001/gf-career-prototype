@@ -188,6 +188,111 @@ def test_api_snapshot_exposes_roles_morale_and_contracts(client: TestClient):
     assert ranked[-1]["squad_role"] == "prospect"
 
 
+def test_match_outcome_tracks_stats_by_competition_and_clean_sheets():
+    career, fixture, setup = make_career()
+    career.league_id = "eng-1"
+    ensure_player_states(career, career.player_ids)
+    scorer = setup["home_lineup"]["slots"][9]["player"]
+    assister = setup["home_lineup"]["slots"][7]["player"]
+    keeper = setup["home_lineup"]["slots"][0]["player"]
+    match = {
+        "events": [
+            {
+                "minute": 12,
+                "type": "goal",
+                "team": "home",
+                "player": scorer,
+                "assist": assister,
+            }
+        ],
+        "score": {"home": 1, "away": 0},
+    }
+
+    apply_match_outcome(career, fixture, setup, match, competition_id="eng-1")
+
+    scorer_state = career.player_state[scorer["id"]]
+    keeper_state = career.player_state[keeper["id"]]
+    assister_block = career.player_state[assister["id"]]["stats_by_competition"]["eng-1"]
+    assert scorer_state["stats"]["goals"] == 1
+    assert scorer_state["stats_by_competition"]["eng-1"]["goals"] == 1
+    assert scorer_state["stats_by_competition"]["eng-1"]["apps"] == 1
+    assert assister_block["assists"] == 1
+    assert keeper_state["stats"]["clean_sheets"] == 1
+    assert keeper_state["stats_by_competition"]["eng-1"]["clean_sheets"] == 1
+
+
+def test_goalkeeper_gets_no_clean_sheet_when_conceding():
+    career, fixture, setup = make_career()
+    career.league_id = "eng-1"
+    ensure_player_states(career, career.player_ids)
+    keeper = setup["home_lineup"]["slots"][0]["player"]
+
+    apply_match_outcome(
+        career,
+        fixture,
+        setup,
+        {"events": [], "score": {"home": 2, "away": 1}},
+        competition_id="eng-1",
+    )
+
+    assert career.player_state[keeper["id"]]["stats"]["clean_sheets"] == 0
+    assert (
+        career.player_state[keeper["id"]]["stats_by_competition"]["eng-1"]["clean_sheets"]
+        == 0
+    )
+
+
+def test_old_state_derives_competition_stats_from_the_aggregate():
+    career, _, _ = make_career()
+    career.league_id = "eng-1"
+    ensure_player_states(career, career.player_ids)
+    player_id = career.player_ids[0]
+    state = career.player_state[player_id]
+    state["stats"]["apps"] = 4
+    state["stats"]["minutes"] = 360
+    state.pop("stats_by_competition", None)
+
+    ensure_player_states(career, [player_id])
+
+    block = career.player_state[player_id]["stats_by_competition"]["eng-1"]
+    assert block["apps"] == 4
+    assert block["minutes"] == 360
+    assert block["goals"] == 0
+
+
+def test_reset_season_clears_per_competition_stats():
+    career, fixture, setup = make_career()
+    career.league_id = "eng-1"
+    ensure_player_states(career, career.player_ids)
+    apply_match_outcome(career, fixture, setup, {"events": []}, competition_id="eng-1")
+
+    reset_season_state(career)
+
+    assert all(
+        state["stats_by_competition"] == {} for state in career.player_state.values()
+    )
+
+
+def test_api_snapshot_exposes_competition_stats(client: TestClient):
+    snapshot = create_career(client)
+    league_id = snapshot["club"]["league_id"]
+    players = [
+        player
+        for group in snapshot["squad"]["groups"]
+        for player in group["players"]
+    ]
+
+    assert players
+    for player in players:
+        assert len(player["stats"]) == 22
+        assert len(player["competition_stats"]) == 1
+        block = player["competition_stats"][0]
+        assert block["id"] == league_id
+        assert block["name"] == "Premier League"
+        assert block["apps"] == 0
+        assert block["clean_sheets"] == 0
+
+
 def test_old_save_without_contracts_gets_defaults(client: TestClient, saves_dir: Path):
     created = create_career(client)
     path = saves_dir / f"{created['id']}.json"

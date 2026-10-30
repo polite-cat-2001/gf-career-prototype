@@ -19,7 +19,9 @@ STAT_KEYS = (
     "assists",
     "yellow",
     "red",
+    "clean_sheets",
 )
+DEFAULT_COMPETITION = "league"
 INJURY_TYPES = ("Мышца", "Связки", "Голеностоп", "Колено", "Бедро")
 INJURY_DAYS = (7, 10, 14, 21, 28)
 
@@ -34,12 +36,26 @@ def default_player_state() -> dict:
         "injury": None,
         "suspension": None,
         "stats": empty_stats(),
+        "stats_by_competition": {},
         "available_matches": 0,
         "expected_minutes": 0,
     }
 
 
+def competition_key(career: Career, competition_id: str | None = None) -> str:
+    return str(competition_id or career.league_id or DEFAULT_COMPETITION)
+
+
+def competition_stats(state: dict, competition_id: str) -> dict:
+    blocks = state.setdefault("stats_by_competition", {})
+    block = blocks.setdefault(str(competition_id), {})
+    for key in STAT_KEYS:
+        block.setdefault(key, 0)
+    return block
+
+
 def ensure_player_states(career: Career, player_ids: list[str]) -> None:
+    current = competition_key(career)
     for player_id in player_ids:
         state = career.player_state.setdefault(str(player_id), default_player_state())
         state.setdefault("fatigue", 100)
@@ -50,6 +66,14 @@ def ensure_player_states(career: Career, player_ids: list[str]) -> None:
         stats = state.setdefault("stats", empty_stats())
         for key in STAT_KEYS:
             stats.setdefault(key, 0)
+        blocks = state.setdefault("stats_by_competition", {})
+        if current not in blocks:
+            blocks[current] = {key: int(stats.get(key) or 0) for key in STAT_KEYS}
+        for block in blocks.values():
+            if not isinstance(block, dict):
+                continue
+            for key in STAT_KEYS:
+                block.setdefault(key, 0)
     if career.condition_date is None:
         career.condition_date = career.date
 
@@ -133,8 +157,19 @@ def _player_state(career: Career, player_id: str) -> dict:
     return career.player_state.setdefault(str(player_id), default_player_state())
 
 
-def apply_match_outcome(career: Career, fixture: dict, setup: dict, match: dict) -> None:
+def _bump(stats: dict, key: str, amount: int = 1) -> None:
+    stats[key] = int(stats.get(key) or 0) + amount
+
+
+def apply_match_outcome(
+    career: Career,
+    fixture: dict,
+    setup: dict,
+    match: dict,
+    competition_id: str | None = None,
+) -> None:
     side = "home" if setup.get("home") else "away"
+    competition = competition_key(career, competition_id)
     lineup = setup[f"{side}_lineup"]
     starters = [slot["player"] for slot in lineup["slots"]]
     bench = list(lineup["bench"])
@@ -158,36 +193,42 @@ def apply_match_outcome(career: Career, fixture: dict, setup: dict, match: dict)
         )
 
     minutes = {player["id"]: 90 for player in starters}
-    stats = {player["id"]: _player_state(career, player["id"])["stats"] for player in starters}
-    for player in bench:
+    blocks: dict[str, tuple[dict, dict]] = {}
+    for player in [*starters, *bench]:
         state = _player_state(career, player["id"])
-        stats[player["id"]] = state["stats"]
+        blocks[player["id"]] = (state["stats"], competition_stats(state, competition))
 
     for event in events:
         minute = int(event.get("minute") or 0)
         player = event.get("player") or {}
         player_id = str(player.get("id") or "")
-        if not player_id:
+        if not player_id or player_id not in blocks:
             continue
+        total, by_competition = blocks[player_id]
         if event["type"] == "sub":
             outgoing = event.get("player_out") or {}
             outgoing_id = str(outgoing.get("id") or "")
             if outgoing_id:
                 minutes[outgoing_id] = min(minutes.get(outgoing_id, 90), minute)
             minutes[player_id] = max(0, 90 - minute)
-            stats[player_id]["apps"] += 1
+            _bump(total, "apps")
+            _bump(by_competition, "apps")
         elif event["type"] in {"goal", "penalty"}:
-            stats[player_id]["goals"] += 1
+            _bump(total, "goals")
+            _bump(by_competition, "goals")
             assist = event.get("assist") or {}
             assist_id = str(assist.get("id") or "")
-            if assist_id:
-                stats[assist_id]["assists"] += 1
+            if assist_id in blocks:
+                _bump(blocks[assist_id][0], "assists")
+                _bump(blocks[assist_id][1], "assists")
         elif event["type"] == "yellow":
-            stats[player_id]["yellow"] += 1
-            if stats[player_id]["yellow"] % YELLOW_SUSPENSION_THRESHOLD == 0:
+            _bump(total, "yellow")
+            _bump(by_competition, "yellow")
+            if total["yellow"] % YELLOW_SUSPENSION_THRESHOLD == 0:
                 _add_suspension(_player_state(career, player_id), "yellow")
         elif event["type"] == "red":
-            stats[player_id]["red"] += 1
+            _bump(total, "red")
+            _bump(by_competition, "red")
             minutes[player_id] = min(minutes.get(player_id, 90), minute)
             _add_suspension(_player_state(career, player_id), "red")
         elif event["type"] == "injury":
@@ -199,10 +240,28 @@ def apply_match_outcome(career: Career, fixture: dict, setup: dict, match: dict)
             }
 
     for player in starters:
-        stats[player["id"]]["apps"] += 1
-        stats[player["id"]]["starts"] += 1
+        total, by_competition = blocks[player["id"]]
+        _bump(total, "apps")
+        _bump(total, "starts")
+        _bump(by_competition, "apps")
+        _bump(by_competition, "starts")
     for player_id, played in minutes.items():
-        stats[player_id]["minutes"] += max(0, played)
+        if player_id not in blocks:
+            continue
+        total, by_competition = blocks[player_id]
+        _bump(total, "minutes", max(0, played))
+        _bump(by_competition, "minutes", max(0, played))
+
+    score = match.get("score") or {}
+    goals_against = score.get("away" if side == "home" else "home")
+    keeper_id = next(
+        (slot["player"]["id"] for slot in lineup["slots"] if slot.get("position") == "GK"),
+        None,
+    )
+    if goals_against is not None and keeper_id in blocks and int(goals_against) == 0:
+        total, by_competition = blocks[keeper_id]
+        _bump(total, "clean_sheets")
+        _bump(by_competition, "clean_sheets")
 
     for player in starters:
         state = _player_state(career, player["id"])
@@ -230,6 +289,7 @@ def reset_season_state(career: Career) -> None:
         state["injury"] = None
         state["suspension"] = None
         state["stats"] = empty_stats()
+        state["stats_by_competition"] = {}
         state["available_matches"] = 0
         state["expected_minutes"] = 0
     career.condition_date = career.season_start

@@ -12,6 +12,8 @@ let initialized = false
 let pollTimer = null
 let lastDirection = ''
 let lastMoveAt = 0
+let lastRightStick = ''
+let lastRightStickAt = 0
 let previousButtons = []
 
 function visible(element) {
@@ -118,6 +120,15 @@ function moveToBenchFromPitch(current, direction) {
 function focusGridItem(item) {
   item.focus({ preventScroll: true })
   item.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
+
+function cycleSquadCentrePages(current, direction) {
+  if (direction !== 'left' && direction !== 'right') return false
+  const centre = current.closest('.centre')
+  if (!centre || !centre.querySelector('.centre-pager')) return false
+  if (!current.closest('.centre-list')) return false
+  cycle(direction)
+  return true
 }
 
 function moveGridFocus(current, direction) {
@@ -283,7 +294,14 @@ function onKeyDown(event) {
       ArrowLeft: 'left',
       ArrowRight: 'right',
     }
-    moveFocus(map[event.key])
+    const direction = map[event.key]
+    if (
+      (direction === 'left' || direction === 'right') &&
+      cycleSquadCentrePages(document.activeElement, direction)
+    ) {
+      return
+    }
+    moveFocus(direction)
     return
   }
   if (event.code === 'KeyQ') {
@@ -332,6 +350,7 @@ function pollGamepad() {
   for (const pad of pads) {
     const axisX = pad.axes[0] ?? 0
     const axisY = pad.axes[1] ?? 0
+    const rightX = pad.axes[2] ?? 0
     const pressed = pad.buttons.map((button) => button.pressed)
 
     let direction = ''
@@ -349,6 +368,18 @@ function pollGamepad() {
       }
     } else {
       lastDirection = ''
+    }
+
+    if (Math.abs(rightX) > 0.55) {
+      inputDevice.set('gamepad')
+      const pageDirection = rightX > 0 ? 'right' : 'left'
+      if (pageDirection !== lastRightStick || now - lastRightStickAt > 190) {
+        lastRightStick = pageDirection
+        lastRightStickAt = now
+        cycleSquadCentrePages(document.activeElement, pageDirection)
+      }
+    } else {
+      lastRightStick = ''
     }
 
     const was = previousButtons[pad.index] || []

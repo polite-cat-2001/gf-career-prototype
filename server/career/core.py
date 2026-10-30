@@ -98,6 +98,12 @@ class Career:
                 player_id: {
                     **state,
                     "stats": dict(state.get("stats") or {}),
+                    "stats_by_competition": {
+                        competition_id: dict(block)
+                        for competition_id, block in (
+                            state.get("stats_by_competition") or {}
+                        ).items()
+                    },
                 }
                 for player_id, state in self.player_state.items()
             }

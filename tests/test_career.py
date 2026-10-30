@@ -64,7 +64,7 @@ def test_create_returns_full_snapshot(client: TestClient):
     assert squad["groups"][0]["players"]
     assert sum(len(group["players"]) for group in squad["groups"]) == squad["summary"]["squad_size"]
     assert all(
-        player.get("stats") is None for group in squad["groups"] for player in group["players"]
+        len(player["stats"]) == 22 for group in squad["groups"] for player in group["players"]
     )
 
     lineup = squad["lineup"]
@@ -76,10 +76,13 @@ def test_create_returns_full_snapshot(client: TestClient):
     assert lineup["slots"][0]["player"]["role"] == "GK"
     assert all(slot["player"]["fatigue"] == 100 for slot in lineup["slots"])
     bench_ids = [player["id"] for player in lineup["bench"]]
-    assert not set(bench_ids) & set(starters)
-    assert len(bench_ids) == squad["summary"]["squad_size"] - 11
+    reserve_ids = [player["id"] for player in lineup["reserve"]]
+    assert not set(bench_ids + reserve_ids) & set(starters)
+    assert len(bench_ids) <= 7
+    assert len(bench_ids) + len(reserve_ids) == squad["summary"]["squad_size"] - 11
     assert all(len(slot["player"]["stats"]) == 22 for slot in lineup["slots"])
     assert all(len(player["stats"]) == 22 for player in lineup["bench"])
+    assert all(len(player["stats"]) == 22 for player in lineup["reserve"])
 
 
 def test_create_generates_random_seed_when_omitted(client: TestClient):

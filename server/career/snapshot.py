@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Callable
 
 from server.career.condition import (
+    STAT_KEYS,
     blocked_player_ids,
     effective_overall,
     ensure_player_states,
@@ -163,14 +164,22 @@ def _groups(players: list[dict]) -> list[dict]:
     ordered_roles = [role for role in ROLE_ORDER if role in grouped]
     ordered_roles.extend(role for role in grouped if role not in ROLE_ORDER)
     return [
-        {
-            "role": role,
-            "players": [
-                {key: value for key, value in player.items() if key != "stats"}
-                for player in grouped[role]
-            ],
-        }
+        {"role": role, "players": [dict(player) for player in grouped[role]]}
         for role in ordered_roles
+    ]
+
+
+def _competition_stats(career: Career, player_id: str, names: dict[str, str]) -> list[dict]:
+    state = career.player_state.get(str(player_id)) or {}
+    blocks = state.get("stats_by_competition") or {}
+    return [
+        {
+            "id": str(competition_id),
+            "name": names.get(str(competition_id), str(competition_id)),
+            **{key: int(block.get(key) or 0) for key in STAT_KEYS},
+        }
+        for competition_id, block in blocks.items()
+        if isinstance(block, dict)
     ]
 
 
@@ -185,11 +194,18 @@ def build_snapshot(
     ensure_player_contracts(career, players)
     recover_condition(career, career.date)
     squad = _sort_players(players)
+    competition_names: dict[str, str] = {}
+    league_id = str(club.get("league_id") or career.league_id or "")
+    if league_id:
+        competition_names[league_id] = str(club.get("league_name") or league_id)
     for player in squad:
         state = career.player_state[str(player["id"])]
         player.update(player_view(player, state))
         player.update(contract_view(career, player, state))
         player["effective_overall"] = effective_overall(player, state)
+        player["competition_stats"] = _competition_stats(
+            career, player["id"], competition_names
+        )
     blocked = blocked_player_ids(career)
     clubs = league_clubs or []
     strength = strength_for or (lambda _club_id: 55.0)

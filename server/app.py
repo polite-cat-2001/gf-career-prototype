@@ -119,6 +119,12 @@ class PlayerSeasonStats(BaseModel):
     assists: int = 0
     yellow: int = 0
     red: int = 0
+    clean_sheets: int = 0
+
+
+class PlayerCompetitionStats(PlayerSeasonStats):
+    id: str
+    name: str
 
 
 class PlayerContract(BaseModel):
@@ -155,6 +161,7 @@ class PlayerSummary(BaseModel):
     injury: PlayerInjury | None = None
     suspension: PlayerSuspension | None = None
     season_stats: PlayerSeasonStats | None = None
+    competition_stats: list[PlayerCompetitionStats] | None = None
     available: bool = True
     stats: dict[str, float] | None = None
     squad_role: str | None = None
@@ -604,7 +611,13 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         if score is None:
             raise HTTPException(status_code=409, detail="match produced no result")
         match = build_match_simulation(career, fixture, setup, score)
-        apply_match_outcome(career, fixture, setup, match)
+        apply_match_outcome(
+            career,
+            fixture,
+            setup,
+            match,
+            competition_id=str(context["league"]["id"]),
+        )
         return fixture, setup, match
 
     def snapshot(career):
