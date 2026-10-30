@@ -4405,9 +4405,7 @@ button.squad-tile:hover {
 
 .rating-dark {
   color: #e6ffd0;
-}
-
-.rating-green {
+}.rating-green {
   color: #a8f0c0;
 }
 
@@ -4421,6 +4419,433 @@ button.squad-tile:hover {
 
 .rating-red {
   color: #f0a0a0;
+}
+
+/* Squad centre: player actions */
+
+.centre-row-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.centre-player-row.is-open,
+.finance-row.is-open {
+  border-color: rgba(67, 211, 178, 0.42);
+  background: rgba(67, 211, 178, 0.12);
+}
+
+.squad-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(67, 211, 178, 0.24);
+  background: linear-gradient(160deg, rgba(67, 211, 178, 0.15), rgba(67, 211, 178, 0.05));
+}
+
+.squad-actions-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.squad-actions-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 4px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.squad-actions-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--teal);
+}
+
+.squad-actions-dot.is-transfer {
+  background: #f0c47e;
+}
+
+.squad-actions-dot.is-contract {
+  background: var(--violet);
+}
+
+.squad-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.squad-action-notice {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--lime);
+  color: #0a1714;
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.squad-notice {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--lime);
+  color: #0a1714;
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.centre-row-name-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.centre-row-name-row .centre-row-name {
+  min-width: 0;
+}
+
+
+.squad-action.is-danger {
+  color: var(--danger);
+}
+
+/* Contract renewal, shirt number, release and keypad */
+
+.shelf-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.24);
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.shelf-action.is-primary {
+  border-color: rgba(200, 245, 105, 0.5);
+  background: var(--lime-soft);
+  color: var(--lime);
+}
+
+.shelf-action.is-danger {
+  border-color: rgba(255, 156, 156, 0.42);
+  color: var(--danger);
+}
+
+.shelf-action:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.number-screen,
+.release-screen,
+.amount-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  text-align: center;
+}
+
+.number-stage {
+  display: flex;
+  align-items: center;
+  gap: clamp(24px, 5vw, 64px);
+}
+
+.number-shirt {
+  width: clamp(180px, 30vh, 300px);
+  flex: 0 0 auto;
+}
+
+.number-shirt svg {
+  width: 100%;
+  height: auto;
+}
+
+.number-shirt-shape {
+  fill: rgba(255, 255, 255, 0.08);
+  stroke: var(--line);
+  stroke-width: 2;
+}
+
+.number-shirt text {
+  fill: var(--lime);
+  font-family: var(--font-heading);
+  font-size: 54px;
+  font-weight: 700;
+}
+
+.number-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+}
+
+.number-name {
+  font-family: var(--font-heading);
+  font-size: clamp(32px, 5vh, 46px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.number-note {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.release-title {
+  font-family: var(--font-heading);
+  font-size: clamp(34px, 5.4vh, 58px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.release-note {
+  max-width: 540px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.release-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(520px, 100%);
+}
+
+.amount-value {
+  display: flex;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.amount-group {
+  display: flex;
+  gap: 4px;
+}
+
+.amount-digit {
+  display: grid;
+  place-items: center;
+  width: clamp(30px, 4.4vh, 46px);
+  height: clamp(44px, 6.2vh, 64px);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.24);
+  font-family: var(--font-heading);
+  font-size: clamp(28px, 4.4vh, 42px);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.amount-digit.is-selected {
+  background: var(--lime);
+  color: #0a1714;
+  box-shadow: 0 0 30px rgba(200, 245, 105, 0.3);
+}
+
+.amount-place {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.negotiation {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.78fr) minmax(0, 1.22fr);
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+}
+
+.negotiation-player {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-soft);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.negotiation-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 4px 2px;
+}
+
+.negotiation-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.negotiation-title {
+  font-family: var(--font-heading);
+  font-size: clamp(28px, 4vh, 38px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.negotiation-note {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.negotiation-note.is-warning {
+  color: #f0c47e;
+}
+
+.negotiation-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.neg-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 16px;
+  padding: 11px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.neg-field-label {
+  grid-column: 1;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.neg-field-value {
+  grid-column: 1;
+  font-family: var(--font-heading);
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.neg-field-hint {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--dim);
+  text-align: right;
+}
+
+.negotiation-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.neg-reply {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(240, 196, 126, 0.32);
+  background: rgba(240, 196, 126, 0.08);
+}
+
+.neg-reply.is-refused {
+  border-color: rgba(255, 156, 156, 0.32);
+  background: var(--danger-soft);
+}
+
+.neg-term-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-soft);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.neg-term {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.neg-term span {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.neg-term strong {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Responsive */
@@ -4548,6 +4973,26 @@ button.squad-tile:hover {
 
   .attribute-layout {
     grid-template-columns: 1fr;
+  }
+
+  .squad-actions,
+  .neg-term-grid,
+  .negotiation {
+    grid-template-columns: 1fr;
+  }
+
+  .number-stage {
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .number-shirt {
+    width: 190px;
+  }
+
+  .amount-value {
+    gap: 8px;
+    padding: 10px;
   }
 
   .finance-summary {

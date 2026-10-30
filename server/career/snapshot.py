@@ -16,7 +16,9 @@ from server.career.squad import (
     contract_view,
     ensure_player_contracts,
     ensure_player_finances,
+    ensure_shirt_numbers,
     finance_view,
+    resolve_negotiations,
 )
 
 ROLE_ORDER = {
@@ -198,6 +200,8 @@ def build_snapshot(
     ensure_player_states(career, [str(player["id"]) for player in players])
     ensure_player_finances(career, players)
     ensure_player_contracts(career, players)
+    ensure_shirt_numbers(career, players)
+    resolve_negotiations(career)
     recover_condition(career, career.date)
     squad = _sort_players(players)
     competition_names: dict[str, str] = {}
@@ -208,6 +212,7 @@ def build_snapshot(
         state = career.player_state[str(player["id"])]
         player.update(player_view(player, state))
         player.update(contract_view(career, player, state))
+        player["shirt_number"] = career.shirt_numbers.get(str(player["id"]))
         player["effective_overall"] = effective_overall(player, state)
         player["competition_stats"] = _competition_stats(
             career, player["id"], competition_names

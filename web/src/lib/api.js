@@ -53,4 +53,6 @@ export const api = {
     post(`/api/careers/${encodeURIComponent(careerId)}/actions`, { type: 'advance', date }),
   nextSeason: (careerId) =>
     post(`/api/careers/${encodeURIComponent(careerId)}/actions`, { type: 'next_season' }),
+  careerAction: (careerId, payload) =>
+    post(`/api/careers/${encodeURIComponent(careerId)}/actions`, payload),
 }

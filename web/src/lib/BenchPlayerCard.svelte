@@ -31,13 +31,13 @@
     </span>
     <span class="bench-player-photo">
       <img src={player.photo} alt="" loading="lazy" onerror={hideBrokenImage} />
-      {#if player.injury || player.suspension}
+      {#if player.injury}
         <span
           class="player-status-flag"
           class:is-injury={Boolean(player.injury)}
           title={statusLabel(player)}
         >
-          {player.injury ? '+' : '!'}
+          +
         </span>
       {/if}
     </span>

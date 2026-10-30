@@ -192,6 +192,29 @@
     }
   }
 
+  const actionNotices = {
+    transfer_status: 'Трансферный статус сохранён',
+    shirt_number: 'Игровой номер изменён',
+    release_player: 'Игрок отпущен из клуба',
+    sign_contract: 'Контракт подписан',
+    accept_counter: 'Контракт подписан',
+  }
+
+  async function runSquadAction(payload) {
+    if (!career) return null
+    saveError = ''
+    try {
+      career = await api.careerAction(career.id, payload)
+      const notice = actionNotices[payload.type]
+      if (notice) announce(notice)
+      refreshSaves()
+      return career
+    } catch (caught) {
+      saveError = `Не удалось выполнить действие: ${caught.message}`
+      return null
+    }
+  }
+
   async function exitToMenu() {
     screen = 'start'
     career = null
@@ -232,6 +255,7 @@
     onsimulate={simulateMatch}
     onadvance={advanceCareer}
     onnextseason={startNextSeason}
+    onaction={runSquadAction}
     onexit={exitToMenu}
   />
 {/if}

@@ -15,17 +15,24 @@ from server.career import (
     SaveStore,
     SaveVersionError,
     SeasonError,
+    accept_counter_offer,
+    acknowledge_contract_negotiation,
     advance_to,
     build_lineup,
     build_match_setup,
     build_match_simulation,
     build_snapshot,
+    confirm_contract,
     create_career,
     ensure_schedule,
+    negotiate_contract,
     next_fixture,
     next_season,
     play_next_match,
+    release_player,
     season_transition,
+    set_shirt_number,
+    set_transfer_status,
     squad_strength,
     swap_players,
 )
@@ -36,7 +43,11 @@ from server.career.condition import (
     recover_condition,
 )
 from server.career.snapshot import lineup_for, lineup_strength
-from server.career.squad import ensure_player_contracts, ensure_player_finances
+from server.career.squad import (
+    ensure_player_contracts,
+    ensure_player_finances,
+    resolve_negotiations,
+)
 
 RASTER_DIR = REPO_ROOT / "data" / "raster"
 WEB_DIST = REPO_ROOT / "web" / "dist"
@@ -133,6 +144,24 @@ class PlayerContract(BaseModel):
     release_clause: int
 
 
+class ContractTerms(BaseModel):
+    years: int
+    weekly_wage: int
+    squad_role: str
+    release_clause: int
+
+
+class PlayerNegotiation(BaseModel):
+    status: str
+    counter_offers: int = 0
+    offer: ContractTerms | None = None
+    counter: ContractTerms | None = None
+    due: str | None = None
+    acknowledged: bool = True
+    affordable: bool = True
+    message: str = ""
+
+
 class PlayerSummary(BaseModel):
     id: str
     name: str
@@ -172,6 +201,8 @@ class PlayerSummary(BaseModel):
     expected_minutes: int = 0
     morale: int = 100
     contract: PlayerContract | None = None
+    transfer_status: str | None = None
+    negotiation: PlayerNegotiation | None = None
 
 
 class PlayerDetail(PlayerSummary):
@@ -189,7 +220,14 @@ class CareerActionRequest(BaseModel):
     type: str
     player_a: str | None = None
     player_b: str | None = None
+    player_id: str | None = None
     date: str | None = None
+    status: str | None = None
+    number: int | None = None
+    years: int | None = None
+    weekly_wage: int | None = None
+    squad_role: str | None = None
+    release_clause: int | None = None
 
 
 class ManagerInfo(BaseModel):
@@ -471,13 +509,15 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
 
     def load_career(career_id: str):
         try:
-            return saves.load(career_id)
+            career = saves.load(career_id)
         except SaveNotFound as error:
             raise HTTPException(status_code=404, detail="career save not found") from error
         except SaveVersionError as error:
             raise HTTPException(status_code=409, detail=str(error)) from error
         except SaveFormatError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
+        resolve_negotiations(career)
+        return career
 
     def strength_resolver(career=None, players=None):
         cache: dict[str, float] = {}
@@ -923,6 +963,45 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             try:
                 play_own_match(career, context)
             except SeasonError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+        elif payload.type in {
+            "transfer_status",
+            "shirt_number",
+            "release_player",
+            "negotiate",
+            "accept_counter",
+            "sign_contract",
+            "ack_negotiation",
+        }:
+            if not payload.player_id:
+                raise HTTPException(status_code=422, detail=f"{payload.type} requires player_id")
+            players = canon.players_by_ids(career.player_ids)
+            try:
+                if payload.type == "transfer_status":
+                    set_transfer_status(career, players, payload.player_id, payload.status)
+                elif payload.type == "shirt_number":
+                    set_shirt_number(career, players, payload.player_id, payload.number)
+                elif payload.type == "release_player":
+                    release_player(career, payload.player_id)
+                elif payload.type == "negotiate":
+                    negotiate_contract(
+                        career,
+                        players,
+                        payload.player_id,
+                        {
+                            "years": payload.years,
+                            "weekly_wage": payload.weekly_wage,
+                            "squad_role": payload.squad_role,
+                            "release_clause": payload.release_clause,
+                        },
+                    )
+                elif payload.type == "accept_counter":
+                    accept_counter_offer(career, players, payload.player_id)
+                elif payload.type == "ack_negotiation":
+                    acknowledge_contract_negotiation(career, players, payload.player_id)
+                else:
+                    confirm_contract(career, players, payload.player_id)
+            except ActionError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
         else:
             raise HTTPException(status_code=422, detail=f"unknown action type: {payload.type}")

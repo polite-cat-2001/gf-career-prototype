@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from datetime import date, timedelta
 
 from server.career.core import Career
 
@@ -46,6 +47,13 @@ ROLE_THRESHOLDS = (
     (1.01, "prospect"),
 )
 MIN_MARKET_VALUE = 50_000
+MIN_SQUAD_SIZE = 11
+MAX_SHIRT_NUMBER = 99
+MIN_WEEKLY_WAGE = 1_000
+MAX_WEEKLY_WAGE = 2_000_000
+TRANSFER_STATUSES = ("transfer", "loan", "blocked")
+MAX_COUNTER_OFFERS = 2
+WAGE_COVER_WEEKS = 4
 STARTING_BALANCE_RATIO = 0.25
 STARTING_BALANCE_MIN = 1_000_000
 VALUE_AGE_FACTORS = (
@@ -129,8 +137,10 @@ def _contract_years(career: Career, player: dict, player_id: str) -> int:
 
 def _weekly_wage(career: Career, player: dict, player_id: str) -> int:
     value = max(int(player.get("market_value") or 0), MIN_MARKET_VALUE)
-    age = player.get("age")
-    age = int(age) if isinstance(age, (int, float)) else 25
+    return _wage_from_value(career, player_id, value, _player_age(player))
+
+
+def _wage_from_value(career: Career, player_id: str, value: int, age: int) -> int:
     if age <= 23:
         age_factor = 1.1
     elif age <= 28:
@@ -141,7 +151,7 @@ def _weekly_wage(career: Career, player: dict, player_id: str) -> int:
         age_factor = 0.8
     jitter = _rng(career, player_id, "wage").uniform(0.9, 1.1)
     weekly = value * 0.12 * age_factor * jitter / 52
-    return max(1_000, int(round(weekly / 100) * 100))
+    return max(MIN_WEEKLY_WAGE, int(round(weekly / 100) * 100))
 
 
 def _release_clause(career: Career, player: dict, player_id: str) -> int:
@@ -251,6 +261,271 @@ def ensure_player_contracts(career: Career, players: list[dict]) -> None:
             contract["release_clause"] = _release_clause(career, player, player_id)
 
 
+def ensure_shirt_numbers(career: Career, players: list[dict]) -> None:
+    ordered = sorted(players, key=lambda player: str(player["id"]))
+    assigned: dict[str, int] = {}
+    used: set[int] = set()
+    for player in ordered:
+        player_id = str(player["id"])
+        number = career.shirt_numbers.get(player_id)
+        if (
+            isinstance(number, int)
+            and 1 <= number <= MAX_SHIRT_NUMBER
+            and number not in used
+        ):
+            assigned[player_id] = number
+            used.add(number)
+    for player in ordered:
+        player_id = str(player["id"])
+        if player_id in assigned:
+            continue
+        canon_number = player.get("shirt_number")
+        if not isinstance(canon_number, (int, float)):
+            continue
+        number = int(canon_number)
+        if 1 <= number <= MAX_SHIRT_NUMBER and number not in used:
+            assigned[player_id] = number
+            used.add(number)
+    free = [number for number in range(1, MAX_SHIRT_NUMBER + 1) if number not in used]
+    cursor = 0
+    for player in ordered:
+        player_id = str(player["id"])
+        if player_id in assigned:
+            continue
+        if cursor >= len(free):
+            break
+        assigned[player_id] = free[cursor]
+        cursor += 1
+    career.shirt_numbers = assigned
+
+
+def _clause_bounds(value: int) -> tuple[int, int]:
+    return int(value * 1.2), int(value * 2.0)
+
+
+def negotiation_demand(career: Career, player: dict, player_id: str) -> dict:
+    value = max(
+        int(career.player_values.get(player_id) or player.get("market_value") or 0),
+        MIN_MARKET_VALUE,
+    )
+    age = _player_age(player)
+    contract = career.player_contracts.get(player_id) or {}
+    role_id = str(contract.get("squad_role") or DEFAULT_ROLE)
+    share = expected_share(role_id)
+    premium = 1.0 + (share - 0.45) * 0.6
+    jitter = _rng(career, player_id, "renewal").uniform(0.97, 1.09)
+    base = _wage_from_value(career, player_id, value, age) * premium * jitter
+    wage = max(int(contract.get("weekly_wage") or 0), int(round(base / 100) * 100))
+    if age <= 24:
+        years = 4
+    elif age <= 28:
+        years = 3
+    elif age <= 31:
+        years = 2
+    else:
+        years = 1
+    return {
+        "years": years,
+        "weekly_wage": min(MAX_WEEKLY_WAGE, max(MIN_WEEKLY_WAGE, wage)),
+        "squad_role": role_id,
+        "release_clause": _clause_bounds(value)[0],
+    }
+
+
+def _clean_terms(terms: dict) -> dict:
+    years = int(terms.get("years") or 0)
+    if not 1 <= years <= 5:
+        raise ValueError("contract length must be between 1 and 5 years")
+    wage = int(terms.get("weekly_wage") or 0)
+    if not MIN_WEEKLY_WAGE <= wage <= MAX_WEEKLY_WAGE:
+        raise ValueError("weekly wage is out of range")
+    role_id = str(terms.get("squad_role") or "")
+    if role_id not in ROLE_BY_ID:
+        raise ValueError("unknown squad role")
+    clause = int(terms.get("release_clause") or 0)
+    if clause < 0:
+        raise ValueError("release clause cannot be negative")
+    return {
+        "years": years,
+        "weekly_wage": wage,
+        "squad_role": role_id,
+        "release_clause": clause,
+    }
+
+
+def _term_shortfalls(offer: dict, demand: dict, value: int) -> list[str]:
+    shortfalls = []
+    if int(offer["weekly_wage"]) < int(demand["weekly_wage"]):
+        shortfalls.append("wage")
+    if int(offer["years"]) < int(demand["years"]):
+        shortfalls.append("years")
+    if expected_share(offer["squad_role"]) < expected_share(demand["squad_role"]):
+        shortfalls.append("role")
+    minimum, maximum = _clause_bounds(value)
+    if int(offer["release_clause"]) < minimum:
+        shortfalls.append("clause_low")
+    elif int(offer["release_clause"]) > maximum:
+        shortfalls.append("clause_high")
+    return shortfalls
+
+
+def _counter_terms(offer: dict, demand: dict, value: int, shortfalls: list[str]) -> dict:
+    minimum, maximum = _clause_bounds(value)
+    clause = int(offer["release_clause"])
+    if "clause_high" in shortfalls:
+        clause = maximum
+    else:
+        clause = max(clause, minimum)
+    return {
+        "years": min(5, max(int(offer["years"]), int(demand["years"]))),
+        "weekly_wage": max(int(offer["weekly_wage"]), int(demand["weekly_wage"])),
+        "squad_role": demand["squad_role"] if "role" in shortfalls else offer["squad_role"],
+        "release_clause": clause,
+    }
+
+
+COUNTER_MESSAGES = {
+    "wage": "Игрок просит более высокую зарплату.",
+    "years": "Игрок настаивает на более длительном контракте.",
+    "role": "Игрок не готов потерять своё амплуа.",
+    "clause_low": "Игрок хочет более высокие отступные.",
+    "clause_high": "Отступные слишком высоки — игрок просит их снизить.",
+}
+ACCEPTED_MESSAGE = "Игрок согласен с условиями. Подтвердите подписание."
+REFUSED_MESSAGE = "Игрок отказался от переговоров."
+PENDING_MESSAGE = "Игрок обдумывает предложение."
+THINK_DAYS = (2, 3, 4)
+
+
+def _think_delay(career: Career, player_id: str, rounds: int) -> int:
+    rng = random.Random(f"{career.seed}:thinking:{player_id}:{rounds}")
+    return rng.choice(THINK_DAYS)
+
+
+def start_negotiation(
+    career: Career, player: dict, player_id: str, terms: dict
+) -> dict:
+    offer = _clean_terms(terms)
+    state = career.negotiations.get(player_id)
+    if state and state.get("status") == "accepted":
+        raise ValueError("contract is already agreed, confirm it first")
+    if state and state.get("status") == "pending":
+        raise ValueError("the player is still thinking about the current offer")
+    if not state or state.get("status") == "refused":
+        state = {
+            "demand": negotiation_demand(career, player, player_id),
+            "counter_offers": 0,
+            "rounds": 0,
+            "status": "pending",
+            "offer": None,
+            "counter": None,
+            "due": None,
+            "acknowledged": True,
+            "message": "",
+        }
+        career.negotiations[player_id] = state
+    state["rounds"] = int(state.get("rounds") or 0) + 1
+    delay = _think_delay(career, player_id, state["rounds"])
+    state["due"] = (date.fromisoformat(career.date) + timedelta(days=delay)).isoformat()
+    state["offer"] = offer
+    state["counter"] = None
+    state["status"] = "pending"
+    state["acknowledged"] = True
+    state["message"] = PENDING_MESSAGE
+    return state
+
+
+def _resolve_one(career: Career, player_id: str, state: dict) -> None:
+    value = max(int(career.player_values.get(player_id) or 0), MIN_MARKET_VALUE)
+    offer = _clean_terms(state.get("offer") or {})
+    demand = state.get("demand") or {}
+    shortfalls = _term_shortfalls(offer, demand, value)
+    if not shortfalls:
+        state["status"] = "accepted"
+        state["counter"] = None
+        state["message"] = ACCEPTED_MESSAGE
+    elif int(state.get("counter_offers") or 0) >= MAX_COUNTER_OFFERS:
+        state["status"] = "refused"
+        state["counter"] = None
+        state["message"] = REFUSED_MESSAGE
+    else:
+        state["counter_offers"] = int(state.get("counter_offers") or 0) + 1
+        state["status"] = "counter"
+        state["counter"] = _counter_terms(offer, demand, value, shortfalls)
+        state["message"] = " ".join(
+            COUNTER_MESSAGES[key] for key in shortfalls if key in COUNTER_MESSAGES
+        )
+    state["acknowledged"] = False
+
+
+def resolve_negotiations(career: Career) -> None:
+    for player_id, state in career.negotiations.items():
+        if state.get("status") != "pending":
+            continue
+        due = state.get("due")
+        if not due or career.date < due:
+            continue
+        try:
+            _resolve_one(career, player_id, state)
+        except ValueError:
+            continue
+
+
+def acknowledge_negotiation(career: Career, player_id: str) -> dict:
+    state = career.negotiations.get(player_id)
+    if not state:
+        raise ValueError("there is no negotiation for this player")
+    if state.get("status") == "pending":
+        raise ValueError("the player is still thinking about the current offer")
+    state["acknowledged"] = True
+    return state
+
+
+def accept_counter(career: Career, player_id: str) -> dict:
+    state = career.negotiations.get(player_id)
+    if not state or state.get("status") != "counter" or not state.get("counter"):
+        raise ValueError("there is no counter-offer to accept")
+    terms = _clean_terms(state["counter"])
+    if not contract_affordable(career, player_id, terms["weekly_wage"]):
+        raise ValueError("not enough money to accept these terms")
+    contract = _apply_contract(career, player_id, terms)
+    career.negotiations.pop(player_id, None)
+    return contract
+
+
+def contract_affordable(career: Career, player_id: str, weekly_wage: int) -> bool:
+    if career.balance is None:
+        return True
+    total = sum(
+        int((career.player_contracts.get(other_id) or {}).get("weekly_wage") or 0)
+        for other_id in career.player_ids
+    )
+    current = int((career.player_contracts.get(player_id) or {}).get("weekly_wage") or 0)
+    total = total - current + int(weekly_wage)
+    return total * WAGE_COVER_WEEKS <= int(career.balance)
+
+
+def _apply_contract(career: Career, player_id: str, terms: dict) -> dict:
+    contract = career.player_contracts.setdefault(player_id, {})
+    contract["years"] = int(terms["years"])
+    contract["weekly_wage"] = int(terms["weekly_wage"])
+    contract["squad_role"] = str(terms["squad_role"])
+    contract["release_clause"] = int(terms["release_clause"])
+    return contract
+
+
+def sign_contract(career: Career, player_id: str) -> dict:
+    state = career.negotiations.get(player_id)
+    if not state or state.get("status") != "accepted":
+        raise ValueError("the contract is not agreed yet")
+    terms = _clean_terms(state.get("offer") or {})
+    if not contract_affordable(career, player_id, terms["weekly_wage"]):
+        raise ValueError("not enough money to sign this contract")
+    contract = _apply_contract(career, player_id, terms)
+    career.negotiations.pop(player_id, None)
+    return contract
+
+
 def contract_view(career: Career, player: dict, state: dict | None) -> dict:
     player_id = str(player["id"])
     contract = career.player_contracts.get(player_id) or {}
@@ -259,6 +534,15 @@ def contract_view(career: Career, player: dict, state: dict | None) -> dict:
     stats = (state or {}).get("stats") or {}
     actual = int(stats.get("minutes") or 0)
     expected = int((state or {}).get("expected_minutes") or 0)
+    negotiation = career.negotiations.get(player_id)
+    if negotiation:
+        terms = negotiation.get("counter") or negotiation.get("offer") or {}
+        negotiation = {
+            **negotiation,
+            "affordable": contract_affordable(
+                career, player_id, int(terms.get("weekly_wage") or 0)
+            ),
+        }
     return {
         "squad_role": role["id"],
         "squad_role_label": role["label"],
@@ -267,6 +551,8 @@ def contract_view(career: Career, player: dict, state: dict | None) -> dict:
         "actual_minutes": actual,
         "expected_minutes": expected,
         "morale": morale_percent(actual, expected),
+        "transfer_status": career.player_transfers.get(player_id),
+        "negotiation": negotiation,
         "contract": {
             "years": int(contract.get("years") or 1),
             "weekly_wage": int(contract.get("weekly_wage") or 0),

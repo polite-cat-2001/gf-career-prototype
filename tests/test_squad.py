@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
+from server.career.actions import ActionError, release_player
 from server.career.condition import (
     apply_match_outcome,
     ensure_player_states,
@@ -19,7 +21,9 @@ from server.career.squad import (
     ensure_player_finances,
     finance_view,
     morale_percent,
+    resolve_negotiations,
     rollover_player_values,
+    start_negotiation,
 )
 
 ARSENAL = "11"
@@ -90,6 +94,23 @@ def create_career(client: TestClient) -> dict:
         },
     )
     assert response.status_code == 201, response.text
+    return response.json()
+
+
+def squad_players(snapshot: dict) -> list[dict]:
+    return [player for group in snapshot["squad"]["groups"] for player in group["players"]]
+
+
+def find_player(snapshot: dict, player_id: str) -> dict:
+    for player in squad_players(snapshot):
+        if player["id"] == player_id:
+            return player
+    raise AssertionError(f"player {player_id} is missing from the snapshot")
+
+
+def act(client: TestClient, career_id: str, **payload) -> dict:
+    response = client.post(f"/api/careers/{career_id}/actions", json=payload)
+    assert response.status_code == 200, response.text
     return response.json()
 
 
@@ -426,3 +447,282 @@ def test_api_snapshot_exposes_finance_summary(client: TestClient):
     assert finance["total_market_value"] == snapshot["squad"]["summary"]["total_market_value"]
     assert all(player["age"] is not None for player in players)
     assert all(player["market_value"] > 0 for player in players)
+
+
+def test_transfer_statuses_are_mutually_exclusive_and_saved(client: TestClient):
+    created = create_career(client)
+    player = squad_players(created)[0]
+
+    updated = act(
+        client,
+        created["id"],
+        type="transfer_status",
+        player_id=player["id"],
+        status="transfer",
+    )
+    assert find_player(updated, player["id"])["transfer_status"] == "transfer"
+
+    updated = act(
+        client,
+        created["id"],
+        type="transfer_status",
+        player_id=player["id"],
+        status="loan",
+    )
+    assert find_player(updated, player["id"])["transfer_status"] == "loan"
+
+    reloaded = client.get(f"/api/careers/{created['id']}").json()
+    assert find_player(reloaded, player["id"])["transfer_status"] == "loan"
+
+    updated = act(
+        client,
+        created["id"],
+        type="transfer_status",
+        player_id=player["id"],
+        status="none",
+    )
+    assert find_player(updated, player["id"])["transfer_status"] is None
+
+
+def test_transfer_status_rejects_unknown_values(client: TestClient):
+    created = create_career(client)
+    player = squad_players(created)[0]
+
+    response = client.post(
+        f"/api/careers/{created['id']}/actions",
+        json={
+            "type": "transfer_status",
+            "player_id": player["id"],
+            "status": "sold",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_shirt_numbers_are_unique_and_only_free_numbers_can_be_taken(client: TestClient):
+    created = create_career(client)
+    players = squad_players(created)
+    numbers = [player["shirt_number"] for player in players]
+
+    assert all(number is not None and 1 <= number <= 99 for number in numbers)
+    assert len(set(numbers)) == len(numbers)
+
+    free = next(number for number in range(1, 100) if number not in numbers)
+    target = players[0]
+    updated = act(
+        client,
+        created["id"],
+        type="shirt_number",
+        player_id=target["id"],
+        number=free,
+    )
+    assert find_player(updated, target["id"])["shirt_number"] == free
+
+    response = client.post(
+        f"/api/careers/{created['id']}/actions",
+        json={
+            "type": "shirt_number",
+            "player_id": players[1]["id"],
+            "number": free,
+        },
+    )
+    assert response.status_code == 422
+
+    reloaded = client.get(f"/api/careers/{created['id']}").json()
+    assert find_player(reloaded, target["id"])["shirt_number"] == free
+
+
+def test_releasing_a_player_removes_him_from_every_squad_list(client: TestClient):
+    created = create_career(client)
+    victim = squad_players(created)[-1]
+
+    updated = act(
+        client,
+        created["id"],
+        type="release_player",
+        player_id=victim["id"],
+    )
+
+    ids = {player["id"] for player in squad_players(updated)}
+    lineup = updated["squad"]["lineup"]
+    match_ids = {
+        slot["player"]["id"] for slot in lineup["slots"]
+    } | {player["id"] for player in lineup["bench"]} | {
+        player["id"] for player in lineup["reserve"]
+    }
+    assert victim["id"] not in ids
+    assert victim["id"] not in match_ids
+    assert len(ids) == len(squad_players(created)) - 1
+
+    reloaded = client.get(f"/api/careers/{created['id']}").json()
+    assert victim["id"] not in {player["id"] for player in squad_players(reloaded)}
+
+
+def test_release_keeps_a_full_matchday_squad():
+    career = Career(
+        id="e" * 32,
+        seed=7,
+        manager=Manager(name="Test", nationality_id="1", nationality="Test"),
+        club_id="home",
+        player_ids=[f"p{index}" for index in range(11)],
+    )
+
+    with pytest.raises(ActionError):
+        release_player(career, "p0")
+
+
+def test_contract_renewal_thinks_for_a_few_days_then_counters(client: TestClient):
+    created = create_career(client)
+    player = squad_players(created)[0]
+    lowball = {
+        "type": "negotiate",
+        "player_id": player["id"],
+        "years": 1,
+        "weekly_wage": 1_000,
+        "squad_role": player["squad_role"],
+        "release_clause": 0,
+    }
+
+    updated = act(client, created["id"], **lowball)
+    state = find_player(updated, player["id"])["negotiation"]
+    assert state["status"] == "pending"
+    assert state["due"] > updated["date"]
+    assert state["counter"] is None
+    assert state["acknowledged"] is True
+
+    pending = client.get(f"/api/careers/{created['id']}").json()
+    assert find_player(pending, player["id"])["negotiation"]["status"] == "pending"
+
+    updated = act(client, created["id"], type="advance", date=state["due"])
+    state = find_player(updated, player["id"])["negotiation"]
+    assert state["status"] == "counter"
+    assert state["counter_offers"] == 1
+    assert state["counter"]["weekly_wage"] > lowball["weekly_wage"]
+    assert state["acknowledged"] is False
+
+    updated = act(
+        client,
+        created["id"],
+        type="ack_negotiation",
+        player_id=player["id"],
+    )
+    assert find_player(updated, player["id"])["negotiation"]["acknowledged"] is True
+
+
+def test_contract_renewal_counter_offers_are_limited_to_two():
+    career, _, _ = make_career()
+    players = make_players("h")
+    ensure_player_finances(career, players)
+    player = players[0]
+    lowball = {
+        "years": 1,
+        "weekly_wage": 1_000,
+        "squad_role": career.player_contracts[player["id"]]["squad_role"],
+        "release_clause": 0,
+    }
+
+    state = start_negotiation(career, player, player["id"], lowball)
+    assert state["status"] == "pending"
+
+    for expected in (1, 2):
+        career.date = state["due"]
+        resolve_negotiations(career)
+        assert state["status"] == "counter"
+        assert state["counter_offers"] == expected
+        state = start_negotiation(career, player, player["id"], lowball)
+        assert state["status"] == "pending"
+
+    career.date = state["due"]
+    resolve_negotiations(career)
+    assert state["status"] == "refused"
+    assert state["counter"] is None
+
+
+def test_accepting_counter_signs_the_contract_immediately(client: TestClient):
+    created = create_career(client)
+    player = squad_players(created)[0]
+
+    updated = act(
+        client,
+        created["id"],
+        type="negotiate",
+        player_id=player["id"],
+        years=1,
+        weekly_wage=1_000,
+        squad_role=player["squad_role"],
+        release_clause=0,
+    )
+    state = find_player(updated, player["id"])["negotiation"]
+    assert state["status"] == "pending"
+
+    updated = act(client, created["id"], type="advance", date=state["due"])
+    counter = find_player(updated, player["id"])["negotiation"]["counter"]
+
+    updated = act(
+        client,
+        created["id"],
+        type="accept_counter",
+        player_id=player["id"],
+    )
+    renewed = find_player(updated, player["id"])
+    assert renewed["negotiation"] is None
+    assert renewed["contract"]["years"] == counter["years"]
+    assert renewed["contract"]["weekly_wage"] == counter["weekly_wage"]
+    assert renewed["contract"]["release_clause"] == counter["release_clause"]
+    assert renewed["squad_role"] == counter["squad_role"]
+
+    reloaded = client.get(f"/api/careers/{created['id']}").json()
+    persisted = find_player(reloaded, player["id"])
+    assert persisted["contract"] == renewed["contract"]
+    assert persisted["squad_role"] == renewed["squad_role"]
+
+
+def test_accepting_counter_requires_money(client: TestClient, saves_dir: Path):
+    created = create_career(client)
+    player = squad_players(created)[0]
+
+    updated = act(
+        client,
+        created["id"],
+        type="negotiate",
+        player_id=player["id"],
+        years=1,
+        weekly_wage=1_000,
+        squad_role=player["squad_role"],
+        release_clause=0,
+    )
+    due = find_player(updated, player["id"])["negotiation"]["due"]
+    updated = act(client, created["id"], type="advance", date=due)
+    state = find_player(updated, player["id"])["negotiation"]
+    assert state["status"] == "counter"
+    assert state["affordable"] is True
+
+    path = saves_dir / f"{created['id']}.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw["balance"] = 0
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    response = client.post(
+        f"/api/careers/{created['id']}/actions",
+        json={"type": "accept_counter", "player_id": player["id"]},
+    )
+    assert response.status_code == 422
+
+    snapshot = client.get(f"/api/careers/{created['id']}").json()
+    persisted = find_player(snapshot, player["id"])
+    assert persisted["negotiation"]["status"] == "counter"
+    assert persisted["negotiation"]["affordable"] is False
+
+
+def test_contract_cannot_be_signed_before_agreement(client: TestClient):
+    created = create_career(client)
+    player = squad_players(created)[0]
+
+    response = client.post(
+        f"/api/careers/{created['id']}/actions",
+        json={"type": "sign_contract", "player_id": player["id"]},
+    )
+
+    assert response.status_code == 422
+

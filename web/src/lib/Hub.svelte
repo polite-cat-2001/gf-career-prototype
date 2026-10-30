@@ -1,5 +1,6 @@
 <script>
   import { onMount, tick } from 'svelte'
+  import { slide } from 'svelte/transition'
   import {
     registerBack,
     registerCycle,
@@ -17,9 +18,11 @@
   import Tabs from './Tabs.svelte'
   import { focusElement, focusFirst } from './input.js'
   import {
+    CONTRACT_ROLES,
     attributeGroups,
     compareTone,
     competitionLabel,
+    contractRoleLabel,
     formatDate,
     formatTimestamp,
     formatValue,
@@ -54,6 +57,7 @@
     onsimulate,
     onadvance,
     onnextseason,
+    onaction,
     onexit,
   } = $props()
 
@@ -95,8 +99,19 @@
     { id: 'technical', label: 'Технические' },
   ]
 
-  const INFO_LABELS = [
-    { key: 'position', label: 'Амплуа' },
+  const AMOUNT_PLACES = [
+    'сотни миллионов',
+    'десятки миллионов',
+    'миллионы',
+    'сотни тысяч',
+    'десятки тысяч',
+    'тысячи',
+    'сотни',
+    'десятки',
+    'единицы',
+  ]
+
+  const INFO_LABELS = [    { key: 'position', label: 'Амплуа' },
     { key: 'age', label: 'Возраст' },
     { key: 'height', label: 'Рост' },
     { key: 'weight', label: 'Вес' },
@@ -123,6 +138,13 @@
   let detailsPage = $state(0)
   let centreTab = $state('status')
   let centrePlayerId = $state(null)
+  let centreOpenId = $state(null)
+  let centreActionBusy = $state(false)
+  let negotiationDraft = $state(null)
+  let numberCandidate = $state(null)
+  let amountField = $state(null)
+  let amountDigits = $state('000000000')
+  let amountIndex = $state(8)
   let centreAttributePage = $state('overview')
   let focusPlayerId = $state(null)
   let anchorId = $state(null)
@@ -204,6 +226,18 @@
   let centrePlayer = $derived(
     centrePlayers.find((player) => player.id === centrePlayerId) ?? centrePlayers[0] ?? null,
   )
+  let negotiationState = $derived(centrePlayer?.negotiation ?? null)
+  let negotiationTerms = $derived(
+    negotiationState?.offer ?? negotiationState?.counter ?? null,
+  )
+  let amountGroups = $derived.by(() => {
+    const digits = amountDigits.padStart(9, '0').slice(-9)
+    return [
+      { digits: digits.slice(0, 3), start: 0 },
+      { digits: digits.slice(3, 6), start: 3 },
+      { digits: digits.slice(6, 9), start: 6 },
+    ]
+  })
   let centreTotals = $derived(centrePlayer?.season_stats ?? {})
   let centreCompetitions = $derived(centrePlayer?.competition_stats ?? [])
   let centreRadar = $derived(centrePlayer ? radarValues(centrePlayer.stats) : [])
@@ -332,8 +366,67 @@
     if (simulating || advancing) {
       return [{ gamepad: ['A'], keyboard: ['Enter'], label: centreAction }]
     }
+    if (tab === 'squad' && view === 'amount') {
+      return [
+        { gamepad: ['←', '→'], keyboard: ['←', '→'], label: 'Разряд' },
+        { gamepad: ['↑', '↓'], keyboard: ['↑', '↓'], label: 'Цифра' },
+        { gamepad: ['A'], keyboard: ['Enter'], label: 'Готово' },
+        { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+      ]
+    }
+    if (tab === 'squad' && view === 'negotiation') {
+      if (negotiationState?.status === 'pending') {
+        return [
+          { gamepad: ['A'], keyboard: ['Enter'], label: 'Вернуться' },
+          { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+          start,
+        ]
+      }
+      if (negotiationState?.status === 'accepted') {
+        return [
+          {
+            gamepad: ['A'],
+            keyboard: ['Enter'],
+            label:
+              negotiationState.affordable === false
+                ? 'Недостаточно средств'
+                : 'Подписать',
+          },
+          { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+          start,
+        ]
+      }
+      return [
+        { gamepad: ['D-pad'], keyboard: ['↑', '↓'], label: 'Условие' },
+        { gamepad: ['←', '→'], keyboard: ['←', '→'], label: 'Значение' },
+        { gamepad: ['A'], keyboard: ['Enter'], label: 'Выбрать' },
+        { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+        start,
+      ]
+    }
+    if (tab === 'squad' && view === 'number') {
+      return [
+        { gamepad: ['←', '→'], keyboard: ['←', '→'], label: 'Номер' },
+        { gamepad: ['A'], keyboard: ['Enter'], label: 'Сохранить' },
+        { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+      ]
+    }
+    if (tab === 'squad' && view === 'release') {
+      return [
+        { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Выбор' },
+        { gamepad: ['A'], keyboard: ['Enter'], label: 'Подтвердить' },
+        { gamepad: ['B'], keyboard: ['Esc'], label: 'Отмена' },
+      ]
+    }
     if (tab === 'squad' && view === 'centre') {
       const list = [{ gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Игрок' }]
+      if (centreOpenId) {
+        list[0].label = 'Пункт'
+        list.push({ gamepad: ['A'], keyboard: ['Enter'], label: 'Действие' })
+        list.push({ gamepad: ['B'], keyboard: ['Esc'], label: 'Закрыть' })
+        list.push(start)
+        return list
+      }
       if (centreTab === 'attributes') {
         list.push({
           gamepad: ['R-stick'],
@@ -749,6 +842,22 @@
   }
 
   function handleBack() {
+    if (tab === 'squad' && view === 'amount') {
+      closeAmountScreen()
+      return
+    }
+    if (tab === 'squad' && view === 'negotiation') {
+      closeNegotiationScreen()
+      return
+    }
+    if (tab === 'squad' && view === 'number') {
+      closeNumberScreen()
+      return
+    }
+    if (tab === 'squad' && view === 'release') {
+      closeReleaseScreen()
+      return
+    }
     if (matchdayOpen) {
       if (matchdayStep === 'table') {
         matchdayStep = 'results'
@@ -778,6 +887,10 @@
     }
     if (tab === 'squad') {
       if (view === 'centre') {
+        if (centreOpenId) {
+          closeCentreActions()
+          return
+        }
         backToOverview()
         return
       }
@@ -811,6 +924,10 @@
   }
 
   function handlePrimaryAction() {
+    if (tab === 'squad' && view === 'number') {
+      confirmNumber()
+      return true
+    }
     if (matchdayOpen) {
       advanceMatchday()
       return true
@@ -854,6 +971,7 @@
     anchorId = null
     benchFocused = false
     focusPlayerId = null
+    centreOpenId = null
     await tick()
     focusFirst()
   }
@@ -867,12 +985,14 @@
     benchFocused = false
     focusPlayerId = null
     centrePlayerId = null
+    centreOpenId = null
     centreTab = 'status'
     await tick()
     focusFirst()
   }
 
   function switchTab(direction) {
+    if (tab === 'squad' && ['negotiation', 'amount', 'number', 'release'].includes(view)) return
     if (simulating || advancing || seasonReview || matchSimOpen || matchdayOpen) return
     if (tab === 'squad' && view === 'centre') {
       switchCentreTab(direction)
@@ -901,14 +1021,17 @@
     anchorId = null
     benchFocused = false
     focusPlayerId = null
+    centreOpenId = null
     centrePlayerId = centrePlayers[0]?.id ?? null
     await tick()
     focusFirst()
   }
 
   async function setCentreTab(next) {
+    if (centreOpenId) return
     if (next === centreTab) return
     centreTab = next
+    centreOpenId = null
     await tick()
     focusFirst()
   }
@@ -920,7 +1043,335 @@
     setCentreTab(next.id)
   }
 
+  async function toggleCentreActions(player) {
+    if (!player) return
+    if (centreOpenId === player.id) {
+      closeCentreActions()
+      return
+    }
+    centrePlayerId = player.id
+    centreOpenId = player.id
+    await tick()
+    focusActions(player.id)
+    revealRow(player.id)
+  }
+
+  function focusActions(playerId = centreOpenId, actionKey = null) {
+    if (!playerId) return
+    const panel = document.querySelector(`[data-actions="${playerId}"]`)
+    const selector = actionKey ? `[data-action="${actionKey}"]` : '[data-autofocus]'
+    const target = panel?.querySelector(selector) ?? panel?.querySelector('[data-nav]')
+    focusElement(target)
+  }
+
+  function rowElement(playerId) {
+    return document.querySelector(`.centre [data-player="${playerId}"]`)
+  }
+
+  function revealRow(playerId) {
+    const wrap = document.querySelector(`.centre-row-wrap[data-row="${playerId}"]`)
+    if (!wrap) return
+    window.setTimeout(() => {
+      wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }, 220)
+  }
+
+  function closeCentreActions() {
+    const playerId = centreOpenId
+    centreOpenId = null
+    if (!playerId) return
+    tick().then(() => focusElement(rowElement(playerId)))
+  }
+
+  async function applyTransferStatus(status) {
+    if (!centrePlayer || centreActionBusy) return
+    const playerId = centrePlayer.id
+    const next = centrePlayer.transfer_status === status ? 'none' : status
+    centreActionBusy = true
+    const updated = await onaction({
+      type: 'transfer_status',
+      player_id: playerId,
+      status: next,
+    })
+    centreActionBusy = false
+    if (!updated) return
+    await tick()
+    focusActions(playerId, status)
+    revealRow(playerId)
+  }
+
+  function freeShirtNumbers(player) {
+    if (!player) return []
+    const taken = new Set(
+      centrePlayers
+        .filter((other) => other.id !== player.id)
+        .map((other) => other.shirt_number),
+    )
+    return Array.from({ length: 99 }, (_, index) => index + 1).filter(
+      (number) => !taken.has(number),
+    )
+  }
+
+  function openNumberScreen() {
+    if (!centrePlayer) return
+    const free = freeShirtNumbers(centrePlayer)
+    numberCandidate = free.includes(centrePlayer.shirt_number)
+      ? centrePlayer.shirt_number
+      : free[0] ?? null
+    view = 'number'
+    tick().then(focusFirst)
+  }
+
+  function cycleNumber(direction) {
+    if (!centrePlayer || numberCandidate === null) return
+    const free = freeShirtNumbers(centrePlayer)
+    if (!free.length) return
+    const index = Math.max(0, free.indexOf(numberCandidate))
+    const next = (index + (direction === 'right' ? 1 : -1) + free.length) % free.length
+    numberCandidate = free[next]
+  }
+
+  async function confirmNumber() {
+    if (!centrePlayer || numberCandidate === null || centreActionBusy) return
+    const playerId = centrePlayer.id
+    centreActionBusy = true
+    const updated = await onaction({
+      type: 'shirt_number',
+      player_id: playerId,
+      number: numberCandidate,
+    })
+    centreActionBusy = false
+    if (!updated) return
+    view = 'centre'
+    await tick()
+    focusActions(playerId, 'number')
+    revealRow(playerId)
+  }
+
+  function closeNumberScreen() {
+    const playerId = centrePlayer?.id
+    view = 'centre'
+    tick().then(() => focusActions(playerId, 'number'))
+  }
+
+  function openReleaseScreen() {
+    if (!centrePlayer) return
+    view = 'release'
+    tick().then(focusFirst)
+  }
+
+  function closeReleaseScreen() {
+    const playerId = centrePlayer?.id
+    view = 'centre'
+    tick().then(() => focusActions(playerId, 'release'))
+  }
+
+  async function confirmRelease() {
+    if (!centrePlayer || centreActionBusy) return
+    centreActionBusy = true
+    const updated = await onaction({ type: 'release_player', player_id: centrePlayer.id })
+    centreActionBusy = false
+    if (!updated) return
+    view = 'centre'
+    centreOpenId = null
+    centrePlayerId = centrePlayers[0]?.id ?? null
+    await tick()
+    focusFirst()
+  }
+
+  function negotiationSource() {
+    const current = centrePlayer
+    if (!current) return null
+    const state = current.negotiation
+    const source = state?.offer ??
+      state?.counter ?? {
+        years: current.contract?.years ?? 1,
+        weekly_wage: current.contract?.weekly_wage ?? 1_000,
+        squad_role: current.squad_role ?? 'rotation',
+        release_clause: current.contract?.release_clause ?? 0,
+      }
+    return { ...source }
+  }
+
+  function openNegotiationScreen() {
+    if (!centrePlayer) return
+    negotiationDraft = negotiationSource()
+    view = 'negotiation'
+    if (negotiationNotice(centrePlayer)) {
+      onaction({ type: 'ack_negotiation', player_id: centrePlayer.id })
+    }
+    tick().then(focusFirst)
+  }
+
+  function closeNegotiationScreen() {
+    const playerId = centrePlayer?.id
+    view = 'centre'
+    negotiationDraft = null
+    tick().then(() => focusActions(playerId, 'renew'))
+  }
+
+  function negotiationNotice(player) {
+    const state = player?.negotiation
+    return Boolean(state && state.status !== 'pending' && state.acknowledged === false)
+  }
+
+  function openAmount(field) {
+    if (!negotiationDraft) return
+    const value = Math.max(
+      0,
+      Math.min(999_999_999, Math.round(Number(negotiationDraft[field]) || 0)),
+    )
+    amountField = field
+    amountDigits = String(value).padStart(9, '0')
+    const firstDigit = amountDigits.search(/[1-9]/)
+    amountIndex = firstDigit === -1 ? 8 : firstDigit
+    view = 'amount'
+    tick().then(focusFirst)
+  }
+
+  function adjustAmount(direction) {
+    if (direction === 'left') {
+      amountIndex = Math.max(0, amountIndex - 1)
+      return
+    }
+    if (direction === 'right') {
+      amountIndex = Math.min(8, amountIndex + 1)
+      return
+    }
+    const digits = amountDigits.split('')
+    const digit = Number(digits[amountIndex])
+    digits[amountIndex] = String(direction === 'up' ? (digit + 1) % 10 : (digit + 9) % 10)
+    amountDigits = digits.join('')
+  }
+
+  function focusNegotiationField(field) {
+    focusElement(document.querySelector(`.negotiation [data-field="${field}"]`))
+  }
+
+  function closeAmountScreen() {
+    const field = amountField ?? 'weekly_wage'
+    amountField = null
+    view = 'negotiation'
+    tick().then(() => focusNegotiationField(field))
+  }
+
+  function finishAmount() {
+    if (!negotiationDraft || !amountField) return
+    const value = Number.parseInt(amountDigits || '0', 10) || 0
+    if (amountField === 'weekly_wage') {
+      negotiationDraft.weekly_wage = Math.max(1_000, Math.min(2_000_000, value))
+    } else {
+      negotiationDraft.release_clause = Math.max(0, Math.min(999_999_999, value))
+    }
+    negotiationDraft = { ...negotiationDraft }
+    const field = amountField
+    amountField = null
+    view = 'negotiation'
+    tick().then(() => focusNegotiationField(field))
+  }
+
+  function wageStep() {
+    const base = centrePlayer?.contract?.weekly_wage ?? 1_000
+    return Math.max(1_000, Math.round((base * 0.1) / 100) * 100)
+  }
+
+  function clauseStep() {
+    const base = centrePlayer?.market_value ?? 1_000_000
+    return Math.max(100_000, Math.round((base * 0.05) / 100_000) * 100_000)
+  }
+
+  function adjustNegotiationField(field, step) {
+    if (!negotiationDraft) return
+    if (field === 'years') {
+      negotiationDraft.years = Math.min(5, Math.max(1, negotiationDraft.years + step))
+    } else if (field === 'weekly_wage') {
+      negotiationDraft.weekly_wage = Math.max(
+        1_000,
+        negotiationDraft.weekly_wage + step * wageStep(),
+      )
+    } else if (field === 'release_clause') {
+      negotiationDraft.release_clause = Math.max(
+        0,
+        negotiationDraft.release_clause + step * clauseStep(),
+      )
+    } else if (field === 'squad_role') {
+      const index = Math.max(
+        0,
+        CONTRACT_ROLES.findIndex((role) => role.id === negotiationDraft.squad_role),
+      )
+      const next = (index + step + CONTRACT_ROLES.length) % CONTRACT_ROLES.length
+      negotiationDraft.squad_role = CONTRACT_ROLES[next].id
+    }
+    negotiationDraft = { ...negotiationDraft }
+  }
+
+  async function submitNegotiation() {
+    if (!centrePlayer || !negotiationDraft || centreActionBusy) return
+    if (centrePlayer.negotiation?.status === 'accepted') {
+      await signNegotiation()
+      return
+    }
+    const playerId = centrePlayer.id
+    centreActionBusy = true
+    const updated = await onaction({
+      type: 'negotiate',
+      player_id: playerId,
+      ...negotiationDraft,
+    })
+    centreActionBusy = false
+    if (!updated) return
+    await tick()
+    focusFirst()
+  }
+
+  async function acceptCounterOffer() {
+    if (!centrePlayer || centreActionBusy) return
+    const playerId = centrePlayer.id
+    centreActionBusy = true
+    const updated = await onaction({ type: 'accept_counter', player_id: playerId })
+    centreActionBusy = false
+    if (!updated) return
+    view = 'centre'
+    negotiationDraft = null
+    await tick()
+    focusActions(playerId, 'renew')
+  }
+
+  async function signNegotiation() {
+    if (!centrePlayer || centreActionBusy) return
+    const playerId = centrePlayer.id
+    centreActionBusy = true
+    const updated = await onaction({ type: 'sign_contract', player_id: playerId })
+    centreActionBusy = false
+    if (!updated) return
+    view = 'centre'
+    negotiationDraft = null
+    await tick()
+    focusActions(playerId, 'renew')
+  }
+
+  async function manageTeamFromCentre() {
+    if (!centrePlayer) return
+    const playerId = centrePlayer.id
+    centreOpenId = null
+    negotiationDraft = null
+    await openPlan(playerId)
+  }
+
   function handleCycle(direction) {
+    if (tab === 'squad' && view === 'number') {
+      cycleNumber(direction)
+      return
+    }
+    if (tab === 'squad' && view === 'amount') {
+      adjustAmount(direction)
+      return
+    }
+    const field = document.activeElement?.dataset?.field
+    if (tab === 'squad' && view === 'negotiation' && field) {
+      adjustNegotiationField(field, direction === 'right' ? 1 : -1)
+      return
+    }
     if (tab !== 'squad' || view !== 'centre' || centreTab !== 'attributes') return
     shiftAttributePage(direction === 'right' ? 1 : -1)
   }
@@ -1041,6 +1492,30 @@
     </div>
   </header>
 
+    {#snippet contractTerms(terms)}
+      <div class="neg-term-grid">
+        <div class="neg-term">
+          <span>Зарплата / нед.</span>
+          <strong>{formatValue(terms.weekly_wage)}</strong>
+        </div>
+        <div class="neg-term">
+          <span>Срок</span>
+          <strong>
+            {terms.years}
+            {plural(terms.years, 'год', 'года', 'лет')}
+          </strong>
+        </div>
+        <div class="neg-term">
+          <span>Амплуа</span>
+          <strong>{contractRoleLabel(terms.squad_role)}</strong>
+        </div>
+        <div class="neg-term">
+          <span>Отступные</span>
+          <strong>{formatValue(terms.release_clause)}</strong>
+        </div>
+      </div>
+    {/snippet}
+
   <main class="screen hub-screen">
     {#snippet radarChart(values, secondary)}
       <svg class="radar" viewBox="0 0 144 144" aria-hidden="true">
@@ -1079,17 +1554,18 @@
       </div>
     {/snippet}
 
+
     {#snippet centreProfile(eyebrow)}
       <div class="centre-profile">
         <span class="centre-photo">
           <img src={centrePlayer.photo} alt="" onerror={hideBrokenImage} />
-          {#if centrePlayer.injury || centrePlayer.suspension}
+          {#if centrePlayer.injury}
             <span
               class="player-status-flag"
               class:is-injury={Boolean(centrePlayer.injury)}
               title={statusLabel(centrePlayer)}
             >
-              {centrePlayer.injury ? '+' : '!'}
+              +
             </span>
           {/if}
         </span>
@@ -1104,59 +1580,144 @@
       </div>
     {/snippet}
 
+    {#snippet squadActions(player)}
+      <div
+        class="squad-actions"
+        data-actions={player.id}
+        aria-label="Действия с игроком"
+        transition:slide={{ duration: 180 }}
+      >
+        <div class="squad-actions-col">
+          <div class="squad-actions-head">
+            <i class="squad-actions-dot is-transfer"></i>
+            Трансфер
+          </div>
+          <button
+            class="squad-action"
+            data-nav
+            data-action="transfer"
+            onclick={() => applyTransferStatus('transfer')}
+          >
+            {player.transfer_status === 'transfer' ? 'Снять с трансфера' : 'На трансфер'}
+          </button>
+          <button
+            class="squad-action"
+            data-nav
+            data-action="loan"
+            onclick={() => applyTransferStatus('loan')}
+          >
+            {player.transfer_status === 'loan' ? 'Убрать из аренды' : 'Добавить в аренду'}
+          </button>
+          <button
+            class="squad-action"
+            data-nav
+            data-action="blocked"
+            onclick={() => applyTransferStatus('blocked')}
+          >
+            {player.transfer_status === 'blocked' ? 'Разблокировать' : 'Блокировать'}
+          </button>
+        </div>
+        <div class="squad-actions-col">
+          <div class="squad-actions-head">
+            <i class="squad-actions-dot is-squad"></i>
+            Состав
+          </div>
+          <button class="squad-action" data-nav data-action="plan" onclick={manageTeamFromCentre}>
+            Рук-во командой
+          </button>
+          <button class="squad-action" data-nav data-action="number" onclick={openNumberScreen}>
+            Смена номера
+          </button>
+        </div>
+        <div class="squad-actions-col">
+          <div class="squad-actions-head">
+            <i class="squad-actions-dot is-contract"></i>
+            Контракт
+          </div>
+          <button class="squad-action" data-nav data-action="renew" onclick={openNegotiationScreen}>
+            <span>Продление контракта</span>
+            {#if negotiationNotice(player)}
+              <span class="squad-action-notice" title="Готов ответ по контракту">!</span>
+            {/if}
+          </button>
+          <button
+            class="squad-action is-danger"
+            data-nav
+            data-action="release"
+            onclick={openReleaseScreen}
+          >
+            Отпустить игрока
+          </button>
+        </div>
+      </div>
+    {/snippet}
+
     {#snippet centreRoster(mode)}
       <section class="centre-list scroll-area" aria-label="Игроки состава">
         {#each centrePlayers as player, index (player.id)}
-          <button
-            class="centre-player-row"
-            class:is-stats={mode === 'stats'}
-            class:is-attributes={mode === 'attributes'}
-            data-nav
-            data-current={player.id === centrePlayerId ? '' : undefined}
-            data-autofocus={index === 0 ? '' : undefined}
-            onfocus={() => (centrePlayerId = player.id)}
-            onclick={() => (centrePlayerId = player.id)}
-          >
-            <span class="centre-row-photo">
-              <img src={player.photo} alt="" onerror={hideBrokenImage} />
-              {#if player.injury || player.suspension}
-                <span
-                  class="player-status-flag"
-                  class:is-injury={Boolean(player.injury)}
-                  title={statusLabel(player)}
-                >
-                  {player.injury ? '+' : '!'}
-                </span>
-              {/if}
-            </span>
-            <span class="centre-row-main">
-              <span class="centre-row-name">{playerInitialName(player)}</span>
-              <span class="centre-row-meta">
-                <span class="pos-badge {posTone(player.role)}">{shortRole(player.role)}</span>
-                <span>{player.squad_role_short}</span>
+          <div class="centre-row-wrap" data-row={player.id}>
+            <button
+              class="centre-player-row"
+              class:is-stats={mode === 'stats'}
+              class:is-attributes={mode === 'attributes'}
+              class:is-open={centreOpenId === player.id}
+              data-nav
+              data-player={player.id}
+              data-current={player.id === centrePlayerId ? '' : undefined}
+              data-autofocus={index === 0 ? '' : undefined}
+              onfocus={() => (centrePlayerId = player.id)}
+              onclick={() => toggleCentreActions(player)}
+            >
+              <span class="centre-row-photo">
+                <img src={player.photo} alt="" onerror={hideBrokenImage} />
+                {#if player.injury}
+                  <span
+                    class="player-status-flag"
+                    class:is-injury={Boolean(player.injury)}
+                    title={statusLabel(player)}
+                  >
+                    +
+                  </span>
+                {/if}
               </span>
-            </span>
-            {#if mode === 'stats'}
-              <span class="centre-row-totals">
-                {player.season_stats?.apps ?? 0} И · {player.season_stats?.goals ?? 0} Г ·
-                {player.season_stats?.assists ?? 0} А · {player.season_stats?.minutes ?? 0} мин
-              </span>
-            {:else}
-              <strong class="centre-row-ovr {ovrClass(player.overall)}">
-                {Math.round(player.overall)}
-              </strong>
-              {#if mode === 'status'}
-                <span
-                  class="centre-row-face"
-                  title={player.expected_minutes > 0
-                    ? `Настрой ${player.morale}%`
-                    : 'Нет данных о настрое'}
-                >
-                  {player.expected_minutes > 0 ? moraleFace(player.morale) : '—'}
+              <span class="centre-row-main">
+                <span class="centre-row-name-row">
+                  <span class="centre-row-name">{playerInitialName(player)}</span>
+                  {#if negotiationNotice(player)}
+                    <span class="squad-notice" title="Готов ответ по контракту">!</span>
+                  {/if}
                 </span>
+                <span class="centre-row-meta">
+                  <span class="pos-badge {posTone(player.role)}">{shortRole(player.role)}</span>
+                  <span>{player.squad_role_short}</span>
+                </span>
+              </span>
+              {#if mode === 'stats'}
+                <span class="centre-row-totals">
+                  {player.season_stats?.apps ?? 0} И · {player.season_stats?.goals ?? 0} Г ·
+                  {player.season_stats?.assists ?? 0} А · {player.season_stats?.minutes ?? 0} мин
+                </span>
+              {:else}
+                <strong class="centre-row-ovr {ovrClass(player.overall)}">
+                  {Math.round(player.overall)}
+                </strong>
+                {#if mode === 'status'}
+                  <span
+                    class="centre-row-face"
+                    title={player.expected_minutes > 0
+                      ? `Настрой ${player.morale}%`
+                      : 'Нет данных о настрое'}
+                  >
+                    {player.expected_minutes > 0 ? moraleFace(player.morale) : '—'}
+                  </span>
+                {/if}
               {/if}
+            </button>
+
+            {#if centreOpenId === player.id}
+              {@render squadActions(player)}
             {/if}
-          </button>
+          </div>
         {/each}
       </section>
     {/snippet}
@@ -1168,13 +1729,13 @@
         <div class="head-photo-block">
           <span class="player-photo-large">
             <img src={player.photo} alt="" onerror={hideBrokenImage} />
-            {#if player.injury || player.suspension}
+            {#if player.injury}
               <span
                 class="player-status-flag"
                 class:is-injury={Boolean(player.injury)}
                 title={statusLabel(player)}
               >
-                {player.injury ? '+' : '!'}
+                +
               </span>
             {/if}
           </span>
@@ -1820,38 +2381,49 @@
                 </div>
                 <div class="finance-list scroll-area">
                   {#each centrePlayers as player, index (player.id)}
-                    <button
-                      class="finance-row"
-                      data-nav
-                      data-current={player.id === centrePlayerId ? '' : undefined}
-                      data-autofocus={index === 0 ? '' : undefined}
-                      onfocus={() => (centrePlayerId = player.id)}
-                      onclick={() => (centrePlayerId = player.id)}
-                    >
-                      <span class="pos-badge {posTone(player.role)}">{shortRole(player.role)}</span>
-                      <span class="finance-name-cell">
-                        <span class="finance-row-photo">
-                          <img src={player.photo} alt="" onerror={hideBrokenImage} />
-                          {#if player.injury || player.suspension}
-                            <span
-                              class="player-status-flag"
-                              class:is-injury={Boolean(player.injury)}
-                              title={statusLabel(player)}
-                            >
-                              {player.injury ? '+' : '!'}
-                            </span>
+                    <div class="centre-row-wrap" data-row={player.id}>
+                      <button
+                        class="finance-row"
+                        class:is-open={centreOpenId === player.id}
+                        data-nav
+                        data-player={player.id}
+                        data-current={player.id === centrePlayerId ? '' : undefined}
+                        data-autofocus={index === 0 ? '' : undefined}
+                        onfocus={() => (centrePlayerId = player.id)}
+                        onclick={() => toggleCentreActions(player)}
+                      >
+                        <span class="pos-badge {posTone(player.role)}">{shortRole(player.role)}</span>
+                        <span class="finance-name-cell">
+                          <span class="finance-row-photo">
+                            <img src={player.photo} alt="" onerror={hideBrokenImage} />
+                            {#if player.injury}
+                              <span
+                                class="player-status-flag"
+                                class:is-injury={Boolean(player.injury)}
+                                title={statusLabel(player)}
+                              >
+                                +
+                              </span>
+                            {/if}
+                          </span>
+                          <span class="finance-name">{playerInitialName(player)}</span>
+                          {#if negotiationNotice(player)}
+                            <span class="squad-notice" title="Готов ответ по контракту">!</span>
                           {/if}
                         </span>
-                        <span class="finance-name">{playerInitialName(player)}</span>
-                      </span>
-                      <span class="finance-cell">{player.age ?? '—'}</span>
-                      <span class="finance-cell is-value">{formatValue(player.market_value)}</span>
-                      <span class="finance-cell">{formatValue(player.contract?.weekly_wage ?? 0)}</span>
-                      <span class="finance-cell">
-                        {player.contract?.years ?? 1}
-                        {plural(player.contract?.years ?? 1, 'год', 'года', 'лет')}
-                      </span>
-                    </button>
+                        <span class="finance-cell">{player.age ?? '—'}</span>
+                        <span class="finance-cell is-value">{formatValue(player.market_value)}</span>
+                        <span class="finance-cell">{formatValue(player.contract?.weekly_wage ?? 0)}</span>
+                        <span class="finance-cell">
+                          {player.contract?.years ?? 1}
+                          {plural(player.contract?.years ?? 1, 'год', 'года', 'лет')}
+                        </span>
+                      </button>
+
+                      {#if centreOpenId === player.id}
+                        {@render squadActions(player)}
+                      {/if}
+                    </div>
                   {/each}
                 </div>
               </section>
@@ -2071,6 +2643,248 @@
           <img src={career.club.logo} alt="" onerror={hideBrokenImage} />
         </div>
       </div>
+    {:else if tab === 'squad' && view === 'number' && centrePlayer}
+      <div class="number-screen">
+        <div class="number-stage">
+          <button
+            class="number-shirt"
+            data-nav
+            data-cycle="number"
+            data-autofocus
+            aria-label={`Игровой номер ${numberCandidate ?? '—'}`}
+            onclick={confirmNumber}
+          >
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <path
+                class="number-shirt-shape"
+                d="M36 8 44 4 48 12Q60 20 72 12L76 4 84 8 116 32 104 50 94 44 94 112 26 112 26 44 16 50 4 32Z"
+              ></path>
+              <text x="60" y="84" text-anchor="middle">{numberCandidate ?? '—'}</text>
+            </svg>
+          </button>
+          <div class="number-copy">
+            <span class="eyebrow">Смена игрового номера</span>
+            <strong class="number-name">{playerInitialName(centrePlayer)}</strong>
+            <span class="number-note">Свободные номера 1–99 · занятые пропускаются</span>
+            <span class="number-note">Текущий номер: {centrePlayer.shirt_number ?? '—'}</span>
+          </div>
+        </div>
+      </div>
+    {:else if tab === 'squad' && view === 'release' && centrePlayer}
+      <div class="release-screen">
+        <span class="eyebrow">Расторжение контракта</span>
+        <strong class="release-title">Отпустить {playerInitialName(centrePlayer)}?</strong>
+        <p class="release-note">
+          Игрок покинет клуб и исчезнет из состава. Действие нельзя отменить.
+        </p>
+        <div class="release-actions">
+          <button class="shelf-action is-danger" data-nav onclick={confirmRelease}>
+            Отпустить игрока
+          </button>
+          <button class="shelf-action" data-nav data-autofocus onclick={closeReleaseScreen}>
+            Отмена
+          </button>
+        </div>
+      </div>
+    {:else if tab === 'squad' && view === 'amount' && centrePlayer && amountField}
+      <div class="amount-screen">
+        <span class="eyebrow">
+          {amountField === 'weekly_wage' ? 'Зарплата в неделю' : 'Отступные'}
+        </span>
+        <button
+          class="amount-value"
+          data-nav
+          data-amount
+          data-cycle="amount"
+          data-autofocus
+          aria-label="Сумма"
+          onclick={finishAmount}
+        >
+          {#each amountGroups as group, groupIndex (groupIndex)}
+            <span class="amount-group">
+              {#each group.digits as digit, digitIndex (digitIndex)}
+                <span
+                  class="amount-digit"
+                  class:is-selected={group.start + digitIndex === amountIndex}
+                >
+                  {digit}
+                </span>
+              {/each}
+            </span>
+          {/each}
+        </button>
+        <span class="amount-place">Разряд: {AMOUNT_PLACES[amountIndex]}</span>
+      </div>
+    {:else if tab === 'squad' && view === 'negotiation' && centrePlayer && negotiationDraft}
+      <div class="negotiation">
+        <aside class="negotiation-player scroll-area">
+          {@render centreProfile('Продление контракта')}
+          <section class="centre-block">
+            <div class="centre-block-head">Текущий контракт</div>
+            {@render centreRow('Амплуа', centrePlayer.squad_role_label ?? '—')}
+            {@render centreRow(
+              'Срок',
+              `${centrePlayer.contract?.years ?? 1} ${plural(
+                centrePlayer.contract?.years ?? 1,
+                'год',
+                'года',
+                'лет',
+              )}`,
+            )}
+            {@render centreRow(
+              'Зарплата',
+              `${formatValue(centrePlayer.contract?.weekly_wage ?? 0)} / нед.`,
+            )}
+            {@render centreRow(
+              'Отступные',
+              formatValue(centrePlayer.contract?.release_clause ?? 0),
+            )}
+          </section>
+        </aside>
+
+        <section class="negotiation-form scroll-area">
+          {#if negotiationState?.status === 'pending'}
+            <div class="negotiation-head">
+              <span class="eyebrow">Ожидание ответа</span>
+              <strong class="negotiation-title">Игрок думает</strong>
+            </div>
+            <p class="negotiation-note">
+              {negotiationState.message}
+              {#if negotiationState.due}
+                Ответ до {formatDate(negotiationState.due)}
+              {/if}
+            </p>
+            {@render contractTerms(negotiationState.offer)}
+          {:else if negotiationState?.status === 'accepted'}
+            <div class="negotiation-head">
+              <span class="eyebrow">Согласовано</span>
+              <strong class="negotiation-title">Условия приняты</strong>
+            </div>
+            <p class="negotiation-note">{negotiationState.message}</p>
+            {@render contractTerms(negotiationTerms)}
+          {:else}
+            <div class="negotiation-head">
+              <span class="eyebrow">Новый контракт</span>
+              <strong class="negotiation-title">Условия</strong>
+            </div>
+
+            <div class="negotiation-fields">
+              <button
+                class="neg-field"
+                data-nav
+                data-cycle="negotiation"
+                data-field="weekly_wage"
+                data-autofocus
+                onclick={() => openAmount('weekly_wage')}
+              >
+                <span class="neg-field-label">Зарплата в неделю</span>
+                <strong class="neg-field-value">{formatValue(negotiationDraft.weekly_wage)}</strong>
+                <span class="neg-field-hint">← → шаг · A точная сумма</span>
+              </button>
+              <button
+                class="neg-field"
+                data-nav
+                data-cycle="negotiation"
+                data-field="years"
+                onclick={() => adjustNegotiationField('years', 1)}
+              >
+                <span class="neg-field-label">Срок</span>
+                <strong class="neg-field-value">
+                  {negotiationDraft.years}
+                  {plural(negotiationDraft.years, 'год', 'года', 'лет')}
+                </strong>
+                <span class="neg-field-hint">← → изменить срок</span>
+              </button>
+              <button
+                class="neg-field"
+                data-nav
+                data-cycle="negotiation"
+                data-field="squad_role"
+                onclick={() => adjustNegotiationField('squad_role', 1)}
+              >
+                <span class="neg-field-label">Амплуа</span>
+                <strong class="neg-field-value">{contractRoleLabel(negotiationDraft.squad_role)}</strong>
+                <span class="neg-field-hint">← → выбрать амплуа</span>
+              </button>
+              <button
+                class="neg-field"
+                data-nav
+                data-cycle="negotiation"
+                data-field="release_clause"
+                onclick={() => openAmount('release_clause')}
+              >
+                <span class="neg-field-label">Отступные</span>
+                <strong class="neg-field-value">
+                  {formatValue(negotiationDraft.release_clause)}
+                </strong>
+                <span class="neg-field-hint">← → шаг · A точная сумма</span>
+              </button>
+            </div>
+
+            {#if negotiationState?.counter}
+              <div class="neg-reply">
+                <span class="eyebrow">Контрпредложение игрока</span>
+                <p class="negotiation-note">{negotiationState.message}</p>
+                {@render contractTerms(negotiationState.counter)}
+              </div>
+            {:else if negotiationState?.status === 'refused'}
+              <div class="neg-reply is-refused">
+                <span class="eyebrow">Отказ</span>
+                <p class="negotiation-note">{negotiationState.message}</p>
+              </div>
+            {/if}
+          {/if}
+
+          <div class="negotiation-actions">
+            {#if negotiationState?.status === 'pending'}
+              <button
+                class="shelf-action is-primary"
+                data-nav
+                data-autofocus
+                onclick={closeNegotiationScreen}
+              >
+                Вернуться
+              </button>
+            {:else if negotiationState?.status === 'accepted'}
+              {#if negotiationState.affordable === false}
+                <p class="negotiation-note is-warning">
+                  Недостаточно средств, чтобы подписать контракт.
+                </p>
+              {/if}
+              <button
+                class="shelf-action is-primary"
+                data-nav
+                data-autofocus
+                disabled={negotiationState.affordable === false}
+                onclick={signNegotiation}
+              >
+                Подписать контракт
+              </button>
+            {:else}
+              {#if negotiationState?.counter}
+                {#if negotiationState.affordable === false}
+                  <p class="negotiation-note is-warning">
+                    Недостаточно средств, чтобы принять условия игрока.
+                  </p>
+                {/if}
+                <button
+                  class="shelf-action"
+                  data-nav
+                  disabled={negotiationState.affordable === false}
+                  onclick={acceptCounterOffer}
+                >
+                  Принять условия игрока
+                </button>
+              {/if}
+              <button class="shelf-action is-primary" data-nav onclick={submitNegotiation}>
+                {negotiationState?.status === 'refused'
+                  ? 'Предложить снова'
+                  : 'Предложить условия'}
+              </button>
+            {/if}
+          </div>
+        </section>
+      </div>
     {/if}
   </main>
 
@@ -2252,6 +3066,7 @@
   {#if matchdayOpen && matchdayData}
     <MatchdayScreen step={matchdayStep} matchday={matchdayData} clubId={career.club.id} />
   {/if}
+
 
   <Controls
     {hints}

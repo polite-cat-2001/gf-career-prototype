@@ -61,6 +61,9 @@ class Career:
     player_contracts: dict[str, dict] = field(default_factory=dict)
     player_values: dict[str, int] = field(default_factory=dict)
     player_ages: dict[str, int] = field(default_factory=dict)
+    player_transfers: dict[str, str] = field(default_factory=dict)
+    shirt_numbers: dict[str, int] = field(default_factory=dict)
+    negotiations: dict[str, dict] = field(default_factory=dict)
     balance: int | None = None
     condition_date: str | None = None
     journal: list[dict] = field(default_factory=list)
@@ -122,6 +125,27 @@ class Career:
         if self.player_ages:
             payload["player_ages"] = {
                 player_id: int(age) for player_id, age in self.player_ages.items()
+            }
+        if self.player_transfers:
+            payload["player_transfers"] = {
+                player_id: str(status)
+                for player_id, status in self.player_transfers.items()
+            }
+        if self.shirt_numbers:
+            payload["shirt_numbers"] = {
+                player_id: int(number) for player_id, number in self.shirt_numbers.items()
+            }
+        if self.negotiations:
+            payload["negotiations"] = {
+                player_id: {
+                    **state,
+                    "demand": dict(state.get("demand") or {}),
+                    "offer": None if state.get("offer") is None else dict(state["offer"]),
+                    "counter": None
+                    if state.get("counter") is None
+                    else dict(state["counter"]),
+                }
+                for player_id, state in self.negotiations.items()
             }
         if self.balance is not None:
             payload["balance"] = int(self.balance)
@@ -188,6 +212,29 @@ class Career:
             player_ages={
                 str(player_id): int(age)
                 for player_id, age in (raw.get("player_ages") or {}).items()
+            },
+            player_transfers={
+                str(player_id): str(status)
+                for player_id, status in (raw.get("player_transfers") or {}).items()
+                if status
+            },
+            shirt_numbers={
+                str(player_id): int(number)
+                for player_id, number in (raw.get("shirt_numbers") or {}).items()
+            },
+            negotiations={
+                str(player_id): {
+                    **state,
+                    "demand": dict(state.get("demand") or {}),
+                    "offer": None
+                    if state.get("offer") is None
+                    else dict(state["offer"]),
+                    "counter": None
+                    if state.get("counter") is None
+                    else dict(state["counter"]),
+                }
+                for player_id, state in (raw.get("negotiations") or {}).items()
+                if isinstance(state, dict)
             },
             balance=None if raw.get("balance") is None else int(raw["balance"]),
             condition_date=raw.get("condition_date"),

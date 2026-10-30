@@ -90,6 +90,18 @@ export function shortRole(role) {
   return ROLE_SHORT[role] || role || '—'
 }
 
+export const CONTRACT_ROLES = [
+  { id: 'key', label: 'Ключевой игрок' },
+  { id: 'first', label: 'Основной игрок' },
+  { id: 'rotation', label: 'Игрок ротации' },
+  { id: 'squad', label: 'Игрок резерва' },
+  { id: 'prospect', label: 'Перспективный игрок' },
+]
+
+export function contractRoleLabel(roleId) {
+  return CONTRACT_ROLES.find((role) => role.id === roleId)?.label ?? roleId ?? '—'
+}
+
 export const STAT_LABELS = {
   mental_calmness: 'Хладнокровие',
   mental_defensivepositioning: 'Позиция в обороне',

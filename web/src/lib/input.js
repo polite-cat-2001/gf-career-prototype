@@ -96,6 +96,51 @@ function moveWithinPitch(current, direction) {
   return true
 }
 
+function moveWithinActions(current, direction) {
+  const panel = current.closest('.squad-actions')
+  if (!panel) return false
+  const items = Array.from(panel.querySelectorAll(NAV_SELECTOR)).filter(visible)
+  if (!items.length) return true
+  const rect = current.getBoundingClientRect()
+  const cx = rect.left + rect.width / 2
+  const cy = rect.top + rect.height / 2
+  let best = null
+  let bestScore = Infinity
+  for (const item of items) {
+    if (item === current) continue
+    const other = item.getBoundingClientRect()
+    const dx = other.left + other.width / 2 - cx
+    const dy = other.top + other.height / 2 - cy
+    let forward = 0
+    let sideways = 0
+    if (direction === 'right') {
+      forward = dx
+      sideways = Math.abs(dy)
+    } else if (direction === 'left') {
+      forward = -dx
+      sideways = Math.abs(dy)
+    } else if (direction === 'down') {
+      forward = dy
+      sideways = Math.abs(dx)
+    } else {
+      forward = -dy
+      sideways = Math.abs(dx)
+    }
+    if (forward <= 8) continue
+    const weight = direction === 'left' || direction === 'right' ? 4 : 1.8
+    const score = forward + sideways * weight
+    if (score < bestScore) {
+      bestScore = score
+      best = item
+    }
+  }
+  if (best) {
+    best.focus({ preventScroll: true })
+    best.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }
+  return true
+}
+
 function moveToBenchFromPitch(current, direction) {
   if (direction !== 'down') return false
   const pitch = current.closest('.pitch-plan-large')
@@ -124,6 +169,7 @@ function focusGridItem(item) {
 
 function cycleSquadCentrePages(current, direction) {
   if (direction !== 'left' && direction !== 'right') return false
+  if (current.closest('.squad-actions')) return false
   const centre = current.closest('.centre')
   if (!centre || !centre.querySelector('.centre-pager')) return false
   if (!current.closest('.centre-list')) return false
@@ -194,6 +240,14 @@ export function moveFocus(direction) {
     return
   }
 
+  if (
+    current.hasAttribute('data-amount') &&
+    (direction === 'up' || direction === 'down')
+  ) {
+    cycle(direction)
+    return
+  }
+
   if (current.dataset.cycle && (direction === 'left' || direction === 'right')) {
     cycle(direction)
     return
@@ -201,6 +255,7 @@ export function moveFocus(direction) {
 
   if (moveWithinPitch(current, direction)) return
   if (moveToBenchFromPitch(current, direction)) return
+  if (moveWithinActions(current, direction)) return
   if (moveGridFocus(current, direction)) return
 
   const currentRect = current.getBoundingClientRect()

@@ -8,10 +8,36 @@ from server.career.condition import (
 )
 from server.career.core import Career
 from server.career.snapshot import lineup_for
+from server.career.squad import (
+    MIN_SQUAD_SIZE,
+    TRANSFER_STATUSES,
+    accept_counter,
+    acknowledge_negotiation,
+    ensure_shirt_numbers,
+    sign_contract,
+    start_negotiation,
+)
 
 
 class ActionError(ValueError):
     pass
+
+
+def _journal(career: Career, kind: str, payload: dict) -> None:
+    career.journal.append(
+        {
+            "seq": len(career.journal) + 1,
+            "type": kind,
+            "payload": payload,
+        }
+    )
+
+
+def _squad_player(players: list[dict], player_id: str) -> dict:
+    for player in players:
+        if str(player["id"]) == str(player_id):
+            return player
+    raise ActionError("player is not in this squad")
 
 
 def swap_players(career: Career, players: list[dict], player_a: str, player_b: str) -> None:
@@ -68,4 +94,119 @@ def swap_players(career: Career, players: list[dict], player_a: str, player_b: s
             "type": "lineup.swap",
             "payload": {"player_a": player_a, "player_b": player_b},
         }
+    )
+
+
+def set_transfer_status(
+    career: Career, players: list[dict], player_id: str, status: str | None
+) -> None:
+    player = _squad_player(players, player_id)
+    player_id = str(player["id"])
+    normalized = (status or "").strip().lower()
+    if normalized in {"", "none", "clear"}:
+        career.player_transfers.pop(player_id, None)
+        normalized = "none"
+    elif normalized in TRANSFER_STATUSES:
+        career.player_transfers[player_id] = normalized
+    else:
+        raise ActionError("unknown transfer status")
+    _journal(
+        career,
+        "player.transfer_status",
+        {"player_id": player_id, "status": normalized},
+    )
+
+
+def set_shirt_number(
+    career: Career, players: list[dict], player_id: str, number: int | None
+) -> None:
+    player = _squad_player(players, player_id)
+    player_id = str(player["id"])
+    if number is None:
+        raise ActionError("shirt number is required")
+    number = int(number)
+    if not 1 <= number <= 99:
+        raise ActionError("shirt number must be between 1 and 99")
+    ensure_shirt_numbers(career, players)
+    taken = {
+        int(current)
+        for other_id, current in career.shirt_numbers.items()
+        if other_id != player_id
+    }
+    if number in taken:
+        raise ActionError("shirt number is already taken")
+    career.shirt_numbers[player_id] = number
+    _journal(career, "player.shirt_number", {"player_id": player_id, "number": number})
+
+
+def release_player(career: Career, player_id: str) -> None:
+    player_id = str(player_id)
+    if player_id not in career.player_ids:
+        raise ActionError("player is not in this squad")
+    if len(career.player_ids) <= MIN_SQUAD_SIZE:
+        raise ActionError("the squad cannot drop below 11 players")
+    career.player_ids.remove(player_id)
+    if career.lineup:
+        career.lineup = [item for item in career.lineup if item != player_id]
+    if career.bench_order:
+        career.bench_order = [item for item in career.bench_order if item != player_id]
+    career.player_state.pop(player_id, None)
+    career.player_contracts.pop(player_id, None)
+    career.player_values.pop(player_id, None)
+    career.player_ages.pop(player_id, None)
+    career.shirt_numbers.pop(player_id, None)
+    career.player_transfers.pop(player_id, None)
+    career.negotiations.pop(player_id, None)
+    _journal(career, "player.released", {"player_id": player_id})
+
+
+def negotiate_contract(
+    career: Career, players: list[dict], player_id: str, terms: dict
+) -> None:
+    player = _squad_player(players, player_id)
+    player_id = str(player["id"])
+    try:
+        start_negotiation(career, player, player_id, terms)
+    except ValueError as error:
+        raise ActionError(str(error)) from error
+    _journal(career, "contract.negotiation", {"player_id": player_id, "terms": terms})
+
+
+def acknowledge_contract_negotiation(
+    career: Career, players: list[dict], player_id: str
+) -> None:
+    player = _squad_player(players, player_id)
+    player_id = str(player["id"])
+    try:
+        acknowledge_negotiation(career, player_id)
+    except ValueError as error:
+        raise ActionError(str(error)) from error
+    _journal(career, "contract.negotiation.acknowledged", {"player_id": player_id})
+
+
+def accept_counter_offer(career: Career, players: list[dict], player_id: str) -> None:
+    player = _squad_player(players, player_id)
+    player_id = str(player["id"])
+    try:
+        contract = accept_counter(career, player_id)
+    except ValueError as error:
+        raise ActionError(str(error)) from error
+    _journal(
+        career,
+        "contract.signed",
+        {"player_id": player_id, "contract": dict(contract)},
+    )
+
+
+def confirm_contract(career: Career, players: list[dict], player_id: str) -> None:
+    player = _squad_player(players, player_id)
+    player_id = str(player["id"])
+    try:
+        contract = sign_contract(career, player_id)
+    except ValueError as error:
+        raise ActionError(str(error)) from error
+    _journal(
+        career,
+        "contract.signed",
+        {"player_id": player_id, "contract": dict(contract)},
     )
