@@ -547,7 +547,6 @@
         { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Игрок' },
         { gamepad: ['A'], keyboard: ['Enter'], label: 'Выбрать' },
         { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
-        sections,
       ]
     }
     if (tab === 'squad' && view === 'amount') {
@@ -1612,6 +1611,7 @@
   }
 
   function switchTab(direction) {
+    if (tab === 'transfers' && transfersView !== 'hub') return
     if (tab === 'squad' && ['negotiation', 'amount', 'number', 'release'].includes(view)) return
     if (transferEditing || oskOpen) return
     if (simulating || advancing || seasonReview || matchSimOpen || matchdayOpen) return
@@ -2104,7 +2104,7 @@
       </div>
     </div>
 
-    {#if tab === 'squad' && view === 'centre'}
+    {#if (tab === 'squad' && view === 'centre') || (tab === 'transfers' && transfersView !== 'hub')}
       <div></div>
     {:else}
       <Tabs {tabs} active={tab} onselect={setTab} />
