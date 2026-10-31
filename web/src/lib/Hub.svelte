@@ -20,7 +20,7 @@
   import MatchdayScreen from './MatchdayScreen.svelte'
   import PlayerCard from './PlayerCard.svelte'
   import Tabs from './Tabs.svelte'
-  import { focusElement, focusFirst } from './input.js'
+  import { focusElement, focusFirst, inputDevice } from './input.js'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -301,6 +301,8 @@
   let transferLoading = $state(false)
   let transferError = $state('')
   let transferSelectedId = $state(null)
+  let transferActionsOpen = $state(false)
+  let transferActionsPlayerId = $state(null)
   let transferCountries = $state([])
   let transferLeagues = $state([])
   let transferClubs = $state([])
@@ -458,6 +460,14 @@
   let transferFiltersActive = $derived(
     Object.entries(transferFilters).filter(([, value]) => value !== '' && value !== null).length,
   )
+  let transferActionsPlayer = $derived(
+    transferResults.find((player) => player.id === transferActionsPlayerId) ??
+      (transferActionsOpen ? transferSelected : null),
+  )
+  let transferScouts = $derived(Array.isArray(career.scouts) ? career.scouts : [])
+  let transferContractMonths = $derived(
+    transferActionsPlayer ? monthsUntil(transferActionsPlayer.contract_expires) : null,
+  )
 
   let hints = $derived.by(() => {
     const start = { gamepad: ['Start'], keyboard: ['S'], label: 'Сохранить' }
@@ -540,6 +550,13 @@
           { gamepad: ['A'], keyboard: ['Enter'], label: 'Изменить' },
           { gamepad: ['X'], keyboard: ['X'], label: 'Сброс' },
           { gamepad: ['Y'], keyboard: ['Y'], label: 'Начать поиск' },
+          { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+        ]
+      }
+      if (transferActionsOpen) {
+        return [
+          { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Действие' },
+          { gamepad: ['A'], keyboard: ['Enter'], label: 'Выбор' },
           { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
         ]
       }
@@ -899,9 +916,41 @@
     }
   }
 
+  function monthsUntil(value) {
+    if (!value) return null
+    const target = new Date(`${value}T00:00:00`)
+    const current = new Date(`${career.date}T00:00:00`)
+    if (Number.isNaN(target.getTime()) || Number.isNaN(current.getTime())) return null
+    const days = (target.getTime() - current.getTime()) / 86_400_000
+    if (days <= 0) return 0
+    return Math.ceil(days / 30.44)
+  }
+
+  function openTransferActions(playerId) {
+    transferSelectedId = playerId
+    transferActionsPlayerId = playerId
+    transferActionsOpen = true
+    tick().then(focusFirst)
+  }
+
+  function closeTransferActions() {
+    const playerId = transferActionsPlayerId
+    transferActionsOpen = false
+    transferActionsPlayerId = null
+    tick().then(() => {
+      const card = playerId
+        ? document.querySelector(`.tf-result[data-player-id="${playerId}"]`)
+        : null
+      if (card) focusElement(card)
+      else focusFirst()
+    })
+  }
+
   async function openTransferFilters() {
     transfersView = 'filters'
     transferEditing = null
+    transferActionsOpen = false
+    transferActionsPlayerId = null
     oskOpen = false
     await ensureTransferOptions()
     await tick()
@@ -913,6 +962,8 @@
     transferEditing = null
     transfersView = 'results'
     transferSelectedId = null
+    transferActionsOpen = false
+    transferActionsPlayerId = null
     await ensureTransferOptions()
     await runTransferSearch(true)
     await tick()
@@ -1494,6 +1545,10 @@
       return
     }
     if (tab === 'transfers') {
+      if (transferActionsOpen) {
+        closeTransferActions()
+        return
+      }
       openTransferHub()
       return
     }
@@ -1536,6 +1591,7 @@
   }
 
   function handlePrimaryAction() {
+    if (transferActionsOpen) return true
     if (tab === 'squad' && view === 'number') {
       confirmNumber()
       return true
@@ -1605,6 +1661,8 @@
     transferResults = []
     transferTotal = 0
     transferSelectedId = null
+    transferActionsOpen = false
+    transferActionsPlayerId = null
     transferError = ''
     await tick()
     focusFirst()
@@ -2893,7 +2951,7 @@
         </div>
       {:else}
         <div class="tf-results" inert={oskOpen ? true : undefined}>
-          <section class="tf-results-main">
+          <section class="tf-results-main" inert={transferActionsOpen ? true : undefined}>
             <div class="tf-results-title">
               <strong>Результаты поиска</strong>
               <span>{transferTotal.toLocaleString('ru-RU')}</span>
@@ -2905,12 +2963,13 @@
                   class="tf-result"
                   class:is-selected={transferSelected?.id === player.id}
                   data-nav
+                  data-player-id={player.id}
                   data-autofocus={index === 0 ? '' : undefined}
                   onfocus={() => {
                     transferSelectedId = player.id
                     if (index > transferResults.length - 5) loadMoreTransfers()
                   }}
-                  onclick={() => (transferSelectedId = player.id)}
+                  onclick={() => openTransferActions(player.id)}
                 >
                   <span class="tf-result-photo">
                     <img src={player.photo} alt="" onerror={hideBrokenImage} />
@@ -2935,7 +2994,7 @@
             </div>
           </section>
 
-          <aside class="tf-detail">
+          <aside class="tf-detail" inert={transferActionsOpen ? true : undefined}>
             {#if transferSelected}
               <div class="tf-detail-top">
                 <span class="tf-detail-photo">
@@ -2990,6 +3049,161 @@
               <p class="transfer-detail-empty">Выберите игрока в списке.</p>
             {/if}
           </aside>
+
+          {#if transferActionsOpen && transferActionsPlayer}
+            {@const player = transferActionsPlayer}
+            {@const expiring =
+              transferContractMonths !== null &&
+              transferContractMonths > 0 &&
+              transferContractMonths <= 6}
+            <div class="tf-actions-layer">
+              <div
+                class="tf-actions"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Действия игрока"
+              >
+                <header class="tf-actions-head">
+                  <span class="tf-actions-photo">
+                    <img src={player.photo} alt="" onerror={hideBrokenImage} />
+                  </span>
+                  <div class="tf-actions-title">
+                    <span class="eyebrow">Действия игрока</span>
+                    <strong class="tf-actions-name">{player.name}</strong>
+                    <div class="tf-actions-facts">
+                      <span>ЛЕТ <b>{player.age ?? '—'}</b></span>
+                      <span>АМПЛУА <b>{shortRole(player.role)}</b></span>
+                      <span>РОСТ <b>{player.height ? `${player.height} см` : '—'}</b></span>
+                      <span>НОГА <b>?</b></span>
+                    </div>
+                  </div>
+                  <span class="tf-actions-club">
+                    {#if player.club_logo}
+                      <img src={player.club_logo} alt="" onerror={hideBrokenImage} />
+                    {/if}
+                    <span>{player.club_name ?? 'Свободный агент'}</span>
+                  </span>
+                </header>
+
+                <div class="tf-actions-grid">
+                  <div class="tf-action-metrics">
+                    <div class="tf-action-metric"><span>ОБЩ.</span><b>?</b></div>
+                    <div class="tf-action-metric"><span>ЦЕНА</span><b>?</b></div>
+                    <div class="tf-action-metric"><span>ЗАРПЛАТА</span><b>?</b></div>
+                    <div class="tf-action-metric is-visible">
+                      <span>ОТСТУПНЫЕ</span>
+                      <b>{formatValue(player.release_clause)}</b>
+                    </div>
+                  </div>
+                  <div class="tf-action-report">
+                    <span class="tf-action-report-head">Предварительный отчёт</span>
+                    <ul>
+                      {#each ['Разгон', 'Скорость рывков', 'Ловкость', 'Баланс', 'Дриблинг', 'Владение'] as stat (stat)}
+                        <li><span>{stat}</span><b>???</b></li>
+                      {/each}
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="tf-action-status">
+                  <div class="tf-action-status-row">
+                    <i class="tf-status-dot"></i>
+                    <span>{transferStatusLabel(player.status)}</span>
+                  </div>
+                  {#if expiring}
+                    <div class="tf-action-status-row is-warn">
+                      <i class="tf-status-bang">!</i>
+                      <span>
+                        Контракт истекает через {transferContractMonths}
+                        {plural(transferContractMonths, 'месяц', 'месяца', 'месяцев')}
+                      </span>
+                    </div>
+                  {/if}
+                </div>
+
+                <div class="tf-action-list scroll-area">
+                  {#if transferScouts.length}
+                    {#each transferScouts as scout, index (scout.id ?? scout.name)}
+                      <div
+                        class="tf-action is-disabled"
+                        data-nav
+                        data-autofocus={index === 0 ? '' : undefined}
+                        role="button"
+                        tabindex="0"
+                        aria-disabled="true"
+                      >
+                        <span>Поручить {scout.name} — следить за {player.name}</span>
+                        <span class="tf-action-ticket">#19</span>
+                      </div>
+                    {/each}
+                  {:else}
+                    <div
+                      class="tf-action is-disabled"
+                      data-nav
+                      data-autofocus
+                      role="button"
+                      tabindex="0"
+                      aria-disabled="true"
+                    >
+                      <span>Нанять скаута</span>
+                      <span class="tf-action-ticket">#19</span>
+                    </div>
+                  {/if}
+                  <div class="tf-actions-sep" aria-hidden="true"></div>
+                  <div
+                    class="tf-action is-disabled"
+                    data-nav
+                    role="button"
+                    tabindex="0"
+                    aria-disabled="true"
+                  >
+                    <span>Добавить в шортлист</span>
+                    <span class="tf-action-ticket">#15</span>
+                  </div>
+                  <div
+                    class="tf-action is-disabled"
+                    data-nav
+                    role="button"
+                    tabindex="0"
+                    aria-disabled="true"
+                  >
+                    <span>Сделать предложение трансфера</span>
+                    <span class="tf-action-ticket">#16</span>
+                  </div>
+                  <div
+                    class="tf-action is-disabled"
+                    data-nav
+                    role="button"
+                    tabindex="0"
+                    aria-disabled="true"
+                  >
+                    <span>Сделать предложение аренды</span>
+                    <span class="tf-action-ticket">#16</span>
+                  </div>
+                  <div
+                    class="tf-action is-disabled"
+                    data-nav
+                    role="button"
+                    tabindex="0"
+                    aria-disabled="true"
+                  >
+                    <span>Обсудить переход</span>
+                    <span class="tf-action-ticket">#17</span>
+                  </div>
+                </div>
+
+                <footer class="tf-actions-foot">
+                  {#if $inputDevice === 'gamepad'}
+                    <span><kbd>A</kbd> Выбор</span>
+                    <span><kbd>B</kbd> Назад</span>
+                  {:else}
+                    <span><kbd>Enter</kbd> Выбор</span>
+                    <span><kbd>Esc</kbd> Назад</span>
+                  {/if}
+                </footer>
+              </div>
+            </div>
+          {/if}
         </div>
       {/if}
 

@@ -45,6 +45,7 @@ from server.career.condition import (
 from server.career.snapshot import lineup_for, lineup_strength
 from server.career.squad import (
     TRANSFER_STATUSES,
+    contract_expiry_for,
     ensure_player_contracts,
     ensure_player_finances,
     release_clause_for,
@@ -232,6 +233,7 @@ class TransferPlayer(BaseModel):
     status: str
     photo: str
     scouted: bool = False
+    contract_expires: str | None = None
 
 
 class TransferSearchResponse(BaseModel):
@@ -862,6 +864,9 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                     **player,
                     "release_clause": release_clause_for(career, player, player["id"]),
                     "status": target_status,
+                    "contract_expires": contract_expiry_for(
+                        career, player, player["id"]
+                    ),
                 }
             )
         return {

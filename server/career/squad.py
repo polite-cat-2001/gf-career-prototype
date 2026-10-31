@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 import random
 from datetime import date, timedelta
 
@@ -53,6 +54,7 @@ MIN_WEEKLY_WAGE = 1_000
 MAX_WEEKLY_WAGE = 2_000_000
 TRANSFER_STATUSES = ("transfer", "loan", "blocked")
 MAX_COUNTER_OFFERS = 2
+CONTRACT_MONTHS_MAX = 60
 WAGE_COVER_WEEKS = 4
 STARTING_BALANCE_RATIO = 0.25
 STARTING_BALANCE_MIN = 1_000_000
@@ -166,6 +168,39 @@ def release_clause_for(career: Career, player: dict, player_id: str) -> int:
     if contract.get("release_clause"):
         return int(contract["release_clause"])
     return _release_clause(career, player, player_id)
+
+
+def _add_months(start: date, months: int) -> date:
+    total = start.month - 1 + months
+    year = start.year + total // 12
+    month = total % 12 + 1
+    day = min(start.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+def _contract_anchor(career: Career) -> date:
+    try:
+        return date.fromisoformat(str(career.created_at)[:10])
+    except ValueError:
+        return date.fromisoformat(career.date)
+
+
+def contract_months_for(career: Career, player: dict, player_id: str) -> int:
+    player_id = str(player_id)
+    if not player.get("club_id"):
+        return 0
+    contract = career.player_contracts.get(player_id) or {}
+    if contract.get("years"):
+        return max(1, int(contract["years"]) * 12)
+    rng = _rng(career, player_id, "months")
+    return rng.randint(1, CONTRACT_MONTHS_MAX)
+
+
+def contract_expiry_for(career: Career, player: dict, player_id: str) -> str | None:
+    months = contract_months_for(career, player, player_id)
+    if months <= 0:
+        return None
+    return _add_months(_contract_anchor(career), months).isoformat()
 
 
 def _player_age(player: dict) -> int:

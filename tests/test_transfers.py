@@ -150,3 +150,28 @@ def test_position_group_filter(client: TestClient):
     forwards = search(client, career["id"], group="FWD", limit=100)
     assert forwards["total"] > 0
     assert all(player["role"] == "CF" for player in forwards["items"])
+
+
+def test_external_contract_expiry_is_seeded_and_stable(client: TestClient):
+    from datetime import date
+
+    career = create_career(client)
+    first = search(client, career["id"], limit=40)
+    again = search(client, career["id"], limit=40)
+
+    first_expiry = {player["id"]: player["contract_expires"] for player in first["items"]}
+    again_expiry = {player["id"]: player["contract_expires"] for player in again["items"]}
+    assert first_expiry == again_expiry
+    assert any(value is not None for value in first_expiry.values())
+    for value in first_expiry.values():
+        if value is not None:
+            expiry = date.fromisoformat(value)
+            assert expiry > date.fromisoformat(career["date"])
+
+
+def test_free_agents_have_no_contract_expiry(client: TestClient):
+    career = create_career(client)
+    free_agents = search(client, career["id"], status="free", limit=40)
+
+    assert free_agents["items"]
+    assert all(player["contract_expires"] is None for player in free_agents["items"])
