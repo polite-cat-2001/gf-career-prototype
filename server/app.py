@@ -44,8 +44,10 @@ from server.career.condition import (
 )
 from server.career.snapshot import lineup_for, lineup_strength
 from server.career.squad import (
+    TRANSFER_STATUSES,
     ensure_player_contracts,
     ensure_player_finances,
+    release_clause_for,
     resolve_negotiations,
 )
 
@@ -207,6 +209,37 @@ class PlayerSummary(BaseModel):
 
 class PlayerDetail(PlayerSummary):
     stats: dict[str, float]
+
+
+class TransferPlayer(BaseModel):
+    id: str
+    name: str
+    first_name: str | None = None
+    last_name: str | None = None
+    age: int | None = None
+    height: int | None = None
+    citizenship: list[str]
+    position: str
+    role: str | None = None
+    club_id: str | None = None
+    club_name: str | None = None
+    club_logo: str | None = None
+    league_id: str | None = None
+    league_name: str | None = None
+    country_id: str | None = None
+    country_name: str | None = None
+    release_clause: int
+    status: str
+    photo: str
+    scouted: bool = False
+
+
+class TransferSearchResponse(BaseModel):
+    items: list[TransferPlayer]
+    total: int
+    limit: int
+    offset: int
+    has_more: bool
 
 
 class CreateCareerRequest(BaseModel):
@@ -764,6 +797,80 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         if result is None:
             raise HTTPException(status_code=404, detail="player not found")
         return result
+
+    @app.get(
+        "/api/careers/{career_id}/transfers/search",
+        response_model=TransferSearchResponse,
+    )
+    def transfer_search(
+        career_id: str,
+        name: str | None = None,
+        group: str | None = None,
+        position: str | None = None,
+        age_min: int | None = Query(None, ge=0, le=99),
+        age_max: int | None = Query(None, ge=0, le=99),
+        citizenship: str | None = None,
+        country_id: str | None = None,
+        league_id: str | None = None,
+        club_id: str | None = None,
+        foot: str | None = None,
+        height_min: int | None = Query(None, ge=100, le=250),
+        height_max: int | None = Query(None, ge=100, le=250),
+        status: str | None = None,
+        sort: str = "name",
+        direction: str = "asc",
+        limit: int = Query(40, ge=1, le=100),
+        offset: int = Query(0, ge=0),
+    ):
+        career = load_career(career_id)
+        free_only = status == "free"
+        only_ids = None
+        if status in TRANSFER_STATUSES:
+            only_ids = [
+                player_id
+                for player_id, value in career.player_transfers.items()
+                if value == status
+            ]
+        players, total = canon.search_players(
+            name=(name or "").strip() or None,
+            group=group or None,
+            position=position or None,
+            age_min=age_min,
+            age_max=age_max,
+            citizenship=citizenship or None,
+            country_id=country_id or None,
+            league_id=league_id or None,
+            club_id=club_id or None,
+            foot=foot or None,
+            height_min=height_min,
+            height_max=height_max,
+            free_only=free_only,
+            only_ids=only_ids,
+            sort=sort,
+            direction=direction,
+            limit=limit,
+            offset=offset,
+            ref_date=career.date,
+        )
+        items = []
+        for player in players:
+            target_status = career.player_transfers.get(player["id"])
+            if target_status is None:
+                target_status = "free" if not player["club_id"] else "contracted"
+            items.append(
+                {
+                    **player,
+                    "release_clause": release_clause_for(career, player, player["id"]),
+                    "status": target_status,
+                }
+            )
+        return {
+            "items": items,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_more": offset + len(items) < total,
+        }
 
     @app.post("/api/careers", response_model=CareerSnapshot, status_code=201)
     def create_career_endpoint(payload: CreateCareerRequest):

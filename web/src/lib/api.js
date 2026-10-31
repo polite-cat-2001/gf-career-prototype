@@ -29,8 +29,10 @@ function post(path, body) {
 export const api = {
   meta: () => get('/api/meta'),
   countries: () => get('/api/countries'),
-  leagues: (countryId) => get(`/api/leagues?country_id=${encodeURIComponent(countryId)}`),
-  clubs: (leagueId) => get(`/api/clubs?league_id=${encodeURIComponent(leagueId)}`),
+  leagues: (countryId) =>
+    get(countryId ? `/api/leagues?country_id=${encodeURIComponent(countryId)}` : '/api/leagues'),
+  clubs: (leagueId) =>
+    get(leagueId ? `/api/clubs?league_id=${encodeURIComponent(leagueId)}` : '/api/clubs'),
   club: (clubId) => get(`/api/clubs/${encodeURIComponent(clubId)}`),
   squad: (clubId) => get(`/api/clubs/${encodeURIComponent(clubId)}/players`),
   careers: () => get('/api/careers'),
@@ -55,4 +57,16 @@ export const api = {
     post(`/api/careers/${encodeURIComponent(careerId)}/actions`, { type: 'next_season' }),
   careerAction: (careerId, payload) =>
     post(`/api/careers/${encodeURIComponent(careerId)}/actions`, payload),
+  transferSearch: (careerId, params = {}) => {
+    const query = new URLSearchParams()
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== null && value !== undefined && value !== '') {
+        query.set(key, String(value))
+      }
+    }
+    const suffix = query.toString()
+    return get(
+      `/api/careers/${encodeURIComponent(careerId)}/transfers/search${suffix ? `?${suffix}` : ''}`,
+    )
+  },
 }

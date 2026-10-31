@@ -161,6 +161,13 @@ def _release_clause(career: Career, player: dict, player_id: str) -> int:
     return max(int(value * 1.2), min(int(value * 2.0), rounded))
 
 
+def release_clause_for(career: Career, player: dict, player_id: str) -> int:
+    contract = career.player_contracts.get(str(player_id)) or {}
+    if contract.get("release_clause"):
+        return int(contract["release_clause"])
+    return _release_clause(career, player, player_id)
+
+
 def _player_age(player: dict) -> int:
     age = player.get("age")
     return int(age) if isinstance(age, (int, float)) else 25

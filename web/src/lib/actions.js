@@ -1,72 +1,93 @@
-let backHandler = null
-let tabHandler = null
-let saveHandler = null
-let cycleHandler = null
-let detailsHandler = null
-let primaryHandler = null
+const backHandlers = []
+const tabHandlers = []
+const saveHandlers = []
+const cycleHandlers = []
+const detailsHandlers = []
+const primaryHandlers = []
+const viewHandlers = []
+const stepHandlers = []
+const resetHandlers = []
+
+function register(list, handler) {
+  list.push(handler)
+  return () => {
+    const index = list.lastIndexOf(handler)
+    if (index >= 0) list.splice(index, 1)
+  }
+}
+
+function latest(list) {
+  return list.length ? list[list.length - 1] : null
+}
 
 export function registerBack(handler) {
-  backHandler = handler
-  return () => {
-    if (backHandler === handler) backHandler = null
-  }
+  return register(backHandlers, handler)
 }
 
 export function registerTabs(handler) {
-  tabHandler = handler
-  return () => {
-    if (tabHandler === handler) tabHandler = null
-  }
+  return register(tabHandlers, handler)
 }
 
 export function registerSave(handler) {
-  saveHandler = handler
-  return () => {
-    if (saveHandler === handler) saveHandler = null
-  }
+  return register(saveHandlers, handler)
 }
 
 export function registerDetails(handler) {
-  detailsHandler = handler
-  return () => {
-    if (detailsHandler === handler) detailsHandler = null
-  }
+  return register(detailsHandlers, handler)
 }
 
 export function registerCycle(handler) {
-  cycleHandler = handler
-  return () => {
-    if (cycleHandler === handler) cycleHandler = null
-  }
+  return register(cycleHandlers, handler)
 }
 
 export function registerPrimary(handler) {
-  primaryHandler = handler
-  return () => {
-    if (primaryHandler === handler) primaryHandler = null
-  }
+  return register(primaryHandlers, handler)
+}
+
+export function registerView(handler) {
+  return register(viewHandlers, handler)
+}
+
+export function registerStep(handler) {
+  return register(stepHandlers, handler)
+}
+
+export function registerReset(handler) {
+  return register(resetHandlers, handler)
 }
 
 export function triggerBack() {
-  backHandler?.()
+  latest(backHandlers)?.()
 }
 
 export function triggerTab(direction) {
-  tabHandler?.(direction)
+  latest(tabHandlers)?.(direction)
 }
 
 export function triggerSave() {
-  saveHandler?.()
+  latest(saveHandlers)?.()
 }
 
 export function triggerDetails() {
-  detailsHandler?.()
+  latest(detailsHandlers)?.()
 }
 
 export function triggerCycle(direction) {
-  cycleHandler?.(direction)
+  latest(cycleHandlers)?.(direction)
 }
 
 export function triggerPrimary() {
-  return primaryHandler?.() ?? false
+  return latest(primaryHandlers)?.() ?? false
+}
+
+export function triggerView() {
+  return latest(viewHandlers)?.() ?? false
+}
+
+export function triggerStep(direction) {
+  return latest(stepHandlers)?.(direction) ?? false
+}
+
+export function triggerReset() {
+  return latest(resetHandlers)?.() ?? false
 }

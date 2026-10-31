@@ -6,9 +6,13 @@
     registerCycle,
     registerDetails,
     registerPrimary,
+    registerReset,
     registerSave,
+    registerStep,
     registerTabs,
+    registerView,
   } from './actions.js'
+  import { api } from './api.js'
   import BenchDrawer from './BenchDrawer.svelte'
   import Controls from './Controls.svelte'
   import Icon from './Icon.svelte'
@@ -64,7 +68,7 @@
   const tabs = [
     { id: 'centre', label: 'Центр' },
     { id: 'squad', label: 'Состав' },
-    { id: 'transfers', label: 'Трансферы', disabled: true },
+    { id: 'transfers', label: 'Трансферы' },
     { id: 'office', label: 'Офис', disabled: true },
     { id: 'season', label: 'Сезон', disabled: true },
   ]
@@ -133,6 +137,112 @@
     { id: 'change', label: 'Изменить игрока', note: 'Заблокировано', icon: 'lock', disabled: true },
   ]
 
+  const TRANSFER_PAGE = 40
+
+  const transferHubCards = [
+    {
+      id: 'search',
+      label: 'Искать игроков',
+      note: 'Поиск особого игрока, которого вы хотите купить, взять в аренду или изучить.',
+      icon: 'grid',
+      enabled: true,
+    },
+    {
+      id: 'centre',
+      label: 'Центр трансферов',
+      note: 'Шортлист, предложения и переговоры',
+      icon: 'shirt',
+      soon: '#15',
+    },
+    {
+      id: 'network',
+      label: 'Всемирная сеть',
+      note: 'Искать игроков по всему миру, создав трансферную сеть',
+      icon: 'globe',
+      soon: '#19',
+    },
+    {
+      id: 'history',
+      label: 'История',
+      note: 'Сделки, аренды и переходы',
+      icon: 'news',
+      soon: '#20',
+    },
+  ]
+
+  const TRANSFER_POSITIONS = [
+    'Goalkeeper',
+    'Sweeper',
+    'Defender',
+    'Centre-Back',
+    'Left-Back',
+    'Right-Back',
+    'Defensive Midfield',
+    'Central Midfield',
+    'Attacking Midfield',
+    'Left Midfield',
+    'Right Midfield',
+    'Midfielder',
+    'Left Winger',
+    'Right Winger',
+    'Striker',
+    'Centre-Forward',
+    'Second Striker',
+  ]
+
+  const TRANSFER_GROUP_TABS = [
+    { id: '', label: 'ВСЕ' },
+    { id: 'FWD', label: 'НАП' },
+    { id: 'MID', label: 'ПЗЩ' },
+    { id: 'DEF', label: 'ЗАЩ' },
+    { id: 'GK', label: 'ВРТ' },
+  ]
+
+  const TRANSFER_GROUP_OPTIONS = TRANSFER_GROUP_TABS.map((group) => ({
+    value: group.id,
+    label: group.id ? group.label : 'Любая',
+  }))
+
+  const TRANSFER_STATUS_OPTIONS = [
+    { value: '', label: 'Любой' },
+    { value: 'free', label: 'Свободный агент' },
+    { value: 'transfer', label: 'На трансфере' },
+    { value: 'loan', label: 'В аренде' },
+    { value: 'blocked', label: 'Заблокирован' },
+  ]
+
+  const TRANSFER_STATUS_LABELS = {
+    free: 'Свободный агент',
+    contracted: 'В клубе',
+    transfer: 'На трансфере',
+    loan: 'В аренде',
+    blocked: 'Заблокирован',
+  }
+
+  const POSITION_BADGES = {
+    Goalkeeper: 'ВРТ',
+    Sweeper: 'СВ',
+    Defender: 'ЗАЩ',
+    'Centre-Back': 'ЦЗ',
+    'Left-Back': 'ЛЗ',
+    'Right-Back': 'ПЗ',
+    'Defensive Midfield': 'ОП',
+    'Central Midfield': 'ЦП',
+    'Attacking Midfield': 'АП',
+    'Left Midfield': 'ЛП',
+    'Right Midfield': 'ПП',
+    Midfielder: 'ПЗЩ',
+    'Left Winger': 'ЛФА',
+    'Right Winger': 'ПФА',
+    Striker: 'НАП',
+    'Centre-Forward': 'ФРВ',
+    'Second Striker': 'ОТН',
+  }
+
+  const TRANSFER_AGE = { min: 15, max: 50 }
+  const OSK_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM']
+  const OSK_LIMIT = 24
+
   let tab = $state('centre')
   let view = $state('overview')
   let detailsPage = $state(0)
@@ -168,6 +278,35 @@
   let matchSimLoading = $state(false)
   let matchSimError = $state('')
   let matchSimTimer = null
+
+  let transfersView = $state('hub')
+  let transferFilters = $state({
+    name: '',
+    group: '',
+    position: '',
+    ageMin: null,
+    ageMax: null,
+    citizenship: '',
+    country: '',
+    league: '',
+    club: '',
+    status: '',
+  })
+  let transferEditing = $state(null)
+  let transferRoleRow = $state('group')
+  let transferAgeRow = $state('ageMin')
+  let transferResults = $state([])
+  let transferTotal = $state(0)
+  let transferHasMore = $state(false)
+  let transferLoading = $state(false)
+  let transferError = $state('')
+  let transferSelectedId = $state(null)
+  let transferCountries = $state([])
+  let transferLeagues = $state([])
+  let transferClubs = $state([])
+  let transferSearchToken = 0
+  let oskOpen = $state(false)
+  let oskText = $state('')
 
   let summary = $derived(career.squad.summary)
   let lineup = $derived(career.squad.lineup)
@@ -313,6 +452,13 @@
   })
   let radar = $derived(focusedPlayer ? radarValues(focusedPlayer.stats) : [])
 
+  let transferSelected = $derived(
+    transferResults.find((player) => player.id === transferSelectedId) ?? transferResults[0] ?? null,
+  )
+  let transferFiltersActive = $derived(
+    Object.entries(transferFilters).filter(([, value]) => value !== '' && value !== null).length,
+  )
+
   let hints = $derived.by(() => {
     const start = { gamepad: ['Start'], keyboard: ['S'], label: 'Сохранить' }
     const sections = { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Разделы' }
@@ -365,6 +511,44 @@
     }
     if (simulating || advancing) {
       return [{ gamepad: ['A'], keyboard: ['Enter'], label: centreAction }]
+    }
+    if (tab === 'transfers') {
+      if (oskOpen) {
+        return [
+          { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Буква' },
+          { gamepad: ['A'], keyboard: ['Enter'], label: 'Ввод' },
+          { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+        ]
+      }
+      if (transfersView === 'hub') {
+        return [
+          sections,
+          { gamepad: ['A'], keyboard: ['Enter'], label: 'Открыть' },
+          { gamepad: ['B'], keyboard: ['Esc'], label: 'В меню' },
+        ]
+      }
+      if (transfersView === 'filters') {
+        if (transferEditing) {
+          return [
+            { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Значение' },
+            { gamepad: ['A'], keyboard: ['Enter'], label: 'Готово' },
+            { gamepad: ['B'], keyboard: ['Esc'], label: 'Готово' },
+          ]
+        }
+        return [
+          { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Фильтр' },
+          { gamepad: ['A'], keyboard: ['Enter'], label: 'Изменить' },
+          { gamepad: ['X'], keyboard: ['X'], label: 'Сброс' },
+          { gamepad: ['Y'], keyboard: ['Y'], label: 'Начать поиск' },
+          { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+        ]
+      }
+      return [
+        { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Игрок' },
+        { gamepad: ['A'], keyboard: ['Enter'], label: 'Выбрать' },
+        { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+        sections,
+      ]
     }
     if (tab === 'squad' && view === 'amount') {
       return [
@@ -481,6 +665,9 @@
     const stopDetails = registerDetails(handleDetails)
     const stopPrimary = registerPrimary(handlePrimaryAction)
     const stopCycle = registerCycle(handleCycle)
+    const stopView = registerView(handleViewToggle)
+    const stopStep = registerStep(handleStep)
+    const stopReset = registerReset(handleReset)
     tick().then(focusFirst)
     return () => {
       stopBack()
@@ -489,8 +676,12 @@
       stopDetails()
       stopPrimary()
       stopCycle()
+      stopView()
+      stopStep()
+      stopReset()
       if (simTimer) clearInterval(simTimer)
       if (matchSimTimer) clearInterval(matchSimTimer)
+      if (oskTimer) clearTimeout(oskTimer)
     }
   })
 
@@ -505,6 +696,424 @@
     ) {
       onsave()
     }
+  }
+
+  function transferStatusLabel(status) {
+    return TRANSFER_STATUS_LABELS[status] ?? status
+  }
+
+  function transferFieldLabel(field) {
+    if (field === 'group') {
+      return (
+        TRANSFER_GROUP_OPTIONS.find((option) => option.value === transferFilters.group)?.label ??
+        'Любая'
+      )
+    }
+    if (field === 'position') {
+      return transferFilters.position ? positionLabel(transferFilters.position) : 'Любое'
+    }
+    if (field === 'citizenship') return transferFilters.citizenship || 'Любое'
+    if (field === 'country') {
+      return (
+        transferCountries.find((country) => country.id === transferFilters.country)?.name ??
+        'Любая'
+      )
+    }
+    if (field === 'league') {
+      return (
+        transferLeagues.find((league) => league.id === transferFilters.league)?.name ?? 'Любая'
+      )
+    }
+    if (field === 'club') {
+      return transferClubs.find((club) => club.id === transferFilters.club)?.name ?? 'Любой'
+    }
+    if (field === 'status') {
+      return (
+        TRANSFER_STATUS_OPTIONS.find((option) => option.value === transferFilters.status)?.label ??
+        'Любой'
+      )
+    }
+    return '—'
+  }
+
+  function transferPositionShort() {
+    if (!transferFilters.position) return 'Любое'
+    return POSITION_BADGES[transferFilters.position] ?? positionLabel(transferFilters.position)
+  }
+
+  function transferValueMeta(field) {
+    if (field === 'position') {
+      return { badge: transferFilters.position ? POSITION_BADGES[transferFilters.position] : null }
+    }
+    if (field === 'citizenship') {
+      const country = transferCountries.find((item) => item.name === transferFilters.citizenship)
+      return { logo: country?.flag ?? null }
+    }
+    if (field === 'country') {
+      const country = transferCountries.find((item) => item.id === transferFilters.country)
+      return { logo: country?.flag ?? null }
+    }
+    if (field === 'league') {
+      const league = transferLeagues.find((item) => item.id === transferFilters.league)
+      return { logo: league?.logo ?? null }
+    }
+    if (field === 'club') {
+      const club = transferClubs.find((item) => item.id === transferFilters.club)
+      return { logo: club?.logo ?? null }
+    }
+    return { logo: null, badge: null }
+  }
+
+  function activeEditField() {
+    return transferEditing === 'positionRole' ? transferRoleRow : transferEditing
+  }
+
+  function inlineOptions() {
+    const field = activeEditField()
+    if (field === 'group') return TRANSFER_GROUP_OPTIONS
+    if (field === 'position') {
+      return [
+        { value: '', label: 'Любое' },
+        ...TRANSFER_POSITIONS.map((position) => ({
+          value: position,
+          label: positionLabel(position),
+          badge: POSITION_BADGES[position] ?? '—',
+        })),
+      ]
+    }
+    if (field === 'citizenship') {
+      return [
+        { value: '', label: 'Любое' },
+        ...transferCountries.map((country) => ({
+          value: country.name,
+          label: country.name,
+          logo: country.flag,
+        })),
+      ]
+    }
+    if (field === 'country') {
+      return [
+        { value: '', label: 'Любая' },
+        ...transferCountries.map((country) => ({
+          value: country.id,
+          label: country.name,
+          logo: country.flag,
+        })),
+      ]
+    }
+    if (field === 'league') {
+      const leagues = transferFilters.country
+        ? transferLeagues.filter((league) => league.country_id === transferFilters.country)
+        : transferLeagues
+      return [
+        { value: '', label: 'Любая' },
+        ...leagues.map((league) => ({
+          value: league.id,
+          label: league.name,
+          logo: league.logo,
+        })),
+      ]
+    }
+    if (field === 'club') {
+      if (!transferFilters.league) {
+        return [{ value: '', label: 'Сначала выберите лигу' }]
+      }
+      return [
+        { value: '', label: 'Любой' },
+        ...transferClubs.map((club) => ({
+          value: club.id,
+          label: club.name,
+          logo: club.logo,
+        })),
+      ]
+    }
+    if (field === 'status') return TRANSFER_STATUS_OPTIONS
+    return []
+  }
+
+  function buildTransferParams(offset = 0) {
+    return {
+      name: transferFilters.name.trim() || undefined,
+      group: transferFilters.group || undefined,
+      position: transferFilters.position || undefined,
+      age_min: transferFilters.ageMin ?? undefined,
+      age_max: transferFilters.ageMax ?? undefined,
+      citizenship: transferFilters.citizenship || undefined,
+      country_id: transferFilters.country || undefined,
+      league_id: transferFilters.league || undefined,
+      club_id: transferFilters.club || undefined,
+      status: transferFilters.status || undefined,
+      sort: 'overall',
+      direction: 'desc',
+      limit: TRANSFER_PAGE,
+      offset,
+    }
+  }
+
+  async function runTransferSearch(reset = true) {
+    const token = ++transferSearchToken
+    transferError = ''
+    if (reset) {
+      transferResults = []
+      transferTotal = 0
+      transferHasMore = false
+    }
+    transferLoading = true
+    try {
+      const data = await api.transferSearch(
+        career.id,
+        buildTransferParams(reset ? 0 : transferResults.length),
+      )
+      if (token !== transferSearchToken) return
+      transferResults = reset ? data.items : [...transferResults, ...data.items]
+      transferTotal = data.total
+      transferHasMore = data.has_more
+      if (reset || !transferSelectedId) {
+        transferSelectedId = transferResults[0]?.id ?? null
+      }
+    } catch (caught) {
+      if (token === transferSearchToken) transferError = caught.message
+    } finally {
+      if (token === transferSearchToken) transferLoading = false
+    }
+  }
+
+  function loadMoreTransfers() {
+    if (!transferLoading && transferHasMore) runTransferSearch(false)
+  }
+
+  function onTransferScroll(event) {
+    const element = event.currentTarget
+    if (element.scrollTop + element.clientHeight >= element.scrollHeight - 220) {
+      loadMoreTransfers()
+    }
+  }
+
+  async function ensureTransferOptions() {
+    if (transferCountries.length && transferLeagues.length) return
+    try {
+      const [countries, leagues] = await Promise.all([api.countries(), api.leagues()])
+      transferCountries = countries
+      transferLeagues = leagues
+    } catch (caught) {
+      transferError = caught.message
+    }
+  }
+
+  async function openTransferFilters() {
+    transfersView = 'filters'
+    transferEditing = null
+    oskOpen = false
+    await ensureTransferOptions()
+    await tick()
+    focusFirst()
+  }
+
+  async function startTransferSearch() {
+    if (transfersView !== 'filters') return
+    transferEditing = null
+    transfersView = 'results'
+    transferSelectedId = null
+    await ensureTransferOptions()
+    await runTransferSearch(true)
+    await tick()
+    focusFirst()
+  }
+
+  function focusTransferTile(field) {
+    const target = field ? document.querySelector(`[data-filter="${field}"]`) : null
+    if (target) focusElement(target)
+    else focusFirst()
+  }
+
+  function openTransferHub() {
+    if (oskOpen) {
+      closeOsk()
+      return
+    }
+    if (transferEditing) {
+      closeTransferEdit()
+      return
+    }
+    if (transfersView === 'results') {
+      transfersView = 'filters'
+      tick().then(focusFirst)
+      return
+    }
+    if (transfersView === 'filters') {
+      transfersView = 'hub'
+      tick().then(focusFirst)
+      return
+    }
+    setTab('centre')
+  }
+
+  function applyTransferField(field, value) {
+    transferFilters[field] = value
+    if (field === 'country') {
+      transferFilters.league = ''
+      transferFilters.club = ''
+      transferClubs = []
+    }
+    if (field === 'league') {
+      transferFilters.club = ''
+      transferClubs = []
+      if (value) {
+        api
+          .clubs(value)
+          .then((clubs) => {
+            if (transferFilters.league === value) transferClubs = clubs
+          })
+          .catch(() => {
+            transferClubs = []
+          })
+      }
+    }
+  }
+
+  function stepTransferField(field, delta) {
+    const options = inlineOptions()
+    if (!options.length) return
+    const current = transferFilters[field]
+    let index = options.findIndex((option) => option.value === current)
+    if (index < 0) index = 0
+    const next = options[(index + delta + options.length) % options.length]
+    applyTransferField(field, next.value)
+  }
+
+  function stepTransferRange(field, delta) {
+    const config = TRANSFER_AGE
+    const minKey = 'ageMin'
+    const maxKey = 'ageMax'
+    const current = transferFilters[field]
+    let next
+    if (current === null) {
+      next = delta > 0 ? config.min : config.max
+    } else {
+      next = current + delta
+      if (next < config.min || next > config.max) next = null
+    }
+    transferFilters[field] = next
+    if (
+      transferFilters[minKey] !== null &&
+      transferFilters[maxKey] !== null &&
+      transferFilters[minKey] > transferFilters[maxKey]
+    ) {
+      if (field === minKey) transferFilters[maxKey] = transferFilters[minKey]
+      else transferFilters[minKey] = transferFilters[maxKey]
+    }
+  }
+
+  function stepActive(delta) {
+    if (transferEditing === 'age') stepTransferRange(transferAgeRow, delta)
+    else if (transferEditing === 'positionRole') stepTransferField(transferRoleRow, delta)
+    else if (transferEditing) stepTransferField(transferEditing, delta)
+  }
+
+  function openTransferEdit(field) {
+    if (field === 'name') {
+      openOsk()
+      return
+    }
+    transferEditing = field
+    if (field === 'positionRole') transferRoleRow = 'group'
+    if (field === 'age') transferAgeRow = 'ageMin'
+  }
+
+  function closeTransferEdit() {
+    const field = transferEditing
+    transferEditing = null
+    tick().then(() => focusTransferTile(field))
+  }
+
+  function handleStep(direction) {
+    if (tab !== 'transfers' || transfersView !== 'filters') return false
+    if (oskOpen || !transferEditing) return false
+    if (transferEditing === 'age') {
+      if (direction === 'up' || direction === 'down') {
+        transferAgeRow = transferAgeRow === 'ageMin' ? 'ageMax' : 'ageMin'
+      } else {
+        stepActive(direction === 'right' ? 1 : -1)
+      }
+      return true
+    }
+    if (transferEditing === 'positionRole') {
+      if (direction === 'up' || direction === 'down') {
+        transferRoleRow = transferRoleRow === 'group' ? 'position' : 'group'
+          } else {
+        stepActive(direction === 'right' ? 1 : -1)
+      }
+      return true
+    }
+    if (direction === 'left' || direction === 'right') stepActive(direction === 'right' ? 1 : -1)
+    return true
+  }
+
+  function handleViewToggle() {
+    if (tab !== 'transfers' || oskOpen) return false
+    if (transfersView === 'filters') {
+      startTransferSearch()
+      return true
+    }
+    return false
+  }
+
+  function handleReset() {
+    if (tab !== 'transfers' || transfersView !== 'filters' || oskOpen) return false
+    transferEditing = null
+    resetTransferFilters()
+    return true
+  }
+
+  function resetTransferFilters() {
+    transferFilters = {
+      name: '',
+      group: '',
+      position: '',
+      ageMin: null,
+      ageMax: null,
+      citizenship: '',
+      country: '',
+      league: '',
+      club: '',
+      status: '',
+    }
+    transferClubs = []
+    transferEditing = null
+  }
+
+  function openOsk() {
+    if (oskOpen) return
+    transferEditing = null
+    oskText = transferFilters.name
+    oskOpen = true
+    tick().then(() => {
+      const key = document.querySelector('.osk-key')
+      if (key) focusElement(key)
+    })
+  }
+
+  function closeOsk() {
+    oskOpen = false
+    tick().then(() => focusTransferTile('name'))
+  }
+
+  function oskPress(character) {
+    if (oskText.length >= OSK_LIMIT) return
+    oskText += character
+  }
+
+  function oskBackspace() {
+    oskText = oskText.slice(0, -1)
+  }
+
+  function oskClear() {
+    oskText = ''
+  }
+
+  function applyOsk() {
+    transferFilters.name = oskText.trim()
+    closeOsk()
   }
 
   async function openMatchSimulation() {
@@ -885,6 +1494,10 @@
       }
       return
     }
+    if (tab === 'transfers') {
+      openTransferHub()
+      return
+    }
     if (tab === 'squad') {
       if (view === 'centre') {
         if (centreOpenId) {
@@ -987,12 +1600,20 @@
     centrePlayerId = null
     centreOpenId = null
     centreTab = 'status'
+    transfersView = 'hub'
+    transferEditing = null
+    oskOpen = false
+    transferResults = []
+    transferTotal = 0
+    transferSelectedId = null
+    transferError = ''
     await tick()
     focusFirst()
   }
 
   function switchTab(direction) {
     if (tab === 'squad' && ['negotiation', 'amount', 'number', 'release'].includes(view)) return
+    if (transferEditing || oskOpen) return
     if (simulating || advancing || seasonReview || matchSimOpen || matchdayOpen) return
     if (tab === 'squad' && view === 'centre') {
       switchCentreTab(direction)
@@ -1359,6 +1980,12 @@
   }
 
   function handleCycle(direction) {
+    if (tab === 'transfers') {
+      if (transfersView === 'filters' && !oskOpen) {
+        handleStep(direction === 'right' ? 'right' : 'left')
+      }
+      return
+    }
     if (tab === 'squad' && view === 'number') {
       cycleNumber(direction)
       return
@@ -1991,6 +2618,412 @@
           <p class="widget-note">До пяти тренировок в неделю: характеристики, рейтинг и стоимость.</p>
         </section>
       </div>
+    {:else if tab === 'transfers'}
+      {#if transfersView === 'hub'}
+        <div class="tf-hub">
+          <section class="tf-reports" aria-label="Отчёты скаутов">
+            <div class="tf-reports-head">
+              <div>
+                <span class="eyebrow">Центр отчётов</span>
+                <strong>Отчёты скаутов</strong>
+              </div>
+              <div class="tf-reports-count">
+                <span><b>0</b> Новое</span>
+                <span><b>0</b> Обновления</span>
+              </div>
+            </div>
+            <div class="tf-reports-empty">
+              {#each [0, 1, 2, 3] as slot (slot)}
+                <div class="tf-report-slot">
+                  <Icon name="users" size={slot === 0 ? 54 : 42} />
+                  <span>—</span>
+                </div>
+              {/each}
+            </div>
+            <div class="tf-reports-foot">
+              <p>Скаутских отчётов пока нет. Поиск открыт, отчёты появятся в #14.</p>
+              <div class="tf-dots" aria-hidden="true"><i class="active"></i><i></i><i></i></div>
+            </div>
+          </section>
+          {#each transferHubCards as card (card.id)}
+            <button
+              class="tf-hub-card tf-card-{card.id}"
+              class:is-disabled={!card.enabled}
+              data-nav
+              data-autofocus={card.enabled ? '' : undefined}
+              disabled={!card.enabled}
+              onclick={() => card.id === 'search' && openTransferFilters()}
+            >
+              <div class="tf-hub-card-head">
+                <span class="eyebrow">{card.enabled ? 'Открыто' : 'Скоро'}</span>
+                {#if card.soon}<span class="soon-tag">{card.soon}</span>{/if}
+              </div>
+              <strong class="tf-hub-card-title">{card.label}</strong>
+              <span class="tf-hub-card-note">{card.note}</span>
+              <span class="tf-hub-card-icon">
+                <Icon name={card.icon} size={card.enabled ? 68 : 38} />
+              </span>
+            </button>
+          {/each}
+        </div>
+      {:else if transfersView === 'filters'}
+        {#snippet tfTile(field, label)}
+          {@const editing = transferEditing === field}
+          {@const meta = transferValueMeta(field)}
+          <button
+            type="button"
+            class="tf-cell"
+            class:is-editing={editing}
+            data-nav
+            data-filter={field}
+            data-edit={editing ? 'true' : undefined}
+            onclick={() => (editing ? closeTransferEdit() : openTransferEdit(field))}
+          >
+            <span class="tf-label">{label}</span>
+            <div class="tf-value-bar">
+              {#if editing}
+                <span
+                  class="tf-arrow"
+                  onclick={(event) => {
+                    event.stopPropagation()
+                    stepActive(-1)
+                  }}>‹</span
+                >
+              {/if}
+              <span class="tf-bar-main">
+                {#if meta.logo}
+                  <img src={meta.logo} alt="" onerror={hideBrokenImage} />
+                {/if}
+                {#if meta.badge}
+                  <span class="tf-badge">{meta.badge}</span>
+                {/if}
+                <strong>{transferFieldLabel(field)}</strong>
+              </span>
+              {#if editing}
+                <span
+                  class="tf-arrow"
+                  onclick={(event) => {
+                    event.stopPropagation()
+                    stepActive(1)
+                  }}>›</span
+                >
+              {/if}
+            </div>
+          </button>
+        {/snippet}
+        <div class="tf-filters" inert={oskOpen ? true : undefined}>
+          <div class="tf-filters-head">
+            <span class="tf-crumbs">Трансферы <i>›</i> Поиск игроков</span>
+            <span class="tf-crumbs-note">
+              {transferEditing ? 'A или B — выйти из плитки' : 'A — изменить · Y — начать поиск'}
+            </span>
+          </div>
+          <div class="tf-filter-grid">
+            <button
+              type="button"
+              class="tf-cell tf-name"
+              data-nav
+              data-filter="name"
+              onclick={openOsk}
+            >
+              <span class="tf-label">Имя игрока</span>
+              <span class="tf-name-art"><Icon name="users" size={64} /></span>
+              <span class="tf-value">{transferFilters.name || 'Люб.'}</span>
+            </button>
+
+            <button
+              type="button"
+              class="tf-cell tf-role"
+              class:is-editing={transferEditing === 'positionRole'}
+              data-nav
+              data-filter="positionRole"
+              data-edit={transferEditing === 'positionRole' ? 'true' : undefined}
+              onclick={() =>
+                transferEditing === 'positionRole'
+                  ? closeTransferEdit()
+                  : openTransferEdit('positionRole')}
+            >
+              <span class="tf-label">Позиция и амплуа</span>
+              <div class="tf-age-rows">
+                <div
+                  class="tf-role-row"
+                class:is-active={transferEditing === 'positionRole' && transferRoleRow === 'group'}
+              >
+                <span>Позиция</span>
+                <span class="tf-range-control">
+                  {#if transferEditing === 'positionRole'}
+                    <span
+                      class="tf-arrow"
+                      onclick={(event) => {
+                        event.stopPropagation()
+                        transferRoleRow = 'group'
+                        stepActive(-1)
+                      }}>‹</span
+                    >
+                  {/if}
+                  <span class="tf-bar-main">
+                    <strong>{transferFieldLabel('group')}</strong>
+                  </span>
+                  {#if transferEditing === 'positionRole'}
+                    <span
+                      class="tf-arrow"
+                      onclick={(event) => {
+                        event.stopPropagation()
+                        transferRoleRow = 'group'
+                        stepActive(1)
+                      }}>›</span
+                    >
+                  {/if}
+                </span>
+              </div>
+              <div
+                class="tf-role-row"
+                class:is-active={transferEditing === 'positionRole' && transferRoleRow === 'position'}
+              >
+                <span>Амплуа</span>
+                <span class="tf-range-control">
+                  {#if transferEditing === 'positionRole'}
+                    <span
+                      class="tf-arrow"
+                      onclick={(event) => {
+                        event.stopPropagation()
+                        transferRoleRow = 'position'
+                        stepActive(-1)
+                      }}>‹</span
+                    >
+                  {/if}
+                  <span class="tf-bar-main">
+                    <strong>{transferPositionShort()}</strong>
+                  </span>
+                  {#if transferEditing === 'positionRole'}
+                    <span
+                      class="tf-arrow"
+                      onclick={(event) => {
+                        event.stopPropagation()
+                        transferRoleRow = 'position'
+                        stepActive(1)
+                      }}>›</span
+                    >
+                  {/if}
+                </span>
+                </div>
+              </div>
+            </button>
+
+            {@render tfTile('citizenship', 'Гражданство')}
+            {@render tfTile('league', 'Лига')}
+
+            <button
+              type="button"
+              class="tf-cell tf-age"
+              class:is-editing={transferEditing === 'age'}
+              data-nav
+              data-filter="age"
+              data-edit={transferEditing === 'age' ? 'true' : undefined}
+              onclick={() =>
+                transferEditing === 'age' ? closeTransferEdit() : openTransferEdit('age')}
+            >
+              <span class="tf-label">Лет</span>
+              <div class="tf-age-rows">
+                <div
+                  class="tf-range-row"
+                  class:is-active={transferEditing === 'age' && transferAgeRow === 'ageMin'}
+                >
+                  <span>МИН.</span>
+                  <span class="tf-range-control">
+                    {#if transferEditing === 'age'}
+                      <span
+                        class="tf-arrow"
+                        onclick={(event) => {
+                          event.stopPropagation()
+                          transferAgeRow = 'ageMin'
+                          stepTransferRange('ageMin', -1)
+                        }}>‹</span
+                      >
+                    {/if}
+                    <strong>{transferFilters.ageMin ?? 'Люб.'}</strong>
+                    {#if transferEditing === 'age'}
+                      <span
+                        class="tf-arrow"
+                        onclick={(event) => {
+                          event.stopPropagation()
+                          transferAgeRow = 'ageMin'
+                          stepTransferRange('ageMin', 1)
+                        }}>›</span
+                      >
+                    {/if}
+                  </span>
+                </div>
+                <div
+                  class="tf-range-row"
+                  class:is-active={transferEditing === 'age' && transferAgeRow === 'ageMax'}
+                >
+                  <span>МАКС.</span>
+                  <span class="tf-range-control">
+                    {#if transferEditing === 'age'}
+                      <span
+                        class="tf-arrow"
+                        onclick={(event) => {
+                          event.stopPropagation()
+                          transferAgeRow = 'ageMax'
+                          stepTransferRange('ageMax', -1)
+                        }}>‹</span
+                      >
+                    {/if}
+                    <strong>{transferFilters.ageMax ?? 'Люб.'}</strong>
+                    {#if transferEditing === 'age'}
+                      <span
+                        class="tf-arrow"
+                        onclick={(event) => {
+                          event.stopPropagation()
+                          transferAgeRow = 'ageMax'
+                          stepTransferRange('ageMax', 1)
+                        }}>›</span
+                      >
+                    {/if}
+                  </span>
+                </div>
+              </div>
+            </button>
+
+            {@render tfTile('status', 'Трансферный статус')}
+            {@render tfTile('country', 'Страна')}
+            {@render tfTile('club', 'Клуб')}
+          </div>
+        </div>
+      {:else}
+        <div class="tf-results" inert={oskOpen ? true : undefined}>
+          <section class="tf-results-main">
+            <div class="tf-results-title">
+              <strong>Результаты поиска</strong>
+              <span>{transferTotal.toLocaleString('ru-RU')}</span>
+            </div>
+            {#if transferError}<p class="transfer-error">{transferError}</p>{/if}
+            <div class="tf-result-list scroll-area" onscroll={onTransferScroll}>
+              {#each transferResults as player, index (player.id)}
+                <button
+                  class="tf-result"
+                  class:is-selected={transferSelected?.id === player.id}
+                  data-nav
+                  data-autofocus={index === 0 ? '' : undefined}
+                  onfocus={() => {
+                    transferSelectedId = player.id
+                    if (index > transferResults.length - 5) loadMoreTransfers()
+                  }}
+                  onclick={() => (transferSelectedId = player.id)}
+                >
+                  <span class="tf-result-photo">
+                    <img src={player.photo} alt="" onerror={hideBrokenImage} />
+                  </span>
+                  <span class="tf-result-main">
+                    <span class="tf-result-name">{playerInitialName(player)}</span>
+                    <span class="tf-result-meta">
+                      {player.age ?? '—'} {plural(player.age ?? 0, 'год', 'года', 'лет')}
+                      <span class="pos-badge {posTone(player.role)}">{shortRole(player.role)}</span>
+                    </span>
+                  </span>
+                  {#if player.club_logo}
+                    <img class="tf-result-crest" src={player.club_logo} alt="" onerror={hideBrokenImage} />
+                  {/if}
+                </button>
+              {/each}
+              {#if transferLoading}
+                <div class="transfer-loading">Загрузка…</div>
+              {:else if !transferResults.length && !transferError}
+                <div class="transfer-loading">Никого не нашлось — ослабьте фильтры.</div>
+              {/if}
+            </div>
+          </section>
+
+          <aside class="tf-detail">
+            {#if transferSelected}
+              <div class="tf-detail-top">
+                <span class="tf-detail-photo">
+                  <img src={transferSelected.photo} alt="" onerror={hideBrokenImage} />
+                </span>
+                <div class="tf-detail-info">
+                  <strong class="tf-detail-name">{transferSelected.name}</strong>
+                  <div class="tf-detail-facts">
+                    <span>ЛЕТ <b>{transferSelected.age ?? '—'}</b></span>
+                    <span>РОСТ <b>{transferSelected.height ?? '—'} см</b></span>
+                    <span>АМПЛУА <b>{shortRole(transferSelected.role)}</b></span>
+                    <span>СТАТУС <b>{transferStatusLabel(transferSelected.status)}</b></span>
+                  </div>
+                </div>
+                <span class="tf-detail-club">
+                  {#if transferSelected.club_logo}
+                    <img src={transferSelected.club_logo} alt="" onerror={hideBrokenImage} />
+                  {/if}
+                  <span>{transferSelected.club_name ?? 'Свободный агент'}</span>
+                </span>
+              </div>
+              <div class="tf-detail-clause">
+                <span>Сумма отступных</span>
+                <strong>{formatValue(transferSelected.release_clause)}</strong>
+              </div>
+              <div class="tf-detail-report">
+                <div class="tf-report-col">
+                  <div class="tf-report-head">
+                    <Icon name="lock" size={16} />
+                    Не изучается
+                  </div>
+                  <p>
+                    На данный момент мы не изучаем игрока
+                    {transferSelected.last_name || transferSelected.name}.
+                  </p>
+                </div>
+                <div class="tf-report-col">
+                  <div class="tf-report-head">Предварительный отчёт</div>
+                  <ul>
+                    {#each ['Разгон', 'Скорость рывков', 'Ловкость', 'Баланс', 'Дриблинг'] as stat (stat)}
+                      <li>??? {stat}</li>
+                    {/each}
+                  </ul>
+                </div>
+              </div>
+              <div class="transfer-fog-chips">
+                {#each ['OVR', 'Статы', 'Зарплата', 'Нога', 'Стоимость'] as hidden (hidden)}
+                  <span>??? {hidden}</span>
+                {/each}
+              </div>
+            {:else}
+              <p class="transfer-detail-empty">Выберите игрока в списке.</p>
+            {/if}
+          </aside>
+        </div>
+      {/if}
+
+      {#if oskOpen}
+        <div class="osk-scrim" onclick={closeOsk} role="presentation"></div>
+        <section class="osk" data-osk aria-label="Поиск игрока">
+          <header class="osk-head">
+            <span class="eyebrow">Поиск игрока</span>
+            <div class="osk-display">{oskText || '—'}</div>
+          </header>
+          <div class="osk-keys">
+            {#each OSK_ROWS as row, rowIndex (row)}
+              <div class="osk-row">
+                {#each [...row] as key (key)}
+                  <button
+                    class="osk-key"
+                    data-nav
+                    data-autofocus={rowIndex === 0 && key === 'Q' ? '' : undefined}
+                    onclick={() => oskPress(key)}
+                  >
+                    {key}
+                  </button>
+                {/each}
+              </div>
+            {/each}
+          </div>
+          <div class="osk-actions">
+            <button class="osk-action" data-nav onclick={() => oskPress(' ')}>Пробел</button>
+            <button class="osk-action" data-nav onclick={oskBackspace}>Удалить</button>
+            <button class="osk-action" data-nav onclick={oskClear}>Очистить</button>
+            <button class="osk-action is-primary" data-nav onclick={applyOsk}>Готово</button>
+          </div>
+        </section>
+      {/if}
     {:else if tab === 'squad' && view === 'overview'}
       <div class="squad-overview">
         <button class="squad-team" data-nav data-autofocus onclick={() => openPlan()}>

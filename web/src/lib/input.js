@@ -1,6 +1,16 @@
 import { writable } from 'svelte/store'
 
-import { triggerBack, triggerCycle, triggerDetails, triggerPrimary, triggerSave, triggerTab } from './actions.js'
+import {
+  triggerBack,
+  triggerCycle,
+  triggerDetails,
+  triggerPrimary,
+  triggerReset,
+  triggerSave,
+  triggerStep,
+  triggerTab,
+  triggerView,
+} from './actions.js'
 
 export const inputDevice = writable('keyboard')
 
@@ -51,6 +61,17 @@ function isTyping() {
 
 function cycle(direction) {
   triggerCycle(direction)
+}
+
+function stepFocused(direction) {
+  const element = document.activeElement
+  if (element?.dataset?.edit === 'true') {
+    triggerStep(direction)
+    return true
+  }
+  if (!element?.dataset?.step) return false
+  triggerStep(direction)
+  return true
 }
 
 function moveWithinPitch(current, direction) {
@@ -350,6 +371,7 @@ function onKeyDown(event) {
       ArrowRight: 'right',
     }
     const direction = map[event.key]
+    if (stepFocused(direction)) return
     if (
       (direction === 'left' || direction === 'right') &&
       cycleSquadCentrePages(document.activeElement, direction)
@@ -357,6 +379,11 @@ function onKeyDown(event) {
       return
     }
     moveFocus(direction)
+    return
+  }
+  if (event.code === 'KeyX') {
+    event.preventDefault()
+    triggerReset()
     return
   }
   if (event.code === 'KeyQ') {
@@ -372,6 +399,11 @@ function onKeyDown(event) {
   if (event.code === 'KeyS') {
     event.preventDefault()
     saveShortcut()
+    return
+  }
+  if (event.code === 'KeyY') {
+    event.preventDefault()
+    if (!triggerView()) detailsShortcut()
     return
   }
   if (event.code === 'KeyR') {
@@ -419,7 +451,7 @@ function pollGamepad() {
       if (direction !== lastDirection || now - lastMoveAt > 190) {
         lastDirection = direction
         lastMoveAt = now
-        moveFocus(direction)
+        if (!stepFocused(direction)) moveFocus(direction)
       }
     } else {
       lastDirection = ''
@@ -444,10 +476,13 @@ function pollGamepad() {
       if (!triggerPrimary()) activateFocused()
     }
     if (down(1)) goBack()
+    if (down(2)) triggerReset()
     if (down(4)) switchTab('left')
     if (down(5)) switchTab('right')
     if (down(9)) saveShortcut()
-    if (down(3)) detailsShortcut()
+    if (down(3)) {
+      if (!triggerView()) detailsShortcut()
+    }
     previousButtons[pad.index] = pressed
   }
 }
