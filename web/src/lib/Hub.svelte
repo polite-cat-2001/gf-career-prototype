@@ -18,10 +18,10 @@
   import Icon from './Icon.svelte'
   import MatchScreen from './MatchScreen.svelte'
   import MatchdayScreen from './MatchdayScreen.svelte'
-  import PlayerActionsModal from './PlayerActionsModal.svelte'
   import PlayerCard from './PlayerCard.svelte'
   import Scouting from './Scouting.svelte'
   import Tabs from './Tabs.svelte'
+  import TransferPlayers from './TransferPlayers.svelte'
   import { focusElement, focusFirst, inputDevice } from './input.js'
   import {
     CONTRACT_ROLES,
@@ -154,7 +154,7 @@
       label: 'Центр трансферов',
       note: 'Шортлист, предложения и переговоры',
       icon: 'shirt',
-      soon: '#15',
+      enabled: true,
     },
     {
       id: 'network',
@@ -213,13 +213,13 @@
     { value: 'blocked', label: 'Заблокирован' },
   ]
 
-  const TRANSFER_STATUS_LABELS = {
-    free: 'Свободный агент',
-    contracted: 'В клубе',
-    transfer: 'На трансфере',
-    loan: 'В аренде',
-    blocked: 'Заблокирован',
-  }
+  const TRANSFER_CENTRE_TABS = [
+    { id: 'shortlist', label: 'Список' },
+    { id: 'sent', label: 'Отправленные предложения' },
+    { id: 'received', label: 'Полученные предложения' },
+    { id: 'listed', label: 'На трансфере' },
+    { id: 'loaned', label: 'На аренде' },
+  ]
 
   const POSITION_BADGES = {
     Goalkeeper: 'ВРТ',
@@ -288,8 +288,15 @@
   let networkHints = $state([])
   let reportPage = $state(0)
   let scoutPickerOpen = $state(false)
-  let scoutPickerPlayerId = $state(null)
+  let scoutPickerPlayer = $state(null)
   let scoutConfirm = $state(null)
+  let transferCentreTab = $state('shortlist')
+  let transferResultView = $state('grid')
+  let transferCentreView = $state('grid')
+  let transferSearchSelectedId = $state(null)
+  let transferCentreSelectedId = $state(null)
+  let transferSearchActionsOpen = $state(false)
+  let transferCentreActionsOpen = $state(false)
   let transferFilters = $state({
     name: '',
     group: '',
@@ -310,9 +317,6 @@
   let transferHasMore = $state(false)
   let transferLoading = $state(false)
   let transferError = $state('')
-  let transferSelectedId = $state(null)
-  let transferActionsOpen = $state(false)
-  let transferActionsPlayerId = $state(null)
   let transferCountries = $state([])
   let transferLeagues = $state([])
   let transferClubs = $state([])
@@ -464,15 +468,45 @@
   })
   let radar = $derived(focusedPlayer ? radarValues(focusedPlayer.stats) : [])
 
-  let transferSelected = $derived(
-    transferResults.find((player) => player.id === transferSelectedId) ?? transferResults[0] ?? null,
-  )
   let transferFiltersActive = $derived(
     Object.entries(transferFilters).filter(([, value]) => value !== '' && value !== null).length,
   )
-  let transferActionsPlayer = $derived(
-    transferResults.find((player) => player.id === transferActionsPlayerId) ??
-      (transferActionsOpen ? transferSelected : null),
+  let transferCentre = $derived(
+    career.transfers ?? {
+      shortlist: [],
+      sent_offers: [],
+      received_offers: [],
+      listed: [],
+      loaned: [],
+    },
+  )
+  let transferCentrePlayers = $derived(
+    transferCentreTab === 'sent'
+      ? (transferCentre.sent_offers ?? [])
+      : transferCentreTab === 'received'
+        ? (transferCentre.received_offers ?? [])
+        : transferCentreTab === 'listed'
+          ? (transferCentre.listed ?? [])
+          : transferCentreTab === 'loaned'
+            ? (transferCentre.loaned ?? [])
+            : (transferCentre.shortlist ?? []),
+  )
+  let transferCentreIsOffer = $derived(
+    transferCentreTab === 'sent' || transferCentreTab === 'received',
+  )
+  let transferCentreTitle = $derived(
+    TRANSFER_CENTRE_TABS.find((item) => item.id === transferCentreTab)?.label ?? 'Список',
+  )
+  let transferCentreEmpty = $derived(
+    transferCentreTab === 'sent'
+      ? 'Отправленных предложений пока нет.'
+      : transferCentreTab === 'received'
+        ? 'Полученных предложений пока нет.'
+        : transferCentreTab === 'listed'
+          ? 'Никого нет на трансфере. Отметьте игрока в центре составов.'
+          : transferCentreTab === 'loaned'
+            ? 'Никто не выставлен в аренду. Отметьте игрока в центре составов.'
+            : 'Шортлист пуст. Добавьте игрока из поиска или отчёта скаута.',
   )
   let scouting = $derived(career.scouting ?? null)
   let reportFeed = $derived([
@@ -490,15 +524,6 @@
     ),
   )
   let scoutPickerScouts = $derived(scouting?.scouts ?? [])
-  let scoutPickerPlayer = $derived(
-    transferActionsPlayerId
-      ? transferResults.find((player) => player.id === transferActionsPlayerId) ??
-        transferActionsPlayer
-      : transferActionsPlayer,
-  )
-  let transferContractMonths = $derived(
-    transferActionsPlayer ? monthsUntil(transferActionsPlayer.contract_expires) : null,
-  )
 
   let hints = $derived.by(() => {
     const start = { gamepad: ['Start'], keyboard: ['S'], label: 'Сохранить' }
@@ -594,10 +619,37 @@
           { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
         ]
       }
-      if (transferActionsOpen) {
+      if (transfersView === 'centre') {
+        if (transferCentreActionsOpen) {
+          return [
+            { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Действие' },
+            { gamepad: ['A'], keyboard: ['Enter'], label: 'Выбор' },
+            { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+          ]
+        }
+        const list = [
+          { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Вкладки' },
+        ]
+        if (!transferCentreIsOffer) {
+          list.push({ gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Игрок' })
+          list.push({ gamepad: ['A'], keyboard: ['Enter'], label: 'Выбрать' })
+          list.push({ gamepad: ['Y'], keyboard: ['Y'], label: 'Вид' })
+        }
+        list.push({ gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' })
+        return list
+      }
+      if (transfersView === 'results') {
+        if (transferSearchActionsOpen) {
+          return [
+            { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Действие' },
+            { gamepad: ['A'], keyboard: ['Enter'], label: 'Выбор' },
+            { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+          ]
+        }
         return [
-          { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Действие' },
-          { gamepad: ['A'], keyboard: ['Enter'], label: 'Выбор' },
+          { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Игрок' },
+          { gamepad: ['A'], keyboard: ['Enter'], label: 'Выбрать' },
+          { gamepad: ['Y'], keyboard: ['Y'], label: 'Вид' },
           { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
         ]
       }
@@ -753,10 +805,6 @@
     ) {
       onsave()
     }
-  }
-
-  function transferStatusLabel(status) {
-    return TRANSFER_STATUS_LABELS[status] ?? status
   }
 
   function transferFieldLabel(field) {
@@ -925,9 +973,6 @@
       transferResults = reset ? data.items : [...transferResults, ...data.items]
       transferTotal = data.total
       transferHasMore = data.has_more
-      if (reset || !transferSelectedId) {
-        transferSelectedId = transferResults[0]?.id ?? null
-      }
     } catch (caught) {
       if (token === transferSearchToken) transferError = caught.message
     } finally {
@@ -937,13 +982,6 @@
 
   function loadMoreTransfers() {
     if (!transferLoading && transferHasMore) runTransferSearch(false)
-  }
-
-  function onTransferScroll(event) {
-    const element = event.currentTarget
-    if (element.scrollTop + element.clientHeight >= element.scrollHeight - 220) {
-      loadMoreTransfers()
-    }
   }
 
   async function ensureTransferOptions() {
@@ -957,41 +995,10 @@
     }
   }
 
-  function monthsUntil(value) {
-    if (!value) return null
-    const target = new Date(`${value}T00:00:00`)
-    const current = new Date(`${career.date}T00:00:00`)
-    if (Number.isNaN(target.getTime()) || Number.isNaN(current.getTime())) return null
-    const days = (target.getTime() - current.getTime()) / 86_400_000
-    if (days <= 0) return 0
-    return Math.ceil(days / 30.44)
-  }
-
-  function openTransferActions(playerId) {
-    transferSelectedId = playerId
-    transferActionsPlayerId = playerId
-    transferActionsOpen = true
-    tick().then(focusFirst)
-  }
-
-  function closeTransferActions() {
-    const playerId = transferActionsPlayerId
-    transferActionsOpen = false
-    transferActionsPlayerId = null
-    tick().then(() => {
-      const card = playerId
-        ? document.querySelector(`.tf-result[data-player-id="${playerId}"]`)
-        : null
-      if (card) focusElement(card)
-      else focusFirst()
-    })
-  }
-
   async function openTransferFilters() {
     transfersView = 'filters'
     transferEditing = null
-    transferActionsOpen = false
-    transferActionsPlayerId = null
+    transferSearchActionsOpen = false
     oskOpen = false
     await ensureTransferOptions()
     await tick()
@@ -1002,13 +1009,51 @@
     if (transfersView !== 'filters') return
     transferEditing = null
     transfersView = 'results'
-    transferSelectedId = null
-    transferActionsOpen = false
-    transferActionsPlayerId = null
+    transferSearchSelectedId = null
+    transferSearchActionsOpen = false
     await ensureTransferOptions()
     await runTransferSearch(true)
     await tick()
     focusFirst()
+  }
+
+  async function openTransferCentre() {
+    transfersView = 'centre'
+    transferCentreTab = 'shortlist'
+    transferCentreSelectedId = transferCentre.shortlist?.[0]?.id ?? null
+    transferCentreActionsOpen = false
+    transferError = ''
+    await tick()
+    focusFirst()
+  }
+
+  function setTransferCentreTab(next, focus = 'content') {
+    if (transferCentreTab === next) return
+    transferCentreTab = next
+    transferCentreSelectedId = null
+    transferCentreActionsOpen = false
+    tick().then(() => {
+      if (focus === 'tab') {
+        const tabElement = document.querySelector(
+          `.tf-centre-tab[data-centre-tab="${transferCentreTab}"]`,
+        )
+        if (tabElement) {
+          focusElement(tabElement)
+          return
+        }
+      }
+      focusFirst()
+    })
+  }
+
+  function switchTransferCentreTab(direction) {
+    const index = TRANSFER_CENTRE_TABS.findIndex((item) => item.id === transferCentreTab)
+    const offset = direction === 'right' ? 1 : -1
+    const next =
+      TRANSFER_CENTRE_TABS[
+        (index + offset + TRANSFER_CENTRE_TABS.length) % TRANSFER_CENTRE_TABS.length
+      ]
+    setTransferCentreTab(next.id, 'tab')
   }
 
   function focusTransferTile(field) {
@@ -1047,16 +1092,16 @@
     tick().then(focusFirst)
   }
 
-  function openScoutPicker() {
-    if (!scoutPickerPlayer) return
-    scoutPickerPlayerId = scoutPickerPlayer.id
+  function openScoutPicker(player = null) {
+    if (!player) return
+    scoutPickerPlayer = player
     scoutPickerOpen = true
     tick().then(focusFirst)
   }
 
   function closeScoutPicker() {
     scoutPickerOpen = false
-    scoutPickerPlayerId = null
+    scoutPickerPlayer = null
     tick().then(() => {
       const card = document.querySelector(
         `.tf-action[data-scout-action="assign"]`,
@@ -1075,7 +1120,8 @@
     })
     if (!updated) return
     closeScoutPicker()
-    closeTransferActions()
+    transferSearchActionsOpen = false
+    transferCentreActionsOpen = false
   }
 
   function openTransferHub() {
@@ -1092,7 +1138,7 @@
       tick().then(focusFirst)
       return
     }
-    if (transfersView === 'filters') {
+    if (transfersView === 'filters' || transfersView === 'centre') {
       transfersView = 'hub'
       tick().then(focusFirst)
       return
@@ -1205,6 +1251,16 @@
     if (tab !== 'transfers' || oskOpen) return false
     if (transfersView === 'filters') {
       startTransferSearch()
+      return true
+    }
+    if (transfersView === 'results') {
+      if (transferSearchActionsOpen) return true
+      transferResultView = transferResultView === 'grid' ? 'list' : 'grid'
+      return true
+    }
+    if (transfersView === 'centre') {
+      if (transferCentreActionsOpen || transferCentreIsOffer) return true
+      transferCentreView = transferCentreView === 'grid' ? 'list' : 'grid'
       return true
     }
     return false
@@ -1655,8 +1711,12 @@
         closeTransferNetwork()
         return
       }
-      if (transferActionsOpen) {
-        closeTransferActions()
+      if (transfersView === 'centre' && transferCentreActionsOpen) {
+        transferCentreActionsOpen = false
+        return
+      }
+      if (transfersView === 'results' && transferSearchActionsOpen) {
+        transferSearchActionsOpen = false
         return
       }
       openTransferHub()
@@ -1701,7 +1761,6 @@
   }
 
   function handlePrimaryAction() {
-    if (transferActionsOpen) return true
     if (tab === 'squad' && view === 'number') {
       confirmNumber()
       return true
@@ -1771,21 +1830,32 @@
     networkBackToHub = false
     networkHints = []
     scoutPickerOpen = false
-    scoutPickerPlayerId = null
+    scoutPickerPlayer = null
     transferEditing = null
     oskOpen = false
     transferResults = []
     transferTotal = 0
-    transferSelectedId = null
-    transferActionsOpen = false
-    transferActionsPlayerId = null
+    transferSearchSelectedId = null
+    transferSearchActionsOpen = false
+    transferCentreTab = 'shortlist'
+    transferCentreSelectedId = null
+    transferCentreActionsOpen = false
     transferError = ''
     await tick()
     focusFirst()
   }
 
   function switchTab(direction) {
-    if (tab === 'transfers' && transfersView !== 'hub') return
+    if (tab === 'transfers' && transfersView !== 'hub') {
+      if (
+        transfersView === 'centre' &&
+        !transferCentreActionsOpen &&
+        !scoutPickerOpen
+      ) {
+        switchTransferCentreTab(direction)
+      }
+      return
+    }
     if (tab === 'squad' && ['negotiation', 'amount', 'number', 'release'].includes(view)) return
     if (transferEditing || oskOpen) return
     if (simulating || advancing || seasonReview || matchSimOpen || matchdayOpen) return
@@ -2197,12 +2267,6 @@
         (scout) => scout.report?.player_id === playerId,
       )?.report ?? null
     )
-  }
-
-  function footLabel(value) {
-    if (value === 'left') return 'Левая'
-    if (value === 'right') return 'Правая'
-    return value || '—'
   }
 
   function starCount(value) {
@@ -2904,6 +2968,7 @@
               disabled={!card.enabled}
               onclick={() => {
                 if (card.id === 'search') openTransferFilters()
+                else if (card.id === 'centre') openTransferCentre()
                 else if (card.id === 'network') openTransferNetwork('scouts')
               }}
             >
@@ -3154,230 +3219,110 @@
           onclose={closeTransferNetwork}
           onaction={onaction}
         />
-      {:else}
-        <div class="tf-results" inert={oskOpen ? true : undefined}>
-          <section class="tf-results-main" inert={transferActionsOpen ? true : undefined}>
-            <div class="tf-results-title">
-              <strong>Результаты поиска</strong>
-              <span>{transferTotal.toLocaleString('ru-RU')}</span>
+      {:else if transfersView === 'centre'}
+        <div class="tf-centre">
+          <header class="tf-filters-head">
+            <span class="tf-crumbs">Трансферы <i>›</i> Центр трансферов</span>
+            <span class="tf-crumbs-note">L1 / R1 — вкладки · Y — вид</span>
+          </header>
+          <div class="sc-tabs" role="tablist">
+            {#each TRANSFER_CENTRE_TABS as item (item.id)}
+              <button
+                class="sc-tab tf-centre-tab"
+                class:is-active={transferCentreTab === item.id}
+                data-nav
+                data-centre-tab={item.id}
+                onclick={() => setTransferCentreTab(item.id)}
+              >
+                {item.label}
+              </button>
+            {/each}
+          </div>
+          {#if transferCentreIsOffer}
+            <div class="tf-empty-state">
+              <strong>{transferCentreTitle}</strong>
+              <p>{transferCentreEmpty}</p>
             </div>
-            {#if transferError}<p class="transfer-error">{transferError}</p>{/if}
-            <div class="tf-result-list scroll-area" onscroll={onTransferScroll}>
-              {#each transferResults as player, index (player.id)}
-                <button
-                  class="tf-result"
-                  class:is-selected={transferSelected?.id === player.id}
-                  data-nav
-                  data-player-id={player.id}
-                  data-autofocus={index === 0 ? '' : undefined}
-                  onfocus={() => {
-                    transferSelectedId = player.id
-                    if (index > transferResults.length - 5) loadMoreTransfers()
-                  }}
-                  onclick={() => openTransferActions(player.id)}
-                >
-                  <span class="tf-result-photo">
-                    <img src={player.photo} alt="" onerror={hideBrokenImage} />
-                  </span>
-                  <span class="tf-result-main">
-                    <span class="tf-result-name">{playerInitialName(player)}</span>
-                    <span class="tf-result-meta">
-                      {player.age ?? '—'} {plural(player.age ?? 0, 'год', 'года', 'лет')}
-                      <span class="pos-badge {posTone(player.role)}">{shortRole(player.role)}</span>
-                    </span>
-                  </span>
-                  {#if player.club_logo}
-                    <img class="tf-result-crest" src={player.club_logo} alt="" onerror={hideBrokenImage} />
-                  {/if}
-                </button>
-              {/each}
-              {#if transferLoading}
-                <div class="transfer-loading">Загрузка…</div>
-              {:else if !transferResults.length && !transferError}
-                <div class="transfer-loading">Никого не нашлось — ослабьте фильтры.</div>
-              {/if}
-            </div>
-          </section>
-
-          <aside class="tf-detail" inert={transferActionsOpen ? true : undefined}>
-            {#if transferSelected}
-              <div class="tf-detail-top">
-                <span class="tf-detail-photo">
-                  <img src={transferSelected.photo} alt="" onerror={hideBrokenImage} />
-                </span>
-                <div class="tf-detail-info">
-                  <strong class="tf-detail-name">{transferSelected.name}</strong>
-                  <div class="tf-detail-facts">
-                    <span>ЛЕТ <b>{transferSelected.age ?? '—'}</b></span>
-                    <span>РОСТ <b>{transferSelected.height ?? '—'} см</b></span>
-                    <span>АМПЛУА <b>{shortRole(transferSelected.role)}</b></span>
-                    <span>СТАТУС <b>{transferStatusLabel(transferSelected.status)}</b></span>
-                  </div>
-                </div>
-                <span class="tf-detail-club">
-                  {#if transferSelected.club_logo}
-                    <img src={transferSelected.club_logo} alt="" onerror={hideBrokenImage} />
-                  {/if}
-                  <span>{transferSelected.club_name ?? 'Свободный агент'}</span>
-                </span>
-              </div>
-              <div class="tf-detail-clause">
-                <span>Сумма отступных</span>
-                <strong>{formatValue(transferSelected.release_clause)}</strong>
-              </div>
-              {#if transferSelected.scouted}
-                {@const known = attributeGroups(transferSelected.stats)
-                  .flatMap((group) => group.rows)
-                  .slice(0, 6)}
-                <div class="tf-detail-report">
-                  <div class="tf-report-col">
-                    <div class="tf-report-head">
-                      <Icon name="check" size={16} />
-                      Отчёт готов
-                    </div>
-                    <p>
-                      Скаут изучил игрока {transferSelected.last_name || transferSelected.name}.
-                      OVR, статы, зарплата и рабочая нога раскрыты.
-                    </p>
-                  </div>
-                  <div class="tf-report-col">
-                    <div class="tf-report-head">Сводка</div>
-                    <ul class="tf-scouted-stats">
-                      {#each known as row (row.key)}
-                        <li>
-                          <span>{row.label}</span>
-                          <b class={statTone(row.value)}>{row.value}</b>
-                        </li>
-                      {/each}
-                    </ul>
-                  </div>
-                </div>
-                <div class="transfer-fog-chips is-open">
-                  <span>ОБЩ. <b>{Math.round(transferSelected.overall ?? 0)}</b></span>
-                  <span>ЗАРПЛАТА <b>{formatValue(transferSelected.weekly_wage ?? 0)}</b></span>
-                  <span>НОГА <b>{footLabel(transferSelected.foot)}</b></span>
-                  <span>ЦЕНА <b>{formatValue(transferSelected.market_value ?? 0)}</b></span>
-                </div>
-              {:else if reportForPlayer(transferSelected.id)}
-                {@const activeReport = reportForPlayer(transferSelected.id)}
-                <div class="tf-detail-report">
-                  <div class="tf-report-col">
-                    <div class="tf-report-head">
-                      <Icon name="clock" size={16} />
-                      Изучается
-                    </div>
-                    <p>
-                      Скаут работает над отчётом. Осталось
-                      {activeReport.days_left}
-                      {plural(activeReport.days_left, 'день', 'дня', 'дней')}.
-                    </p>
-                    <div class="tf-report-progress">
-                      <i style={`width:${Math.round(activeReport.progress * 100)}%`}></i>
-                    </div>
-                  </div>
-                  <div class="tf-report-col">
-                    <div class="tf-report-head">Предварительный отчёт</div>
-                    <ul>
-                      {#each ['Разгон', 'Скорость рывков', 'Ловкость', 'Баланс', 'Дриблинг'] as stat (stat)}
-                        <li>??? {stat}</li>
-                      {/each}
-                    </ul>
-                  </div>
-                </div>
-                <div class="transfer-fog-chips">
-                  {#each ['OVR', 'Статы', 'Зарплата', 'Нога', 'Стоимость'] as hidden (hidden)}
-                    <span>??? {hidden}</span>
-                  {/each}
-                </div>
-              {:else}
-                <div class="tf-detail-report">
-                  <div class="tf-report-col">
-                    <div class="tf-report-head">
-                      <Icon name="lock" size={16} />
-                      Не изучается
-                    </div>
-                    <p>
-                      На данный момент мы не изучаем игрока
-                      {transferSelected.last_name || transferSelected.name}.
-                    </p>
-                  </div>
-                  <div class="tf-report-col">
-                    <div class="tf-report-head">Предварительный отчёт</div>
-                    <ul>
-                      {#each ['Разгон', 'Скорость рывков', 'Ловкость', 'Баланс', 'Дриблинг'] as stat (stat)}
-                        <li>??? {stat}</li>
-                      {/each}
-                    </ul>
-                  </div>
-                </div>
-                <div class="transfer-fog-chips">
-                  {#each ['OVR', 'Статы', 'Зарплата', 'Нога', 'Стоимость'] as hidden (hidden)}
-                    <span>??? {hidden}</span>
-                  {/each}
-                </div>
-              {/if}
-            {:else}
-              <p class="transfer-detail-empty">Выберите игрока в списке.</p>
-            {/if}
-          </aside>
-
-          {#if transferActionsOpen && transferActionsPlayer}
-            <PlayerActionsModal
-              player={transferActionsPlayer}
-              revealed={Boolean(transferActionsPlayer.scouted)}
+          {:else}
+            <TransferPlayers
+              players={transferCentrePlayers}
+              title={transferCentreTitle}
+              emptyText={transferCentreEmpty}
+              date={career.date}
+              bind:view={transferCentreView}
+              bind:selectedId={transferCentreSelectedId}
+              bind:actionsOpen={transferCentreActionsOpen}
               scouts={scoutPickerScouts}
-              activeReport={reportForPlayer(transferActionsPlayer.id)}
-              contractMonths={transferContractMonths}
+              reportForPlayer={reportForPlayer}
+              onaction={onaction}
               onassign={openScoutPicker}
             />
           {/if}
-
-          {#if scoutPickerOpen && scoutPickerPlayer}
-            <div class="sc-modal-layer">
-              <div
-                class="sc-modal sc-confirm is-picker"
-                role="dialog"
-                aria-modal="true"
-                aria-label="Поручить скауту"
-              >
-                <p class="sc-confirm-text">
-                  Кому поручить следить за {scoutPickerPlayer.name}?
-                </p>
-                {#each scoutPickerScouts as scout, index (scout.id)}
-                  <button
-                    class="sc-confirm-row sc-picker-row"
-                    class:is-disabled={Boolean(scout.report)}
-                    data-nav
-                    data-autofocus={index === 0 && !scout.report ? '' : undefined}
-                    onclick={() => assignScout(scout)}
-                  >
-                    <span class="sc-picker-flag">
-                      {#if scout.flag}
-                        <img src={scout.flag} alt="" onerror={hideBrokenImage} />
-                      {/if}
-                    </span>
-                    <span class="sc-picker-main">
-                      <strong>{scout.name}</strong>
-                      <small>
-                        {scout.report
-                          ? `Занят: следит за ${scout.report.player_name}`
-                          : `Опыт ${scout.experience} · Решение ${scout.judgement}`}
-                      </small>
-                    </span>
-                    <span class="sc-picker-stars">
-                      {#each [0, 1, 2, 3, 4] as star (star)}
-                        <i class:on={star < scout.judgement}>★</i>
-                      {/each}
-                    </span>
-                  </button>
-                {/each}
-                <button class="sc-confirm-row" data-nav onclick={closeScoutPicker}>
-                  <span>Отмена</span>
-                </button>
-              </div>
-            </div>
-          {/if}
         </div>
+      {:else}
+        <TransferPlayers
+          players={transferResults}
+          total={transferTotal}
+          title="Результаты поиска"
+          loading={transferLoading}
+          error={transferError}
+          hasMore={transferHasMore}
+          date={career.date}
+          bind:view={transferResultView}
+          bind:selectedId={transferSearchSelectedId}
+          bind:actionsOpen={transferSearchActionsOpen}
+          scouts={scoutPickerScouts}
+          reportForPlayer={reportForPlayer}
+          onloadmore={loadMoreTransfers}
+          onaction={onaction}
+          onassign={openScoutPicker}
+        />
+
+        {#if scoutPickerOpen && scoutPickerPlayer}
+          <div class="sc-modal-layer">
+            <div
+              class="sc-modal sc-confirm is-picker"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Поручить скауту"
+            >
+              <p class="sc-confirm-text">
+                Кому поручить следить за {scoutPickerPlayer.name}?
+              </p>
+              {#each scoutPickerScouts as scout, index (scout.id)}
+                <button
+                  class="sc-confirm-row sc-picker-row"
+                  class:is-disabled={Boolean(scout.report)}
+                  data-nav
+                  data-autofocus={index === 0 && !scout.report ? '' : undefined}
+                  onclick={() => assignScout(scout)}
+                >
+                  <span class="sc-picker-flag">
+                    {#if scout.flag}
+                      <img src={scout.flag} alt="" onerror={hideBrokenImage} />
+                    {/if}
+                  </span>
+                  <span class="sc-picker-main">
+                    <strong>{scout.name}</strong>
+                    <small>
+                      {scout.report
+                        ? `Занят: следит за ${scout.report.player_name}`
+                        : `Опыт ${scout.experience} · Решение ${scout.judgement}`}
+                    </small>
+                  </span>
+                  <span class="sc-picker-stars">
+                    {#each [0, 1, 2, 3, 4] as star (star)}
+                      <i class:on={star < scout.judgement}>★</i>
+                    {/each}
+                  </span>
+                </button>
+              {/each}
+              <button class="sc-confirm-row" data-nav onclick={closeScoutPicker}>
+                <span>Отмена</span>
+              </button>
+            </div>
+          </div>
+        {/if}
       {/if}
 
       {#if oskOpen}

@@ -97,6 +97,31 @@ def swap_players(career: Career, players: list[dict], player_a: str, player_b: s
     )
 
 
+def add_to_shortlist(career: Career, player_id: str) -> None:
+    player_id = str(player_id)
+    if player_id in career.shortlist:
+        return
+    career.shortlist.append(player_id)
+    _journal(career, "shortlist.added", {"player_id": player_id})
+
+
+def remove_from_shortlist(career: Career, player_id: str) -> None:
+    player_id = str(player_id)
+    if player_id not in career.shortlist:
+        return
+    career.shortlist.remove(player_id)
+    _journal(career, "shortlist.removed", {"player_id": player_id})
+
+
+def toggle_shortlist(career: Career, player_id: str) -> bool:
+    player_id = str(player_id)
+    if player_id in career.shortlist:
+        remove_from_shortlist(career, player_id)
+        return False
+    add_to_shortlist(career, player_id)
+    return True
+
+
 def set_transfer_status(
     career: Career, players: list[dict], player_id: str, status: str | None
 ) -> None:

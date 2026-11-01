@@ -446,6 +446,11 @@
     tick().then(focusFirst)
   }
 
+  async function toggleShortlist(player) {
+    if (!player) return
+    await runAction({ type: 'shortlist_toggle', player_id: player.id })
+  }
+
   function cycleReport(direction) {
     if (!entries.length) return
     const index = Math.max(
@@ -1508,8 +1513,10 @@
     <PlayerActionsModal
       player={entryActionsEntry.player}
       revealed
+      shortlisted={Boolean(entryActionsEntry.player.shortlisted)}
       removeLabel="Удалить из отчёта"
       onremove={removeActiveEntry}
+      onshortlist={() => toggleShortlist(entryActionsEntry.player)}
     />
   {/if}
 

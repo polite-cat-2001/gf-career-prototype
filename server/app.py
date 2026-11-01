@@ -17,6 +17,7 @@ from server.career import (
     SeasonError,
     accept_counter_offer,
     acknowledge_contract_negotiation,
+    add_to_shortlist,
     advance_to,
     build_lineup,
     build_match_setup,
@@ -30,11 +31,13 @@ from server.career import (
     next_season,
     play_next_match,
     release_player,
+    remove_from_shortlist,
     season_transition,
     set_shirt_number,
     set_transfer_status,
     squad_strength,
     swap_players,
+    toggle_shortlist,
 )
 from server.career.condition import (
     apply_match_outcome,
@@ -257,6 +260,7 @@ class TransferPlayer(BaseModel):
     status: str
     photo: str
     scouted: bool = False
+    shortlisted: bool = False
     contract_expires: str | None = None
     foot: str | None = None
     overall: float | None = None
@@ -384,6 +388,14 @@ class TransferSearchResponse(BaseModel):
     limit: int
     offset: int
     has_more: bool
+
+
+class TransferCenterBlock(BaseModel):
+    shortlist: list[dict]
+    sent_offers: list[dict] = Field(default_factory=list)
+    received_offers: list[dict] = Field(default_factory=list)
+    listed: list[dict] = Field(default_factory=list)
+    loaned: list[dict] = Field(default_factory=list)
 
 
 class CreateCareerRequest(BaseModel):
@@ -585,6 +597,7 @@ class CareerSnapshot(BaseModel):
     squad: SquadBlock
     season: SeasonBlock
     scouting: ScoutingBlock | None = None
+    transfers: TransferCenterBlock | None = None
 
 
 class MatchPlayer(BaseModel):
@@ -775,6 +788,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             "status": status,
             "photo": player["photo"],
             "scouted": True,
+            "shortlisted": str(player_id) in career.shortlist,
             "contract_expires": contract_expiry_for(career, player, player["id"]),
             "foot": player.get("foot"),
             "overall": player.get("overall"),
@@ -944,6 +958,88 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             "age_max": AGE_MAX,
             "contract_min": CONTRACT_MIN,
             "contract_max": CONTRACT_MAX,
+        }
+
+    def transfer_center_snapshot(career) -> dict:
+        scouts_by_id = {str(scout["id"]): scout for scout in career.scouts}
+
+        revealed = scouted_ids(career)
+
+        def entry(player_id: str, reveal: bool | None = None) -> dict | None:
+            player_id = str(player_id)
+            player = scouting_player(career, player_id)
+            if player is None:
+                return None
+            if reveal is None:
+                reveal = player_id in revealed
+            if not reveal:
+                for hidden in (
+                    "overall",
+                    "pot",
+                    "stats",
+                    "weekly_wage",
+                    "market_value",
+                    "foot",
+                    "weak_foot",
+                    "skill_moves",
+                ):
+                    player.pop(hidden, None)
+                player["scouted"] = False
+            player["shortlisted"] = player_id in career.shortlist
+            assignment = next(
+                (
+                    report
+                    for report in career.scout_assignments.values()
+                    if str(report.get("player_id")) == player_id
+                ),
+                None,
+            )
+            if assignment is not None:
+                progress = report_progress(career, assignment)
+                scout = scouts_by_id.get(str(assignment.get("scout_id")))
+                player["scouting_state"] = "studying"
+                player["scouting_days_left"] = progress["days_left"]
+                player["scouting_scout_name"] = str(scout.get("name") or "") if scout else ""
+            elif player_id in career.scout_reports:
+                player["scouting_state"] = "reported"
+            elif player_id in career.scout_found:
+                player["scouting_state"] = "found"
+            else:
+                player["scouting_state"] = "none"
+            negotiation = career.negotiations.get(player_id)
+            player["negotiation_status"] = (
+                str(negotiation.get("status")) if isinstance(negotiation, dict) else None
+            )
+            return player
+
+        def collect(player_ids, reveal: bool | None = None) -> list[dict]:
+            result = []
+            for player_id in player_ids:
+                player = entry(player_id, reveal)
+                if player is not None:
+                    result.append(player)
+            return result
+
+        return {
+            "shortlist": collect(career.shortlist),
+            "sent_offers": [],
+            "received_offers": [],
+            "listed": collect(
+                (
+                    player_id
+                    for player_id, status in career.player_transfers.items()
+                    if status == "transfer"
+                ),
+                reveal=True,
+            ),
+            "loaned": collect(
+                (
+                    player_id
+                    for player_id, status in career.player_transfers.items()
+                    if status == "loan"
+                ),
+                reveal=True,
+            ),
         }
 
     def division_context(career, club):
@@ -1126,6 +1222,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         if transition is not None:
             result["season"]["review"] = transition["review"]
         result["scouting"] = scouting_snapshot(career)
+        result["transfers"] = transfer_center_snapshot(career)
         return result
 
     app.add_middleware(
@@ -1246,6 +1343,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                     career, player, player["id"]
                 ),
                 "scouted": str(player["id"]) in revealed,
+                "shortlisted": str(player["id"]) in career.shortlist,
             }
             if item["scouted"]:
                 item["weekly_wage"] = weekly_wage_for(career, player, player["id"])
@@ -1515,6 +1613,19 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                     confirm_contract(career, players, payload.player_id)
             except ActionError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
+        elif payload.type in {"shortlist_add", "shortlist_remove", "shortlist_toggle"}:
+            if not payload.player_id:
+                raise HTTPException(
+                    status_code=422, detail=f"{payload.type} requires player_id"
+                )
+            if canon.player(str(payload.player_id)) is None:
+                raise HTTPException(status_code=422, detail="player not found")
+            if payload.type == "shortlist_add":
+                add_to_shortlist(career, payload.player_id)
+            elif payload.type == "shortlist_remove":
+                remove_from_shortlist(career, payload.player_id)
+            else:
+                toggle_shortlist(career, payload.player_id)
         elif payload.type in {
             "scout_hire",
             "scout_assign",

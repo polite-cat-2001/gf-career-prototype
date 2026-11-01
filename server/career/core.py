@@ -64,6 +64,7 @@ class Career:
     player_transfers: dict[str, str] = field(default_factory=dict)
     shirt_numbers: dict[str, int] = field(default_factory=dict)
     negotiations: dict[str, dict] = field(default_factory=dict)
+    shortlist: list[str] = field(default_factory=list)
     scouts: list[dict] = field(default_factory=list)
     scout_assignments: dict[str, dict] = field(default_factory=dict)
     scout_tasks: dict[str, dict] = field(default_factory=dict)
@@ -141,6 +142,8 @@ class Career:
             payload["shirt_numbers"] = {
                 player_id: int(number) for player_id, number in self.shirt_numbers.items()
             }
+        if self.shortlist:
+            payload["shortlist"] = list(self.shortlist)
         if self.negotiations:
             payload["negotiations"] = {
                 player_id: {
@@ -271,6 +274,9 @@ class Career:
                 for player_id, state in (raw.get("negotiations") or {}).items()
                 if isinstance(state, dict)
             },
+            shortlist=[
+                str(player_id) for player_id in (raw.get("shortlist") or [])
+            ],
             scouts=[
                 dict(scout)
                 for scout in (raw.get("scouts") or [])

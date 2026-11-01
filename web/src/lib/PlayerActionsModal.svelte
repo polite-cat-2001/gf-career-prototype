@@ -15,9 +15,11 @@
     scouts = [],
     activeReport = null,
     contractMonths = null,
+    shortlisted = false,
     note = '',
     removeLabel = null,
     onassign = null,
+    onshortlist = null,
     onremove = null,
   } = $props()
 
@@ -176,10 +178,16 @@
         {/if}
       {/if}
 
-      <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
-        <span>Добавить в шортлист</span>
-        <span class="tf-action-ticket">#15</span>
-      </div>
+      <button
+        class="tf-action"
+        class:is-disabled={!onshortlist}
+        data-nav
+        onclick={onshortlist}
+        disabled={!onshortlist}
+      >
+        <span>{shortlisted ? 'Убрать из шортлиста' : 'Добавить в шортлист'}</span>
+        <span class="tf-action-key">A</span>
+      </button>
       <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
         <span>Сделать предложение трансфера</span>
         <span class="tf-action-ticket">#16</span>

@@ -8677,3 +8677,119 @@ button.squad-tile:hover {
 .tf-action-report li b.low {
   color: var(--danger);
 }
+
+/* Transfer centre and shared player results */
+
+.tf-centre {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+}
+
+.tf-centre .tf-results {
+  flex: 1;
+  min-height: 0;
+}
+
+.tf-centre .sc-tabs {
+  flex-wrap: wrap;
+}
+
+.tf-centre .sc-tab {
+  padding: 6px 14px;
+  font-size: 17px;
+}
+
+.tf-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 0;
+  padding: 30px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: var(--glass);
+  text-align: center;
+}
+
+.tf-empty-state strong {
+  font-family: var(--font-heading);
+  font-size: 30px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tf-empty-state p {
+  max-width: 46ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+
+.tf-result-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.tf-result-state span {
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(200, 245, 105, 0.22);
+  background: rgba(200, 245, 105, 0.08);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tf-result-list.is-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tf-result-list.is-list .tf-result {
+  min-height: 96px;
+  grid-template-columns: 72px minmax(0, 1fr) 24px;
+}
+
+.tf-result-list.is-list .tf-result-photo {
+  width: 72px;
+  height: 90px;
+}
+
+.tf-detail-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.tf-detail-state span {
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tf-detail-state span i {
+  margin-right: 5px;
+  font-style: normal;
+  color: var(--dim);
+}
+
+.tf-detail-state span.is-lime {
+  border-color: rgba(200, 245, 105, 0.3);
+  color: var(--lime);
+}

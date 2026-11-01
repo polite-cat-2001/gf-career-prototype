@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 ARSENAL = "11"
@@ -175,3 +178,165 @@ def test_free_agents_have_no_contract_expiry(client: TestClient):
 
     assert free_agents["items"]
     assert all(player["contract_expires"] is None for player in free_agents["items"])
+
+
+def add_to_shortlist(client: TestClient, career_id: str, player_id: str) -> dict:
+    response = client.post(
+        f"/api/careers/{career_id}/actions",
+        json={"type": "shortlist_add", "player_id": player_id},
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def test_shortlist_add_remove_toggle_and_idempotency(client: TestClient):
+    career = create_career(client)
+    player_id = "342229"
+
+    added = add_to_shortlist(client, career["id"], player_id)
+    assert [item["id"] for item in added["transfers"]["shortlist"]] == [player_id]
+    assert added["transfers"]["shortlist"][0]["shortlisted"] is True
+
+    again = add_to_shortlist(client, career["id"], player_id)
+    assert [item["id"] for item in again["transfers"]["shortlist"]] == [player_id]
+
+    toggled = client.post(
+        f"/api/careers/{career['id']}/actions",
+        json={"type": "shortlist_toggle", "player_id": player_id},
+    )
+    assert toggled.status_code == 200, toggled.text
+    assert toggled.json()["transfers"]["shortlist"] == []
+
+    toggled = client.post(
+        f"/api/careers/{career['id']}/actions",
+        json={"type": "shortlist_toggle", "player_id": player_id},
+    )
+    assert [item["id"] for item in toggled.json()["transfers"]["shortlist"]] == [player_id]
+
+    removed = client.post(
+        f"/api/careers/{career['id']}/actions",
+        json={"type": "shortlist_remove", "player_id": player_id},
+    )
+    assert removed.status_code == 200, removed.text
+    assert removed.json()["transfers"]["shortlist"] == []
+
+    removed_again = client.post(
+        f"/api/careers/{career['id']}/actions",
+        json={"type": "shortlist_remove", "player_id": player_id},
+    )
+    assert removed_again.status_code == 200, removed_again.text
+    assert removed_again.json()["transfers"]["shortlist"] == []
+
+
+def test_shortlist_rejects_unknown_player(client: TestClient):
+    career = create_career(client)
+    for action_type in ("shortlist_add", "shortlist_remove", "shortlist_toggle"):
+        response = client.post(
+            f"/api/careers/{career['id']}/actions",
+            json={"type": action_type, "player_id": "does-not-exist"},
+        )
+        assert response.status_code == 422, response.text
+        assert response.json()["detail"] == "player not found"
+
+    missing = client.post(
+        f"/api/careers/{career['id']}/actions",
+        json={"type": "shortlist_add"},
+    )
+    assert missing.status_code == 422
+
+
+def test_search_marks_shortlisted_players(client: TestClient):
+    career = create_career(client)
+    add_to_shortlist(client, career["id"], "342229")
+
+    payload = search(client, career["id"], name="Kylian Mbappé")
+    assert payload["items"]
+    assert payload["items"][0]["shortlisted"] is True
+
+    others = search(client, career["id"], name="David Raya")
+    assert others["items"]
+    assert all(player["shortlisted"] is False for player in others["items"])
+
+
+def test_shortlist_survives_reload_and_next_season(client: TestClient, saves_dir: Path):
+    career = create_career(client)
+    player_id = "342229"
+    add_to_shortlist(client, career["id"], player_id)
+
+    path = saves_dir / f"{career['id']}.json"
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["shortlist"] == [player_id]
+
+    raw = saved
+    raw["results"] = {fixture["id"]: {"home": 1, "away": 0} for fixture in raw["schedule"]}
+    raw["date"] = "2027-03-01"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = client.get(f"/api/careers/{career['id']}")
+    assert loaded.status_code == 200, loaded.text
+    assert [item["id"] for item in loaded.json()["transfers"]["shortlist"]] == [player_id]
+
+    response = client.post(
+        f"/api/careers/{career['id']}/actions", json={"type": "next_season"}
+    )
+    assert response.status_code == 200, response.text
+    started = response.json()
+    assert started["season"]["season_start"] == "2027-07-01"
+    assert [item["id"] for item in started["transfers"]["shortlist"]] == [player_id]
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["shortlist"] == [player_id]
+
+
+def test_transfer_centre_lists_shortlist_and_squad_statuses(client: TestClient):
+    career = create_career(client)
+    squad_id = career["squad"]["groups"][0]["players"][0]["id"]
+    loan_id = career["squad"]["groups"][0]["players"][1]["id"]
+    shortlist_id = "342229"
+
+    for player_id, status in ((squad_id, "transfer"), (loan_id, "loan")):
+        response = client.post(
+            f"/api/careers/{career['id']}/actions",
+            json={"type": "transfer_status", "player_id": player_id, "status": status},
+        )
+        assert response.status_code == 200, response.text
+
+    updated = add_to_shortlist(client, career["id"], shortlist_id)
+    transfers = updated["transfers"]
+
+    assert [item["id"] for item in transfers["shortlist"]] == [shortlist_id]
+    assert [item["id"] for item in transfers["listed"]] == [squad_id]
+    assert [item["id"] for item in transfers["loaned"]] == [loan_id]
+    assert transfers["sent_offers"] == []
+    assert transfers["received_offers"] == []
+    assert transfers["shortlist"][0]["scouting_state"] == "none"
+    assert transfers["shortlist"][0]["negotiation_status"] is None
+    assert HIDDEN_KEYS.isdisjoint(transfers["shortlist"][0].keys())
+    assert transfers["listed"][0]["overall"] is not None
+
+    scout = updated["scouting"]["scouts"][0]
+    assigned = client.post(
+        f"/api/careers/{career['id']}/actions",
+        json={
+            "type": "scout_assign",
+            "scout_id": scout["id"],
+            "player_id": shortlist_id,
+        },
+    )
+    assert assigned.status_code == 200, assigned.text
+    entry = assigned.json()["transfers"]["shortlist"][0]
+    assert entry["scouting_state"] == "studying"
+    assert entry["scouting_days_left"] >= 1
+    assert entry["scouting_scout_name"] == scout["name"]
+
+
+def test_old_save_without_shortlist_still_loads(client: TestClient, saves_dir: Path):
+    career = create_career(client)
+    path = saves_dir / f"{career['id']}.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw.pop("shortlist", None)
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = client.get(f"/api/careers/{career['id']}")
+    assert loaded.status_code == 200, loaded.text
+    assert loaded.json()["transfers"]["shortlist"] == []
