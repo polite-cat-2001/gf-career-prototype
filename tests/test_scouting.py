@@ -223,3 +223,49 @@ def test_remove_recommendation_and_acknowledge_reports(client: TestClient):
     assert all(
         player["scouted"] is False for player in hidden if player["id"] == player_id
     )
+
+
+def test_network_task_and_report_coexist_and_report_can_be_reassigned(client: TestClient):
+    career = create_career(client)
+    scout = career["scouting"]["scouts"][0]
+
+    action(
+        client,
+        career["id"],
+        {
+            "type": "scout_network",
+            "scout_id": scout["id"],
+            "region_id": "south-europe",
+            "country_id": SPAIN,
+        },
+    )
+    started = action(
+        client,
+        career["id"],
+        {"type": "scout_assign", "scout_id": scout["id"], "player_id": MBAPPE},
+    )
+    report = started["scouting"]["scouts"][0]["report"]
+    assert report["player_id"] == MBAPPE
+    assert started["scouting"]["scouts"][0]["task"] is not None
+
+    refused = client.post(
+        f"/api/careers/{career['id']}/actions",
+        json={
+            "type": "scout_assign",
+            "scout_id": scout["id"],
+            "player_id": "418560",
+        },
+    )
+    assert refused.status_code == 422
+
+    ready = advance(client, career["id"], report["days_total"])
+    assert ready["scouting"]["scouts"][0]["report"] is None
+
+    reassigned = action(
+        client,
+        career["id"],
+        {"type": "scout_assign", "scout_id": scout["id"], "player_id": "418560"},
+    )
+    reassigned_report = reassigned["scouting"]["scouts"][0]["report"]
+    assert reassigned_report is not None
+    assert reassigned_report["player_id"] == "418560"
