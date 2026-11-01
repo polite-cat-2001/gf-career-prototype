@@ -10,6 +10,7 @@
   } from './actions.js'
   import { api } from './api.js'
   import Icon from './Icon.svelte'
+  import PlayerActionsModal from './PlayerActionsModal.svelte'
   import { focusFirst } from './input.js'
   import {
     attributeGroups,
@@ -91,6 +92,8 @@
   let acked = $state(false)
   let initialResolved = $state(false)
   let failedPhotos = $state({})
+  let entryActionsOpen = $state(false)
+  let entryActionsId = $state(null)
   let assignScoutId = $state(null)
   let regionId = $state(null)
   let countryId = $state(null)
@@ -130,6 +133,9 @@
   let selectedEntry = $derived(
     entries.find((entry) => entry.player.id === selectedEntryId) ?? entries[0] ?? null,
   )
+  let entryActionsEntry = $derived(
+    entrySource.find((entry) => entry.player.id === entryActionsId) ?? null,
+  )
   let taskScout = $derived(
     scouts.find((scout) => scout.id === taskScoutId) ?? scouts[0] ?? null,
   )
@@ -142,12 +148,19 @@
     const nav = { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Навигация' }
     const back = { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' }
     const open = { gamepad: ['A'], keyboard: ['Enter'], label: 'Выбрать' }
+    if (entryActionsOpen) {
+      return [
+        nav,
+        open,
+        { gamepad: ['X'], keyboard: ['X'], label: 'Удалить из отчёта' },
+        back,
+      ]
+    }
     if (view === 'reports') {
       return [
         nav,
         { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Вкладки' },
         open,
-        { gamepad: ['X'], keyboard: ['X'], label: 'Удалить из отчёта' },
         back,
       ]
     }
@@ -399,6 +412,40 @@
     }
   }
 
+  function openEntryActions(entry) {
+    if (!entry) return
+    entryActionsId = entry.player.id
+    entryActionsOpen = true
+    tick().then(focusFirst)
+  }
+
+  function closeEntryActions() {
+    const id = entryActionsId
+    entryActionsOpen = false
+    entryActionsId = null
+    tick().then(() => {
+      const element = id
+        ? document.querySelector(`[data-entry="${id}"]`)
+        : null
+      if (element) element.focus({ preventScroll: true })
+      else focusFirst()
+    })
+  }
+
+  async function removeActiveEntry() {
+    const entry = entryActionsEntry
+    if (!entry) return
+    const updated = await runAction({
+      type: 'scout_remove',
+      player_id: entry.player.id,
+    })
+    if (!updated) return
+    selectedEntryId = null
+    entryActionsOpen = false
+    entryActionsId = null
+    tick().then(focusFirst)
+  }
+
   function cycleReport(direction) {
     if (!entries.length) return
     const index = Math.max(
@@ -427,7 +474,14 @@
   }
 
   function handleTabs(direction) {
-    if (confirm || view === 'hire' || view === 'region' || view === 'country' || view === 'task') {
+    if (
+      entryActionsOpen ||
+      confirm ||
+      view === 'hire' ||
+      view === 'region' ||
+      view === 'country' ||
+      view === 'task'
+    ) {
       return
     }
     if (view === 'reports') {
@@ -443,6 +497,7 @@
   }
 
   function handleCycle(direction) {
+    if (entryActionsOpen) return false
     if (view === 'reports') {
       cycleReport(direction)
       return true
@@ -460,6 +515,10 @@
 
   async function handleBack() {
     if (busy) return
+    if (entryActionsOpen) {
+      closeEntryActions()
+      return
+    }
     if (confirm) {
       confirm = null
       tick().then(focusFirst)
@@ -512,9 +571,12 @@
   }
 
   function handleReset() {
-    if (view === 'reports' && selectedEntry) {
-      removeEntry(selectedEntry)
+    if (entryActionsOpen && entryActionsEntry) {
+      removeActiveEntry()
       return true
+    }
+    if (view === 'reports' && selectedEntry) {
+      return false
     }
     if (view === 'task') {
       taskDraft = defaultCriteria()
@@ -635,17 +697,6 @@
     selectedTaskScoutId = assignScoutId
     networkTab = 'tasks'
     go('tasks')
-  }
-
-  async function removeEntry(entry) {
-    if (!entry) return
-    const updated = await runAction({
-      type: 'scout_remove',
-      player_id: entry.player.id,
-    })
-    if (!updated) return
-    selectedEntryId = null
-    tick().then(focusFirst)
   }
 
   function askHire() {
@@ -1215,7 +1266,7 @@
 
   {:else if view === 'reports'}
     <div class="sc-body sc-reports">
-      <section class="sc-report-main">
+      <section class="sc-report-main" inert={entryActionsOpen ? true : undefined}>
         <div class="sc-report-tabs">
           <button
             class="sc-tab"
@@ -1271,7 +1322,10 @@
               data-entry={entry.player.id}
               data-autofocus={index === 0 ? '' : undefined}
               onfocus={() => (selectedEntryId = entry.player.id)}
-              onclick={() => (selectedEntryId = entry.player.id)}
+              onclick={() => {
+                selectedEntryId = entry.player.id
+                openEntryActions(entry)
+              }}
             >
               <span
                 class="sc-entry-photo"
@@ -1331,7 +1385,7 @@
         </div>
       </section>
 
-      <aside class="sc-report-detail">
+      <aside class="sc-report-detail" inert={entryActionsOpen ? true : undefined}>
         {#if selectedEntry}
           {@const player = selectedEntry.player}
           <div class="sc-report-top">
@@ -1368,8 +1422,6 @@
               </div>
               <div class="sc-report-traits">
                 {positionLabel(player.position)}
-                {#if player.weak_foot}<span>Слабая нога {player.weak_foot}★</span>{/if}
-                {#if player.skill_moves}<span>Финты {player.skill_moves}★</span>{/if}
               </div>
             </div>
             <span class="sc-report-club">
@@ -1382,21 +1434,48 @@
 
           <div class="sc-report-ovr">
             <span>ОБЩ.</span>
-            <strong>{Math.round(player.overall ?? 0)}</strong>
-            <span>ПОТ. {player.pot ?? '—'}</span>
+            <strong class={statTone(player.overall ?? 0)}>
+              {Math.round(player.overall ?? 0)}
+            </strong>
+            <span>ПОТ. <b class={statTone(player.pot ?? 0)}>{player.pot ?? '—'}</b></span>
+          </div>
+
+          <div class="sc-report-traits-center">
+            <div class="sc-trait-item">
+              <span>Слабая нога</span>
+              <b class="sc-trait-stars">
+                {#each [0, 1, 2, 3, 4] as star (star)}
+                  <i class:on={star < (player.weak_foot ?? 0)}>★</i>
+                {/each}
+              </b>
+            </div>
+            <div class="sc-trait-item">
+              <span>Финты</span>
+              <b class="sc-trait-stars">
+                {#each [0, 1, 2, 3, 4] as star (star)}
+                  <i class:on={star < (player.skill_moves ?? 0)}>★</i>
+                {/each}
+              </b>
+            </div>
           </div>
 
           <div class="sc-report-grid">
             <div class="sc-report-column">
-              <div class="sc-report-head">
-                <Icon name="check" size={16} />
-                {selectedEntry.kind === 'report' ? 'Отчёт готов' : 'Игрок изучен'}
+              <div class="sc-report-head">Финансы</div>
+              <div class="sc-money-list">
+                <div>
+                  <span>Зарплата</span>
+                  <b>{formatValue(player.weekly_wage ?? 0)} <small>/ нед.</small></b>
+                </div>
+                <div>
+                  <span>Стоимость</span>
+                  <b>{formatValue(player.market_value ?? 0)}</b>
+                </div>
+                <div>
+                  <span>Отступные</span>
+                  <b class="is-accent">{formatValue(player.release_clause ?? 0)}</b>
+                </div>
               </div>
-              <p>
-                {selectedEntry.kind === 'report'
-                  ? `${selectedEntry.scout_name} завершил отчёт по игроку.`
-                  : `${selectedEntry.scout_name} рекомендует этого игрока.`}
-              </p>
             </div>
             <div class="sc-report-column">
               <div class="sc-report-head">Сводка</div>
@@ -1411,23 +1490,11 @@
             </div>
           </div>
 
-          <div class="sc-report-money">
-            <span>Зарплата <b>{formatValue(player.weekly_wage ?? 0)} / нед.</b></span>
-            <span>Стоимость <b>{formatValue(player.market_value ?? 0)}</b></span>
-            <span>Отступные <b>{formatValue(player.release_clause ?? 0)}</b></span>
-          </div>
-
-          <button class="sc-wide-action is-danger" data-nav onclick={() => removeEntry(selectedEntry)}>
-            <span>Удалить из отчёта</span>
-            <span class="sc-key">X</span>
-          </button>
-
           <div class="sc-report-foot">
-            <span>{selectedEntry.scout_name} · {formatDate(selectedEntry.date)}</span>
-            <span class="sc-dots">
-              {#each entries as entry (entry.player.id)}
-                <i class:active={selectedEntry?.player.id === entry.player.id}></i>
-              {/each}
+            <span>
+              <Icon name="check" size={14} />
+              {selectedEntry.kind === 'report' ? 'Отчёт готов' : 'Игрок изучен'}
+              · {selectedEntry.scout_name} · {formatDate(selectedEntry.date)}
             </span>
           </div>
         {:else}
@@ -1435,6 +1502,15 @@
         {/if}
       </aside>
     </div>
+  {/if}
+
+  {#if entryActionsOpen && entryActionsEntry}
+    <PlayerActionsModal
+      player={entryActionsEntry.player}
+      revealed
+      removeLabel="Удалить из отчёта"
+      onremove={removeActiveEntry}
+    />
   {/if}
 
   {#if confirm}
