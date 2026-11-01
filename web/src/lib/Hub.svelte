@@ -19,6 +19,7 @@
   import MatchScreen from './MatchScreen.svelte'
   import MatchdayScreen from './MatchdayScreen.svelte'
   import PlayerCard from './PlayerCard.svelte'
+  import Scouting from './Scouting.svelte'
   import Tabs from './Tabs.svelte'
   import { focusElement, focusFirst, inputDevice } from './input.js'
   import {
@@ -157,9 +158,9 @@
     {
       id: 'network',
       label: 'Всемирная сеть',
-      note: 'Искать игроков по всему миру, создав трансферную сеть',
+      note: 'Скауты, задачи и отчёты по всему миру',
       icon: 'globe',
-      soon: '#19',
+      enabled: true,
     },
     {
       id: 'history',
@@ -280,6 +281,14 @@
   let matchSimTimer = null
 
   let transfersView = $state('hub')
+  let networkMode = $state('scouts')
+  let networkEntryId = $state(null)
+  let networkBackToHub = $state(false)
+  let networkHints = $state([])
+  let reportPage = $state(0)
+  let scoutPickerOpen = $state(false)
+  let scoutPickerPlayerId = $state(null)
+  let scoutConfirm = $state(null)
   let transferFilters = $state({
     name: '',
     group: '',
@@ -464,7 +473,28 @@
     transferResults.find((player) => player.id === transferActionsPlayerId) ??
       (transferActionsOpen ? transferSelected : null),
   )
-  let transferScouts = $derived(Array.isArray(career.scouts) ? career.scouts : [])
+  let scouting = $derived(career.scouting ?? null)
+  let reportFeed = $derived([
+    ...(scouting?.reports ?? []),
+    ...(scouting?.recommendations ?? []),
+  ])
+  const REPORT_PAGE_SIZE = 6
+  let reportPageCount = $derived(
+    Math.max(1, Math.ceil(reportFeed.length / REPORT_PAGE_SIZE)),
+  )
+  let reportPageEntries = $derived(
+    reportFeed.slice(
+      reportPage * REPORT_PAGE_SIZE,
+      reportPage * REPORT_PAGE_SIZE + REPORT_PAGE_SIZE,
+    ),
+  )
+  let scoutPickerScouts = $derived(scouting?.scouts ?? [])
+  let scoutPickerPlayer = $derived(
+    transferActionsPlayerId
+      ? transferResults.find((player) => player.id === transferActionsPlayerId) ??
+        transferActionsPlayer
+      : transferActionsPlayer,
+  )
   let transferContractMonths = $derived(
     transferActionsPlayer ? monthsUntil(transferActionsPlayer.contract_expires) : null,
   )
@@ -523,6 +553,16 @@
       return [{ gamepad: ['A'], keyboard: ['Enter'], label: centreAction }]
     }
     if (tab === 'transfers') {
+      if (transfersView === 'network') {
+        return networkHints
+      }
+      if (scoutPickerOpen) {
+        return [
+          { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Скаут' },
+          { gamepad: ['A'], keyboard: ['Enter'], label: 'Поручить' },
+          { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+        ]
+      }
       if (oskOpen) {
         return [
           { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Буква' },
@@ -976,6 +1016,67 @@
     else focusFirst()
   }
 
+  function openTransferNetwork(mode = 'scouts', entryId = null, backToHub = false) {
+    transfersView = 'network'
+    networkMode = mode
+    networkEntryId = entryId
+    networkBackToHub = backToHub
+    networkHints = []
+    tick().then(focusFirst)
+  }
+
+  function closeTransferNetwork() {
+    transfersView = 'hub'
+    networkMode = 'scouts'
+    networkEntryId = null
+    networkBackToHub = false
+    networkHints = []
+    transferError = ''
+    tick().then(focusFirst)
+  }
+
+  function openReportsCenter(entry = null) {
+    openTransferNetwork('reports', entry?.player?.id ?? null, true)
+  }
+
+  function shiftReport(direction) {
+    if (reportPageCount <= 1) return
+    const offset = direction === 'right' ? 1 : -1
+    reportPage = (reportPage + offset + reportPageCount) % reportPageCount
+    tick().then(focusFirst)
+  }
+
+  function openScoutPicker() {
+    if (!scoutPickerPlayer) return
+    scoutPickerPlayerId = scoutPickerPlayer.id
+    scoutPickerOpen = true
+    tick().then(focusFirst)
+  }
+
+  function closeScoutPicker() {
+    scoutPickerOpen = false
+    scoutPickerPlayerId = null
+    tick().then(() => {
+      const card = document.querySelector(
+        `.tf-action[data-scout-action="assign"]`,
+      )
+      if (card) focusElement(card)
+      else focusFirst()
+    })
+  }
+
+  async function assignScout(scout) {
+    if (!scoutPickerPlayer || scout.report) return
+    const updated = await onaction({
+      type: 'scout_assign',
+      scout_id: scout.id,
+      player_id: scoutPickerPlayer.id,
+    })
+    if (!updated) return
+    closeScoutPicker()
+    closeTransferActions()
+  }
+
   function openTransferHub() {
     if (oskOpen) {
       closeOsk()
@@ -1077,6 +1178,13 @@
   }
 
   function handleStep(direction) {
+    if (tab === 'transfers' && transfersView === 'hub') {
+      if (direction === 'left' || direction === 'right') {
+        shiftReport(direction)
+        return true
+      }
+      return false
+    }
     if (tab !== 'transfers' || transfersView !== 'filters') return false
     if (oskOpen || !transferEditing) return false
     if (transferEditing === 'age') {
@@ -1545,6 +1653,14 @@
       return
     }
     if (tab === 'transfers') {
+      if (scoutPickerOpen) {
+        closeScoutPicker()
+        return
+      }
+      if (transfersView === 'network') {
+        closeTransferNetwork()
+        return
+      }
       if (transferActionsOpen) {
         closeTransferActions()
         return
@@ -1656,6 +1772,12 @@
     centreOpenId = null
     centreTab = 'status'
     transfersView = 'hub'
+    networkMode = 'scouts'
+    networkEntryId = null
+    networkBackToHub = false
+    networkHints = []
+    scoutPickerOpen = false
+    scoutPickerPlayerId = null
     transferEditing = null
     oskOpen = false
     transferResults = []
@@ -2039,6 +2161,10 @@
 
   function handleCycle(direction) {
     if (tab === 'transfers') {
+      if (transfersView === 'hub' && reportFeed.length) {
+        shiftReport(direction)
+        return
+      }
       if (transfersView === 'filters' && !oskOpen) {
         handleStep(direction === 'right' ? 'right' : 'left')
       }
@@ -2068,6 +2194,21 @@
     )
     const next = (index + offset + attributePages.length) % attributePages.length
     centreAttributePage = attributePages[next].id
+  }
+
+  function reportForPlayer(playerId) {
+    if (!playerId) return null
+    return (
+      (scouting?.scouts ?? []).find(
+        (scout) => scout.report?.player_id === playerId,
+      )?.report ?? null
+    )
+  }
+
+  function footLabel(value) {
+    if (value === 'left') return 'Левая'
+    if (value === 'right') return 'Правая'
+    return value || '—'
   }
 
   function starCount(value) {
@@ -2679,30 +2820,70 @@
     {:else if tab === 'transfers'}
       {#if transfersView === 'hub'}
         <div class="tf-hub">
-          <section class="tf-reports" aria-label="Отчёты скаутов">
+          <button
+            type="button"
+            class="tf-reports"
+            aria-label="Отчёты скаутов — открыть"
+            data-nav
+            data-step
+            data-autofocus
+            onclick={() => openReportsCenter()}
+          >
             <div class="tf-reports-head">
-              <div>
-                <span class="eyebrow">Центр отчётов</span>
-                <strong>Отчёты скаутов</strong>
-              </div>
+              <strong>Отчёты скаутов</strong>
               <div class="tf-reports-count">
-                <span><b>0</b> Новое</span>
-                <span><b>0</b> Обновления</span>
+                <span><b>{scouting?.counts?.new ?? 0}</b> Новое</span>
+                <span><b>{scouting?.counts?.updates ?? 0}</b> Обновления</span>
               </div>
             </div>
-            <div class="tf-reports-empty">
-              {#each [0, 1, 2, 3] as slot (slot)}
-                <div class="tf-report-slot">
-                  <Icon name="users" size={slot === 0 ? 54 : 42} />
-                  <span>—</span>
+            <div class="tf-report-feed">
+              {#each reportPageEntries as entry, index (entry.player.id)}
+                <div class="tf-report-tile">
+                  <span class="tf-report-photo">
+                    <img src={entry.player.photo} alt="" onerror={hideBrokenImage} />
+                  </span>
+                  <span class="tf-report-main">
+                    <strong>{entry.player.name}</strong>
+                    <span class="tf-report-club">
+                      {entry.player.club_name ?? 'Свободный агент'}
+                    </span>
+                    <span class="tf-report-meta">
+                      {entry.scout_name} · {shortDate(entry.date)}
+                    </span>
+                  </span>
+                  <span class="tf-report-ovr">
+                    <b>{Math.round(entry.player.overall ?? 0)}</b>
+                    <small>ОБЩ.</small>
+                  </span>
+                  {#if !entry.acknowledged}
+                    <i class="tf-report-new" title="Новый"></i>
+                  {/if}
                 </div>
               {/each}
+              {#if reportPageEntries.length < 6}
+                {#each Array(6 - reportPageEntries.length) as _, index (index)}
+                  <div class="tf-report-tile is-empty">
+                    <Icon name="users" size={22} />
+                    <span>—</span>
+                  </div>
+                {/each}
+              {/if}
             </div>
             <div class="tf-reports-foot">
-              <p>Скаутских отчётов пока нет. Поиск открыт, отчёты появятся в #14.</p>
-              <div class="tf-dots" aria-hidden="true"><i class="active"></i><i></i><i></i></div>
+              <p>
+                {reportFeed.length
+                  ? `${reportPage + 1} / ${reportPageCount}`
+                  : 'Скаутских отчётов пока нет. Назначьте скаута в поиске игроков.'}
+              </p>
+              {#if reportPageCount > 1}
+                <div class="tf-dots" aria-hidden="true">
+                  {#each Array(reportPageCount) as _, index (index)}
+                    <i class:active={index === reportPage}></i>
+                  {/each}
+                </div>
+              {/if}
             </div>
-          </section>
+          </button>
           {#each transferHubCards as card (card.id)}
             <button
               class="tf-hub-card tf-card-{card.id}"
@@ -2710,7 +2891,10 @@
               data-nav
               data-autofocus={card.enabled ? '' : undefined}
               disabled={!card.enabled}
-              onclick={() => card.id === 'search' && openTransferFilters()}
+              onclick={() => {
+                if (card.id === 'search') openTransferFilters()
+                else if (card.id === 'network') openTransferNetwork('scouts')
+              }}
             >
               <div class="tf-hub-card-head">
                 <span class="eyebrow">{card.enabled ? 'Открыто' : 'Скоро'}</span>
@@ -2949,6 +3133,16 @@
             {@render tfTile('club', 'Клуб')}
           </div>
         </div>
+      {:else if transfersView === 'network'}
+        <Scouting
+          career={career}
+          mode={networkMode}
+          initialEntryId={networkEntryId}
+          backToHub={networkBackToHub}
+          bind:hints={networkHints}
+          onclose={closeTransferNetwork}
+          onaction={onaction}
+        />
       {:else}
         <div class="tf-results" inert={oskOpen ? true : undefined}>
           <section class="tf-results-main" inert={transferActionsOpen ? true : undefined}>
@@ -3020,31 +3214,97 @@
                 <span>Сумма отступных</span>
                 <strong>{formatValue(transferSelected.release_clause)}</strong>
               </div>
-              <div class="tf-detail-report">
-                <div class="tf-report-col">
-                  <div class="tf-report-head">
-                    <Icon name="lock" size={16} />
-                    Не изучается
+              {#if transferSelected.scouted}
+                {@const known = attributeGroups(transferSelected.stats)
+                  .flatMap((group) => group.rows)
+                  .slice(0, 6)}
+                <div class="tf-detail-report">
+                  <div class="tf-report-col">
+                    <div class="tf-report-head">
+                      <Icon name="check" size={16} />
+                      Отчёт готов
+                    </div>
+                    <p>
+                      Скаут изучил игрока {transferSelected.last_name || transferSelected.name}.
+                      OVR, статы, зарплата и рабочая нога раскрыты.
+                    </p>
                   </div>
-                  <p>
-                    На данный момент мы не изучаем игрока
-                    {transferSelected.last_name || transferSelected.name}.
-                  </p>
+                  <div class="tf-report-col">
+                    <div class="tf-report-head">Сводка</div>
+                    <ul class="tf-scouted-stats">
+                      {#each known as row (row.key)}
+                        <li>
+                          <span>{row.label}</span>
+                          <b class={statTone(row.value)}>{row.value}</b>
+                        </li>
+                      {/each}
+                    </ul>
+                  </div>
                 </div>
-                <div class="tf-report-col">
-                  <div class="tf-report-head">Предварительный отчёт</div>
-                  <ul>
-                    {#each ['Разгон', 'Скорость рывков', 'Ловкость', 'Баланс', 'Дриблинг'] as stat (stat)}
-                      <li>??? {stat}</li>
-                    {/each}
-                  </ul>
+                <div class="transfer-fog-chips is-open">
+                  <span>ОБЩ. <b>{Math.round(transferSelected.overall ?? 0)}</b></span>
+                  <span>ЗАРПЛАТА <b>{formatValue(transferSelected.weekly_wage ?? 0)}</b></span>
+                  <span>НОГА <b>{footLabel(transferSelected.foot)}</b></span>
+                  <span>ЦЕНА <b>{formatValue(transferSelected.market_value ?? 0)}</b></span>
                 </div>
-              </div>
-              <div class="transfer-fog-chips">
-                {#each ['OVR', 'Статы', 'Зарплата', 'Нога', 'Стоимость'] as hidden (hidden)}
-                  <span>??? {hidden}</span>
-                {/each}
-              </div>
+              {:else if reportForPlayer(transferSelected.id)}
+                {@const activeReport = reportForPlayer(transferSelected.id)}
+                <div class="tf-detail-report">
+                  <div class="tf-report-col">
+                    <div class="tf-report-head">
+                      <Icon name="clock" size={16} />
+                      Изучается
+                    </div>
+                    <p>
+                      Скаут работает над отчётом. Осталось
+                      {activeReport.days_left}
+                      {plural(activeReport.days_left, 'день', 'дня', 'дней')}.
+                    </p>
+                    <div class="tf-report-progress">
+                      <i style={`width:${Math.round(activeReport.progress * 100)}%`}></i>
+                    </div>
+                  </div>
+                  <div class="tf-report-col">
+                    <div class="tf-report-head">Предварительный отчёт</div>
+                    <ul>
+                      {#each ['Разгон', 'Скорость рывков', 'Ловкость', 'Баланс', 'Дриблинг'] as stat (stat)}
+                        <li>??? {stat}</li>
+                      {/each}
+                    </ul>
+                  </div>
+                </div>
+                <div class="transfer-fog-chips">
+                  {#each ['OVR', 'Статы', 'Зарплата', 'Нога', 'Стоимость'] as hidden (hidden)}
+                    <span>??? {hidden}</span>
+                  {/each}
+                </div>
+              {:else}
+                <div class="tf-detail-report">
+                  <div class="tf-report-col">
+                    <div class="tf-report-head">
+                      <Icon name="lock" size={16} />
+                      Не изучается
+                    </div>
+                    <p>
+                      На данный момент мы не изучаем игрока
+                      {transferSelected.last_name || transferSelected.name}.
+                    </p>
+                  </div>
+                  <div class="tf-report-col">
+                    <div class="tf-report-head">Предварительный отчёт</div>
+                    <ul>
+                      {#each ['Разгон', 'Скорость рывков', 'Ловкость', 'Баланс', 'Дриблинг'] as stat (stat)}
+                        <li>??? {stat}</li>
+                      {/each}
+                    </ul>
+                  </div>
+                </div>
+                <div class="transfer-fog-chips">
+                  {#each ['OVR', 'Статы', 'Зарплата', 'Нога', 'Стоимость'] as hidden (hidden)}
+                    <span>??? {hidden}</span>
+                  {/each}
+                </div>
+              {/if}
             {:else}
               <p class="transfer-detail-empty">Выберите игрока в списке.</p>
             {/if}
@@ -3074,7 +3334,7 @@
                       <span>ЛЕТ <b>{player.age ?? '—'}</b></span>
                       <span>АМПЛУА <b>{shortRole(player.role)}</b></span>
                       <span>РОСТ <b>{player.height ? `${player.height} см` : '—'}</b></span>
-                      <span>НОГА <b>?</b></span>
+                      <span>НОГА <b>{footLabel(player.foot)}</b></span>
                     </div>
                   </div>
                   <span class="tf-actions-club">
@@ -3087,20 +3347,40 @@
 
                 <div class="tf-actions-grid">
                   <div class="tf-action-metrics">
-                    <div class="tf-action-metric"><span>ОБЩ.</span><b>?</b></div>
-                    <div class="tf-action-metric"><span>ЦЕНА</span><b>?</b></div>
-                    <div class="tf-action-metric"><span>ЗАРПЛАТА</span><b>?</b></div>
+                    <div class="tf-action-metric">
+                      <span>ОБЩ.</span>
+                      <b>{player.scouted ? Math.round(player.overall ?? 0) : '?'}</b>
+                    </div>
+                    <div class="tf-action-metric">
+                      <span>ЦЕНА</span>
+                      <b>{player.scouted ? formatValue(player.market_value ?? 0) : '?'}</b>
+                    </div>
+                    <div class="tf-action-metric">
+                      <span>ЗАРПЛАТА</span>
+                      <b>{player.scouted ? formatValue(player.weekly_wage ?? 0) : '?'}</b>
+                    </div>
                     <div class="tf-action-metric is-visible">
                       <span>ОТСТУПНЫЕ</span>
                       <b>{formatValue(player.release_clause)}</b>
                     </div>
                   </div>
                   <div class="tf-action-report">
-                    <span class="tf-action-report-head">Предварительный отчёт</span>
+                    <span class="tf-action-report-head">
+                      {player.scouted ? 'Сводка' : 'Предварительный отчёт'}
+                    </span>
                     <ul>
-                      {#each ['Разгон', 'Скорость рывков', 'Ловкость', 'Баланс', 'Дриблинг', 'Владение'] as stat (stat)}
-                        <li><span>{stat}</span><b>???</b></li>
-                      {/each}
+                      {#if player.scouted}
+                        {#each attributeGroups(player.stats).flatMap((group) => group.rows).slice(0, 6) as row (row.key)}
+                          <li>
+                            <span>{row.label}</span>
+                            <b class={statTone(row.value)}>{row.value}</b>
+                          </li>
+                        {/each}
+                      {:else}
+                        {#each ['Разгон', 'Скорость рывков', 'Ловкость', 'Баланс', 'Дриблинг', 'Владение'] as stat (stat)}
+                          <li><span>{stat}</span><b>???</b></li>
+                        {/each}
+                      {/if}
                     </ul>
                   </div>
                 </div>
@@ -3122,20 +3402,47 @@
                 </div>
 
                 <div class="tf-action-list scroll-area">
-                  {#if transferScouts.length}
-                    {#each transferScouts as scout, index (scout.id ?? scout.name)}
-                      <div
-                        class="tf-action is-disabled"
-                        data-nav
-                        data-autofocus={index === 0 ? '' : undefined}
-                        role="button"
-                        tabindex="0"
-                        aria-disabled="true"
-                      >
-                        <span>Поручить {scout.name} — следить за {player.name}</span>
-                        <span class="tf-action-ticket">#19</span>
-                      </div>
-                    {/each}
+                  {#if player.scouted}
+                    <div
+                      class="tf-action is-disabled"
+                      data-nav
+                      data-autofocus
+                      role="button"
+                      tabindex="0"
+                      aria-disabled="true"
+                    >
+                      <span>Игрок уже изучен</span>
+                      <span class="tf-action-ticket">Отчёт</span>
+                    </div>
+                  {:else if (scouting?.scouts ?? []).some((scout) => scout.report?.player_id === player.id)}
+                    <div
+                      class="tf-action is-disabled"
+                      data-nav
+                      data-autofocus
+                      role="button"
+                      tabindex="0"
+                      aria-disabled="true"
+                    >
+                      <span>
+                        Отчёт уже готовится
+                        {#if reportForPlayer(player.id)}
+                          · осталось {reportForPlayer(player.id).days_left}
+                          {plural(reportForPlayer(player.id).days_left, 'день', 'дня', 'дней')}
+                        {/if}
+                      </span>
+                      <span class="tf-action-ticket">Скаут</span>
+                    </div>
+                  {:else if (scouting?.scouts ?? []).length}
+                    <button
+                      class="tf-action"
+                      data-nav
+                      data-autofocus
+                      data-scout-action="assign"
+                      onclick={openScoutPicker}
+                    >
+                      <span>Поручить скауту</span>
+                      <span class="tf-action-key">A</span>
+                    </button>
                   {:else}
                     <div
                       class="tf-action is-disabled"
@@ -3145,8 +3452,8 @@
                       tabindex="0"
                       aria-disabled="true"
                     >
-                      <span>Нанять скаута</span>
-                      <span class="tf-action-ticket">#19</span>
+                      <span>Сначала наймите скаута</span>
+                      <span class="tf-action-ticket">Сеть</span>
                     </div>
                   {/if}
                   <div class="tf-actions-sep" aria-hidden="true"></div>
@@ -3203,6 +3510,52 @@
                 </footer>
               </div>
             </div>
+
+            {#if scoutPickerOpen && scoutPickerPlayer}
+              <div class="sc-modal-layer">
+                <div
+                  class="sc-modal sc-confirm is-picker"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Поручить скауту"
+                >
+                  <p class="sc-confirm-text">
+                    Кому поручить следить за {scoutPickerPlayer.name}?
+                  </p>
+                  {#each scoutPickerScouts as scout, index (scout.id)}
+                    <button
+                      class="sc-confirm-row sc-picker-row"
+                      class:is-disabled={Boolean(scout.report)}
+                      data-nav
+                      data-autofocus={index === 0 && !scout.report ? '' : undefined}
+                      onclick={() => assignScout(scout)}
+                    >
+                      <span class="sc-picker-flag">
+                        {#if scout.flag}
+                          <img src={scout.flag} alt="" onerror={hideBrokenImage} />
+                        {/if}
+                      </span>
+                      <span class="sc-picker-main">
+                        <strong>{scout.name}</strong>
+                        <small>
+                          {scout.report
+                            ? `Занят: следит за ${scout.report.player_name}`
+                            : `Опыт ${scout.experience} · Решение ${scout.judgement}`}
+                        </small>
+                      </span>
+                      <span class="sc-picker-stars">
+                        {#each [0, 1, 2, 3, 4] as star (star)}
+                          <i class:on={star < scout.judgement}>★</i>
+                        {/each}
+                      </span>
+                    </button>
+                  {/each}
+                  <button class="sc-confirm-row" data-nav onclick={closeScoutPicker}>
+                    <span>Отмена</span>
+                  </button>
+                </div>
+              </div>
+            {/if}
           {/if}
         </div>
       {/if}

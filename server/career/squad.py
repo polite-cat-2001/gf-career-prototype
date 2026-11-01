@@ -247,6 +247,10 @@ def _rolled_value(
     return max(MIN_MARKET_VALUE, _round_money(rolled))
 
 
+def weekly_wage_for(career: Career, player: dict, player_id: str) -> int:
+    return _weekly_wage(career, player, player_id)
+
+
 def ensure_player_finances(career: Career, players: list[dict]) -> None:
     for player in players:
         player_id = str(player["id"])

@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from server.canon import REPO_ROOT, Canon, default_db_path
+from server.canon import REPO_ROOT, Canon, age_from_birth_date, default_db_path
 from server.career import (
     ActionError,
     SaveFormatError,
@@ -42,14 +42,38 @@ from server.career.condition import (
     ensure_player_states,
     recover_condition,
 )
+from server.career.scouting import (
+    AGE_MAX,
+    AGE_MIN,
+    CONTRACT_MAX,
+    CONTRACT_MIN,
+    MAX_SCOUTS,
+    REGION_SPECS,
+    acknowledge_reports,
+    advance_scouting,
+    assign_player_report,
+    ensure_scouts,
+    hire_scout,
+    normalize_criteria,
+    remove_scouted,
+    report_progress,
+    scouted_ids,
+    scouting_counts,
+    scout_candidates,
+    start_network,
+    task_days,
+    update_task,
+)
 from server.career.snapshot import lineup_for, lineup_strength
 from server.career.squad import (
     TRANSFER_STATUSES,
     contract_expiry_for,
+    contract_months_for,
     ensure_player_contracts,
     ensure_player_finances,
     release_clause_for,
     resolve_negotiations,
+    weekly_wage_for,
 )
 
 RASTER_DIR = REPO_ROOT / "data" / "raster"
@@ -234,10 +258,128 @@ class TransferPlayer(BaseModel):
     photo: str
     scouted: bool = False
     contract_expires: str | None = None
+    foot: str | None = None
+    overall: float | None = None
+    pot: int | None = None
+    stats: dict[str, float] | None = None
+    weekly_wage: int | None = None
+    market_value: int | None = None
+    weak_foot: int | None = None
+    skill_moves: int | None = None
+
+
+class ScoutCriteria(BaseModel):
+    role: str = ""
+    age_min: int | None = None
+    age_max: int | None = None
+    contract_min: int | None = None
+    contract_max: int | None = None
+
+
+class ScoutTaskView(BaseModel):
+    kind: str
+    region_id: str
+    region_name: str
+    country_id: str
+    country_name: str
+    criteria: ScoutCriteria
+    started_at: str
+    days_worked: int
+    found_count: int
+
+
+class ScoutReportView(BaseModel):
+    player_id: str
+    player_name: str
+    player_photo: str
+    started_at: str
+    due_at: str
+    days_total: int
+    days_left: int
+    days_worked: int
+    progress: float
+
+
+class ScoutView(BaseModel):
+    id: str
+    name: str
+    nationality: str
+    nationality_id: str | None = None
+    flag: str = ""
+    experience: int
+    judgement: int
+    price: int
+    task: ScoutTaskView | None = None
+    report: ScoutReportView | None = None
+
+
+class ScoutCandidate(BaseModel):
+    id: str
+    name: str
+    nationality: str
+    nationality_id: str | None = None
+    flag: str = ""
+    experience: int
+    judgement: int
+    price: int
+    affordable: bool = True
+
+
+class ScoutNetwork(BaseModel):
+    region_id: str
+    region_name: str
+    country_id: str
+    country_name: str
+    created_at: str
+    scout_id: str
+
+
+class ScoutRegionCountry(BaseModel):
+    id: str
+    name: str
+    flag: str
+
+
+class ScoutRegion(BaseModel):
+    id: str
+    name: str
+    x: float
+    y: float
+    countries: list[ScoutRegionCountry]
+
+
+class ScoutEntry(BaseModel):
+    player: TransferPlayer
+    kind: str
+    scout_id: str
+    scout_name: str
+    date: str
+    acknowledged: bool = False
+
+
+class ScoutingCounts(BaseModel):
+    new: int = 0
+    updates: int = 0
+    total: int = 0
+
+
+class ScoutingBlock(BaseModel):
+    scouts: list[ScoutView]
+    candidates: list[ScoutCandidate]
+    reports: list[ScoutEntry]
+    recommendations: list[ScoutEntry]
+    networks: list[ScoutNetwork]
+    regions: list[ScoutRegion]
+    counts: ScoutingCounts
+    max_scouts: int
+    age_min: int
+    age_max: int
+    contract_min: int
+    contract_max: int
 
 
 class TransferSearchResponse(BaseModel):
-    items: list[TransferPlayer]
+    items: list[dict]
     total: int
     limit: int
     offset: int
@@ -263,6 +405,10 @@ class CareerActionRequest(BaseModel):
     weekly_wage: int | None = None
     squad_role: str | None = None
     release_clause: int | None = None
+    scout_id: str | None = None
+    region_id: str | None = None
+    country_id: str | None = None
+    criteria: dict | None = None
 
 
 class ManagerInfo(BaseModel):
@@ -438,6 +584,7 @@ class CareerSnapshot(BaseModel):
     club: Club
     squad: SquadBlock
     season: SeasonBlock
+    scouting: ScoutingBlock | None = None
 
 
 class MatchPlayer(BaseModel):
@@ -568,6 +715,236 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         return resolve
 
     league_catalog = {str(league["id"]): league for league in canon.leagues()}
+
+    countries_catalog = {str(country["id"]): country for country in canon.countries()}
+    country_by_name = {
+        str(country["name"]): country for country in countries_catalog.values()
+    }
+    regions = []
+    for spec in REGION_SPECS:
+        members = []
+        for name in spec["countries"]:
+            country = country_by_name.get(name)
+            if country is None:
+                continue
+            members.append(
+                {
+                    "id": str(country["id"]),
+                    "name": str(country["name"]),
+                    "flag": str(country["flag"]),
+                }
+            )
+        if members:
+            regions.append(
+                {
+                    "id": spec["id"],
+                    "name": spec["name"],
+                    "x": spec["x"],
+                    "y": spec["y"],
+                    "countries": members,
+                }
+            )
+    region_by_id = {region["id"]: region for region in regions}
+
+    def scouting_player(career, player_id: str) -> dict | None:
+        player = canon.player(str(player_id))
+        if player is None:
+            return None
+        club = canon.club(str(player["club_id"])) if player.get("club_id") else None
+        status = career.player_transfers.get(str(player_id))
+        if status is None:
+            status = "free" if not player.get("club_id") else "contracted"
+        return {
+            "id": str(player["id"]),
+            "name": player["name"],
+            "first_name": player.get("first_name"),
+            "last_name": player.get("last_name"),
+            "age": age_from_birth_date(player.get("birth_date"), career.date),
+            "height": player.get("height"),
+            "citizenship": player.get("citizenship") or [],
+            "position": player.get("position") or "",
+            "role": player.get("role"),
+            "club_id": player.get("club_id"),
+            "club_name": club["name"] if club else None,
+            "club_logo": club["logo"] if club else None,
+            "league_id": club["league_id"] if club else None,
+            "league_name": club["league_name"] if club else None,
+            "country_id": club["country_id"] if club else None,
+            "country_name": club["country_name"] if club else None,
+            "release_clause": release_clause_for(career, player, player["id"]),
+            "status": status,
+            "photo": player["photo"],
+            "scouted": True,
+            "contract_expires": contract_expiry_for(career, player, player["id"]),
+            "foot": player.get("foot"),
+            "overall": player.get("overall"),
+            "pot": player.get("pot"),
+            "stats": player.get("stats"),
+            "weekly_wage": weekly_wage_for(career, player, player["id"]),
+            "market_value": player.get("market_value"),
+            "weak_foot": player.get("weak_foot"),
+            "skill_moves": player.get("skill_moves"),
+        }
+
+    def scouting_candidates(career, country_id: str, criteria: dict) -> list[dict]:
+        players, _ = canon.search_players(
+            country_id=str(country_id),
+            group=criteria.get("role") or None,
+            age_min=criteria.get("age_min"),
+            age_max=criteria.get("age_max"),
+            limit=200,
+            sort="overall",
+            direction="desc",
+            ref_date=career.date,
+        )
+        for player in players:
+            player["contract_months"] = contract_months_for(
+                career, player, player["id"]
+            )
+        return players
+
+    def scouting_snapshot(career) -> dict:
+        ensure_scouts(career)
+        cache: dict[str, dict | None] = {}
+        scouts_by_id = {str(scout["id"]): scout for scout in career.scouts}
+
+        def player_view(player_id: str, reveal: bool = True) -> dict | None:
+            key = str(player_id)
+            if key not in cache:
+                cache[key] = scouting_player(career, key)
+            player = cache[key]
+            if player is None:
+                return None
+            if reveal:
+                return player
+            hidden = {
+                key: value
+                for key, value in player.items()
+                if key
+                not in {
+                    "overall",
+                    "pot",
+                    "stats",
+                    "weekly_wage",
+                    "market_value",
+                    "foot",
+                    "weak_foot",
+                    "skill_moves",
+                }
+            }
+            hidden["scouted"] = False
+            return hidden
+
+        def scout_view(scout: dict) -> dict:
+            scout_id = str(scout["id"])
+            country = country_by_name.get(str(scout.get("nationality") or ""))
+            task = career.scout_tasks.get(scout_id)
+            task_view = None
+            if task is not None:
+                task_view = {
+                    "kind": str(task.get("kind") or "network"),
+                    "region_id": str(task.get("region_id") or ""),
+                    "region_name": str(task.get("region_name") or ""),
+                    "country_id": str(task.get("country_id") or ""),
+                    "country_name": str(task.get("country_name") or ""),
+                    "criteria": normalize_criteria(task.get("criteria")),
+                    "started_at": str(task.get("started_at") or career.date),
+                    "days_worked": task_days(career, task),
+                    "found_count": len(task.get("found") or []),
+                }
+            report = career.scout_assignments.get(scout_id)
+            report_view = None
+            if report is not None:
+                progress = report_progress(career, report)
+                player = player_view(str(report.get("player_id")), reveal=False)
+                report_view = {
+                    "player_id": str(report.get("player_id")),
+                    "player_name": player["name"] if player else "",
+                    "player_photo": player["photo"] if player else "",
+                    "started_at": str(report.get("started_at") or career.date),
+                    "due_at": str(report.get("due_at") or career.date),
+                    "days_total": progress["days_total"],
+                    "days_left": progress["days_left"],
+                    "days_worked": progress["days_worked"],
+                    "progress": round(
+                        progress["days_worked"] / max(1, progress["days_total"]), 3
+                    ),
+                }
+            return {
+                "id": scout_id,
+                "name": str(scout.get("name") or ""),
+                "nationality": str(scout.get("nationality") or ""),
+                "nationality_id": country["id"] if country else None,
+                "flag": country["flag"] if country else "",
+                "experience": int(scout.get("experience") or 1),
+                "judgement": int(scout.get("judgement") or 1),
+                "price": int(scout.get("price") or 0),
+                "task": task_view,
+                "report": report_view,
+            }
+
+        candidates = []
+        for candidate in scout_candidates(career):
+            country = country_by_name.get(str(candidate.get("nationality") or ""))
+            price = int(candidate.get("price") or 0)
+            candidates.append(
+                {
+                    "id": str(candidate["id"]),
+                    "name": str(candidate["name"]),
+                    "nationality": str(candidate["nationality"]),
+                    "nationality_id": country["id"] if country else None,
+                    "flag": country["flag"] if country else "",
+                    "experience": int(candidate.get("experience") or 1),
+                    "judgement": int(candidate.get("judgement") or 1),
+                    "price": price,
+                    "affordable": career.balance is None
+                    or int(career.balance) >= price,
+                }
+            )
+
+        def entry(player_id: str, data: dict, kind: str, stamp: str) -> dict | None:
+            player = player_view(player_id)
+            if player is None:
+                return None
+            scout = scouts_by_id.get(str(data.get("scout_id")))
+            return {
+                "player": player,
+                "kind": kind,
+                "scout_id": str(data.get("scout_id") or ""),
+                "scout_name": str(scout.get("name") or "") if scout else "",
+                "date": str(stamp),
+                "acknowledged": bool(data.get("acknowledged")),
+            }
+
+        reports = [
+            entry(player_id, data, "report", data.get("completed_at") or career.date)
+            for player_id, data in career.scout_reports.items()
+        ]
+        recommendations = [
+            entry(player_id, data, "recommendation", data.get("found_at") or career.date)
+            for player_id, data in career.scout_found.items()
+        ]
+        reports = [item for item in reports if item is not None]
+        recommendations = [item for item in recommendations if item is not None]
+        reports.sort(key=lambda item: (item["date"], item["player"]["name"]), reverse=True)
+        recommendations.sort(
+            key=lambda item: (item["date"], item["player"]["name"]), reverse=True
+        )
+
+        return {
+            "scouts": [scout_view(scout) for scout in career.scouts],
+            "candidates": candidates,
+            "reports": reports,
+            "recommendations": recommendations,
+            "networks": [dict(network) for network in career.scout_networks],
+            "regions": regions,
+            "counts": scouting_counts(career),
+            "max_scouts": MAX_SCOUTS,
+            "age_min": AGE_MIN,
+            "age_max": AGE_MAX,
+            "contract_min": CONTRACT_MIN,
+            "contract_max": CONTRACT_MAX,
+        }
 
     def division_context(career, club):
         league_id = career.league_id or str(club["league_id"])
@@ -748,6 +1125,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         )
         if transition is not None:
             result["season"]["review"] = transition["review"]
+        result["scouting"] = scouting_snapshot(career)
         return result
 
     app.add_middleware(
@@ -855,20 +1233,35 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             ref_date=career.date,
         )
         items = []
+        revealed = scouted_ids(career)
         for player in players:
             target_status = career.player_transfers.get(player["id"])
             if target_status is None:
                 target_status = "free" if not player["club_id"] else "contracted"
-            items.append(
-                {
-                    **player,
-                    "release_clause": release_clause_for(career, player, player["id"]),
-                    "status": target_status,
-                    "contract_expires": contract_expiry_for(
-                        career, player, player["id"]
-                    ),
-                }
-            )
+            item = {
+                **player,
+                "release_clause": release_clause_for(career, player, player["id"]),
+                "status": target_status,
+                "contract_expires": contract_expiry_for(
+                    career, player, player["id"]
+                ),
+                "scouted": str(player["id"]) in revealed,
+            }
+            if item["scouted"]:
+                item["weekly_wage"] = weekly_wage_for(career, player, player["id"])
+            else:
+                for hidden in (
+                    "overall",
+                    "pot",
+                    "stats",
+                    "weekly_wage",
+                    "market_value",
+                    "foot",
+                    "weak_foot",
+                    "skill_moves",
+                ):
+                    item.pop(hidden, None)
+            items.append(item)
         return {
             "items": items,
             "total": total,
@@ -908,6 +1301,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         ensure_schedule(career, league_clubs)
         ensure_player_contracts(career, squad)
         ensure_player_finances(career, squad)
+        ensure_scouts(career)
         saves.save(career)
         return snapshot(career)
 
@@ -1032,6 +1426,12 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             except SeasonError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
             recover_condition(career, career.date)
+            advance_scouting(
+                career,
+                lambda country_id, criteria: scouting_candidates(
+                    career, country_id, criteria
+                ),
+            )
         elif payload.type == "next_season":
             club = canon.club(career.club_id)
             if club is None:
@@ -1114,6 +1514,70 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 else:
                     confirm_contract(career, players, payload.player_id)
             except ActionError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+        elif payload.type in {
+            "scout_hire",
+            "scout_assign",
+            "scout_network",
+            "scout_task",
+            "scout_remove",
+            "scout_ack",
+        }:
+            players = canon.players_by_ids(career.player_ids)
+            ensure_player_finances(career, players)
+            try:
+                if payload.type == "scout_hire":
+                    if not payload.scout_id:
+                        raise ValueError("scout_hire requires scout_id")
+                    hire_scout(career, payload.scout_id)
+                elif payload.type == "scout_assign":
+                    if not payload.scout_id or not payload.player_id:
+                        raise ValueError(
+                            "scout_assign requires scout_id and player_id"
+                        )
+                    if str(payload.player_id) in career.player_ids:
+                        raise ValueError("you cannot scout your own player")
+                    if canon.player(str(payload.player_id)) is None:
+                        raise ValueError("player not found")
+                    assign_player_report(career, payload.scout_id, payload.player_id)
+                elif payload.type == "scout_network":
+                    if not payload.scout_id or not payload.region_id or not payload.country_id:
+                        raise ValueError(
+                            "scout_network requires scout_id, region_id and country_id"
+                        )
+                    region = region_by_id.get(str(payload.region_id))
+                    if region is None:
+                        raise ValueError("region not found")
+                    country = next(
+                        (
+                            item
+                            for item in region["countries"]
+                            if str(item["id"]) == str(payload.country_id)
+                        ),
+                        None,
+                    )
+                    if country is None:
+                        raise ValueError("country is not in this region")
+                    start_network(
+                        career,
+                        payload.scout_id,
+                        region["id"],
+                        country["id"],
+                        region["name"],
+                        country["name"],
+                        payload.criteria,
+                    )
+                elif payload.type == "scout_task":
+                    if not payload.scout_id:
+                        raise ValueError("scout_task requires scout_id")
+                    update_task(career, payload.scout_id, payload.criteria)
+                elif payload.type == "scout_remove":
+                    if not payload.player_id:
+                        raise ValueError("scout_remove requires player_id")
+                    remove_scouted(career, payload.player_id)
+                else:
+                    acknowledge_reports(career)
+            except ValueError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
         else:
             raise HTTPException(status_code=422, detail=f"unknown action type: {payload.type}")

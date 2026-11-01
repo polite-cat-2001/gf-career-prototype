@@ -64,6 +64,12 @@ class Career:
     player_transfers: dict[str, str] = field(default_factory=dict)
     shirt_numbers: dict[str, int] = field(default_factory=dict)
     negotiations: dict[str, dict] = field(default_factory=dict)
+    scouts: list[dict] = field(default_factory=list)
+    scout_assignments: dict[str, dict] = field(default_factory=dict)
+    scout_tasks: dict[str, dict] = field(default_factory=dict)
+    scout_reports: dict[str, dict] = field(default_factory=dict)
+    scout_found: dict[str, dict] = field(default_factory=dict)
+    scout_networks: list[dict] = field(default_factory=list)
     balance: int | None = None
     condition_date: str | None = None
     journal: list[dict] = field(default_factory=list)
@@ -147,6 +153,35 @@ class Career:
                 }
                 for player_id, state in self.negotiations.items()
             }
+        if self.scouts:
+            payload["scouts"] = [dict(scout) for scout in self.scouts]
+        if self.scout_assignments:
+            payload["scout_assignments"] = {
+                scout_id: dict(report)
+                for scout_id, report in self.scout_assignments.items()
+            }
+        if self.scout_tasks:
+            payload["scout_tasks"] = {
+                scout_id: {
+                    **task,
+                    "criteria": dict(task.get("criteria") or {}),
+                    "found": list(task.get("found") or []),
+                }
+                for scout_id, task in self.scout_tasks.items()
+            }
+        if self.scout_reports:
+            payload["scout_reports"] = {
+                player_id: dict(report)
+                for player_id, report in self.scout_reports.items()
+            }
+        if self.scout_found:
+            payload["scout_found"] = {
+                player_id: dict(entry) for player_id, entry in self.scout_found.items()
+            }
+        if self.scout_networks:
+            payload["scout_networks"] = [
+                dict(network) for network in self.scout_networks
+            ]
         if self.balance is not None:
             payload["balance"] = int(self.balance)
         if self.condition_date is not None:
@@ -236,6 +271,40 @@ class Career:
                 for player_id, state in (raw.get("negotiations") or {}).items()
                 if isinstance(state, dict)
             },
+            scouts=[
+                dict(scout)
+                for scout in (raw.get("scouts") or [])
+                if isinstance(scout, dict)
+            ],
+            scout_assignments={
+                str(scout_id): dict(report)
+                for scout_id, report in (raw.get("scout_assignments") or {}).items()
+                if isinstance(report, dict)
+            },
+            scout_tasks={
+                str(scout_id): {
+                    **task,
+                    "criteria": dict(task.get("criteria") or {}),
+                    "found": list(task.get("found") or []),
+                }
+                for scout_id, task in (raw.get("scout_tasks") or {}).items()
+                if isinstance(task, dict)
+            },
+            scout_reports={
+                str(player_id): dict(report)
+                for player_id, report in (raw.get("scout_reports") or {}).items()
+                if isinstance(report, dict)
+            },
+            scout_found={
+                str(player_id): dict(entry)
+                for player_id, entry in (raw.get("scout_found") or {}).items()
+                if isinstance(entry, dict)
+            },
+            scout_networks=[
+                dict(network)
+                for network in (raw.get("scout_networks") or [])
+                if isinstance(network, dict)
+            ],
             balance=None if raw.get("balance") is None else int(raw["balance"]),
             condition_date=raw.get("condition_date"),
             journal=list(raw.get("journal", [])),

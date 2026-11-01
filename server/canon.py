@@ -317,7 +317,7 @@ class Canon:
             p.id, p.name, p.first_name, p.last_name, p.birth_date, p.height, p.foot,
             p.citizenship, p.position, p.position_other, p.club_id, p.national_team_id,
             p.shirt_number, p.market_value, p.overall, p.pot, p.weight, p.weak_foot,
-            p.skill_moves, p.role,
+            p.skill_moves, p.role, p.stats,
             c.name AS club_name, c.logo AS club_logo, c.league_id AS league_id,
             l.name AS league_name, c.country_id AS country_id, co.name AS country_name
         """
@@ -394,6 +394,7 @@ class Canon:
             "weak_foot": row["weak_foot"],
             "skill_moves": row["skill_moves"],
             "role": row["role"],
+            "stats": json.loads(row["stats"]) if row["stats"] else None,
             "photo": Canon._face_path(row["id"]),
         }
 

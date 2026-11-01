@@ -198,6 +198,12 @@
     release_player: 'Игрок отпущен из клуба',
     sign_contract: 'Контракт подписан',
     accept_counter: 'Контракт подписан',
+    scout_hire: 'Скаут нанят',
+    scout_assign: 'Скаут отправлен на задание',
+    scout_network: 'Сеть поиска создана',
+    scout_task: 'Задача скаута обновлена',
+    scout_remove: 'Игрок убран из отчёта',
+    scout_ack: '',
   }
 
   async function runSquadAction(payload) {

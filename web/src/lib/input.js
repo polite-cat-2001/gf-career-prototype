@@ -69,9 +69,8 @@ function stepFocused(direction) {
     triggerStep(direction)
     return true
   }
-  if (!element?.dataset?.step) return false
-  triggerStep(direction)
-  return true
+  if (!element?.hasAttribute('data-step')) return false
+  return triggerStep(direction)
 }
 
 function moveWithinPitch(current, direction) {
@@ -269,7 +268,7 @@ export function moveFocus(direction) {
     return
   }
 
-  if (current.dataset.cycle && (direction === 'left' || direction === 'right')) {
+  if (current.hasAttribute('data-cycle') && (direction === 'left' || direction === 'right')) {
     cycle(direction)
     return
   }
@@ -463,7 +462,9 @@ function pollGamepad() {
       if (pageDirection !== lastRightStick || now - lastRightStickAt > 190) {
         lastRightStick = pageDirection
         lastRightStickAt = now
-        cycleSquadCentrePages(document.activeElement, pageDirection)
+        if (!cycleSquadCentrePages(document.activeElement, pageDirection)) {
+          triggerCycle(pageDirection)
+        }
       }
     } else {
       lastRightStick = ''
