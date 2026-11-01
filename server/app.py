@@ -16,6 +16,7 @@ from server.career import (
     SaveVersionError,
     SeasonError,
     accept_counter_offer,
+    accept_offer_counter,
     acknowledge_contract_negotiation,
     add_to_shortlist,
     advance_to,
@@ -25,13 +26,16 @@ from server.career import (
     build_snapshot,
     confirm_contract,
     create_career,
+    create_transfer_offer,
     ensure_schedule,
     negotiate_contract,
     next_fixture,
     next_season,
+    offer_view,
     play_next_match,
     release_player,
     remove_from_shortlist,
+    resolve_transfer_offers,
     season_transition,
     set_shirt_number,
     set_transfer_status,
@@ -421,6 +425,11 @@ class CareerActionRequest(BaseModel):
     region_id: str | None = None
     country_id: str | None = None
     criteria: dict | None = None
+    offer_id: str | None = None
+    amount: int | None = None
+    loan_fee: int | None = None
+    wage_share: int | None = None
+    buyout: bool | None = None
 
 
 class ManagerInfo(BaseModel):
@@ -712,6 +721,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         except SaveFormatError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
         resolve_negotiations(career)
+        resolve_transfer_offers(career)
         return career
 
     def strength_resolver(career=None, players=None):
@@ -1020,9 +1030,17 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                     result.append(player)
             return result
 
+        sent_offers = []
+        for offer in reversed(career.transfer_offers):
+            player = entry(str(offer.get("player_id") or ""))
+            if player is None:
+                continue
+            player.update(offer_view(career, offer))
+            sent_offers.append(player)
+
         return {
             "shortlist": collect(career.shortlist),
-            "sent_offers": [],
+            "sent_offers": sent_offers,
             "received_offers": [],
             "listed": collect(
                 (
@@ -1530,6 +1548,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                     career, country_id, criteria
                 ),
             )
+            resolve_transfer_offers(career)
         elif payload.type == "next_season":
             club = canon.club(career.club_id)
             if club is None:
@@ -1612,6 +1631,41 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 else:
                     confirm_contract(career, players, payload.player_id)
             except ActionError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+        elif payload.type in {"transfer_offer", "loan_offer"}:
+            if not payload.player_id:
+                raise HTTPException(
+                    status_code=422, detail=f"{payload.type} requires player_id"
+                )
+            player = canon.player(str(payload.player_id))
+            if player is None:
+                raise HTTPException(status_code=422, detail="player not found")
+            player = {
+                **player,
+                "release_clause": release_clause_for(
+                    career, player, player["id"]
+                ),
+            }
+            try:
+                create_transfer_offer(
+                    career,
+                    player,
+                    kind="loan" if payload.type == "loan_offer" else "transfer",
+                    amount=payload.amount,
+                    loan_fee=payload.loan_fee,
+                    wage_share=payload.wage_share,
+                    buyout=bool(payload.buyout),
+                )
+            except ValueError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+        elif payload.type == "accept_offer_counter":
+            if not payload.offer_id:
+                raise HTTPException(
+                    status_code=422, detail="accept_offer_counter requires offer_id"
+                )
+            try:
+                accept_offer_counter(career, payload.offer_id)
+            except ValueError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
         elif payload.type in {"shortlist_add", "shortlist_remove", "shortlist_toggle"}:
             if not payload.player_id:

@@ -21,6 +21,8 @@
     onassign = null,
     onshortlist = null,
     onremove = null,
+    ontransfer = null,
+    onloan = null,
   } = $props()
 
   let photoFailed = $state(false)
@@ -188,14 +190,28 @@
         <span>{shortlisted ? 'Убрать из шортлиста' : 'Добавить в шортлист'}</span>
         <span class="tf-action-key">A</span>
       </button>
-      <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
-        <span>Сделать предложение трансфера</span>
-        <span class="tf-action-ticket">#16</span>
-      </div>
-      <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
-        <span>Сделать предложение аренды</span>
-        <span class="tf-action-ticket">#16</span>
-      </div>
+      {#if ontransfer}
+        <button class="tf-action" data-nav onclick={ontransfer}>
+          <span>Сделать предложение трансфера</span>
+          <span class="tf-action-key">A</span>
+        </button>
+      {:else}
+        <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
+          <span>Сделать предложение трансфера</span>
+          <span class="tf-action-ticket">Недоступно</span>
+        </div>
+      {/if}
+      {#if onloan}
+        <button class="tf-action" data-nav onclick={onloan}>
+          <span>Сделать предложение аренды</span>
+          <span class="tf-action-key">A</span>
+        </button>
+      {:else}
+        <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
+          <span>Сделать предложение аренды</span>
+          <span class="tf-action-ticket">Недоступно</span>
+        </div>
+      {/if}
       <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
         <span>Обсудить переход</span>
         <span class="tf-action-ticket">#17</span>

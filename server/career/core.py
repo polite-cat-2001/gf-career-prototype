@@ -64,6 +64,7 @@ class Career:
     player_transfers: dict[str, str] = field(default_factory=dict)
     shirt_numbers: dict[str, int] = field(default_factory=dict)
     negotiations: dict[str, dict] = field(default_factory=dict)
+    transfer_offers: list[dict] = field(default_factory=list)
     shortlist: list[str] = field(default_factory=list)
     scouts: list[dict] = field(default_factory=list)
     scout_assignments: dict[str, dict] = field(default_factory=dict)
@@ -142,6 +143,17 @@ class Career:
             payload["shirt_numbers"] = {
                 player_id: int(number) for player_id, number in self.shirt_numbers.items()
             }
+        if self.transfer_offers:
+            payload["transfer_offers"] = [
+                {
+                    **offer,
+                    "counter": None
+                    if offer.get("counter") is None
+                    else dict(offer["counter"]),
+                    "demand": dict(offer.get("demand") or {}),
+                }
+                for offer in self.transfer_offers
+            ]
         if self.shortlist:
             payload["shortlist"] = list(self.shortlist)
         if self.negotiations:
@@ -196,6 +208,25 @@ class Career:
         lineup = raw.get("lineup")
         bench = raw.get("bench")
         schedule = raw.get("schedule")
+        transfer_offers = []
+        seen_offer_players = set()
+        for offer in reversed(raw.get("transfer_offers") or []):
+            if not isinstance(offer, dict):
+                continue
+            player_id = str(offer.get("player_id") or "")
+            if player_id in seen_offer_players:
+                continue
+            seen_offer_players.add(player_id)
+            transfer_offers.append(
+                {
+                    **offer,
+                    "counter": None
+                    if offer.get("counter") is None
+                    else dict(offer["counter"]),
+                    "demand": dict(offer.get("demand") or {}),
+                }
+            )
+        transfer_offers.reverse()
         return cls(
             version=int(raw["version"]),
             id=str(raw["id"]),
@@ -277,6 +308,7 @@ class Career:
             shortlist=[
                 str(player_id) for player_id in (raw.get("shortlist") or [])
             ],
+            transfer_offers=transfer_offers,
             scouts=[
                 dict(scout)
                 for scout in (raw.get("scouts") or [])

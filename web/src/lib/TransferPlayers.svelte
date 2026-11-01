@@ -31,6 +31,7 @@
     onloadmore = () => {},
     onaction = async () => null,
     onassign = null,
+    onoffer = null,
   } = $props()
 
   let shortlistOverrides = $state({})
@@ -367,6 +368,8 @@
       shortlisted={isShortlisted(actionsPlayer)}
       onassign={onassign ? () => onassign(actionsPlayer) : null}
       onshortlist={toggleShortlist}
+      ontransfer={onoffer ? () => onoffer(actionsPlayer, 'transfer') : null}
+      onloan={onoffer ? () => onoffer(actionsPlayer, 'loan') : null}
     />
   {/if}
 </div>

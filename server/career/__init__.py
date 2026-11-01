@@ -45,6 +45,12 @@ from server.career.season import (
     squad_strength,
 )
 from server.career.snapshot import build_snapshot
+from server.career.transfers import (
+    accept_offer_counter,
+    create_transfer_offer,
+    offer_view,
+    resolve_transfer_offers,
+)
 
 __all__ = [
     "SAVE_VERSION",
@@ -54,19 +60,23 @@ __all__ = [
     "Manager",
     "SeasonError",
     "accept_counter_offer",
+    "accept_offer_counter",
     "acknowledge_contract_negotiation",
     "add_to_shortlist",
     "advance_to",
     "confirm_contract",
     "create_career",
+    "create_transfer_offer",
     "ensure_schedule",
     "negotiate_contract",
     "new_seed",
     "next_fixture",
     "next_season",
+    "offer_view",
     "play_next_match",
     "release_player",
     "remove_from_shortlist",
+    "resolve_transfer_offers",
     "season_state",
     "season_transition",
     "set_shirt_number",

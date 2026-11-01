@@ -31,6 +31,7 @@
     backToHub = false,
     onclose = () => {},
     onaction = async () => null,
+    onoffer = null,
     hints = $bindable([]),
   } = $props()
 
@@ -1517,6 +1518,12 @@
       removeLabel="Удалить из отчёта"
       onremove={removeActiveEntry}
       onshortlist={() => toggleShortlist(entryActionsEntry.player)}
+      ontransfer={onoffer
+        ? () => onoffer(entryActionsEntry.player, 'transfer')
+        : null}
+      onloan={onoffer
+        ? () => onoffer(entryActionsEntry.player, 'loan')
+        : null}
     />
   {/if}
 
