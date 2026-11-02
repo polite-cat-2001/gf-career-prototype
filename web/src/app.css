@@ -8783,6 +8783,22 @@ button.squad-tile:hover {
   cursor: pointer;
 }
 
+.tf-offer-card-main:focus {
+  outline: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.tf-offer-card:has(.tf-offer-card-main:focus) {
+  border-color: var(--lime) !important;
+  outline: 2px solid var(--lime);
+  outline-offset: -2px;
+  box-shadow:
+    0 0 44px rgba(200, 245, 105, 0.2),
+    0 0 70px rgba(67, 211, 178, 0.14),
+    var(--shadow) !important;
+}
+
 .tf-offer-modal-summary {
   display: flex;
   flex-direction: column;
