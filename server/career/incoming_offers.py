@@ -306,6 +306,7 @@ def create_incoming_offer(
         offer = {
             "id": _offer_id(career, player_id, club_id, day),
             "player_id": player_id,
+            "overall": round(float(player.get("overall") or 0), 1),
             "club_id": club_id,
             "club_name": str(club.get("name") or ""),
             "club_logo": str(club.get("logo") or ""),
@@ -447,6 +448,21 @@ def _complete_accept(career: Career, offer: dict) -> None:
         when if transfer_window_open(when) else next_transfer_window(when)
     )
     offer["execute_on"] = execute_on
+    career.transfer_history.append(
+        {
+            "player_id": str(offer["player_id"]),
+            "overall": round(float(offer.get("overall") or 0), 1),
+            "from_club_id": str(career.club_id),
+            "to_club_id": str(offer.get("club_id") or ""),
+            "fee": int(offer.get("amount") or 0),
+            "kind": str(offer.get("kind") or "transfer"),
+            "offer_id": str(offer["id"]),
+            "date": str(when)[:10],
+            "status": "completed"
+            if execute_on == str(when)[:10]
+            else "agreed",
+        }
+    )
     if execute_on == str(when)[:10]:
         offer["message"] = ACCEPTED_MESSAGE
         _execute_departure(

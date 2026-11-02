@@ -57,6 +57,10 @@ export const api = {
     post(`/api/careers/${encodeURIComponent(careerId)}/actions`, { type: 'next_season' }),
   careerAction: (careerId, payload) =>
     post(`/api/careers/${encodeURIComponent(careerId)}/actions`, payload),
+  transferHistory: (careerId, filter = 'all') =>
+    get(
+      `/api/careers/${encodeURIComponent(careerId)}/transfers/history?filter=${encodeURIComponent(filter)}`,
+    ),
   transferSearch: (careerId, params = {}) => {
     const query = new URLSearchParams()
     for (const [key, value] of Object.entries(params)) {

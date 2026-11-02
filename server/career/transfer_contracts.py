@@ -250,6 +250,7 @@ def start_transfer_contract(
     if not state or state.get("status") == "refused":
         state = {
             "player_id": player_id,
+            "overall": round(float(player.get("overall") or 0), 1),
             "value": _player_value(career, player),
             "demand": transfer_contract_demand(career, player, squad_players),
             "counter_offers": 0,
@@ -265,6 +266,7 @@ def start_transfer_contract(
 
     state.update(
         {
+            "overall": round(float(player.get("overall") or 0), 1),
             "offer_id": context["offer_id"],
             "kind": context["kind"],
             "fee": context["fee"],
@@ -443,6 +445,25 @@ def sign_transfer_contract(career: Career, player: dict) -> dict:
             offer["signed_at"] = career.date
             offer["execute_on"] = execute_on
             offer["contract_status"] = "signed"
+    career.transfer_history.append(
+        {
+            "player_id": player_id,
+            "overall": round(
+                float(state.get("overall") or player.get("overall") or 0), 1
+            ),
+            "from_club_id": None
+            if not player.get("club_id")
+            else str(player["club_id"]),
+            "to_club_id": str(career.club_id),
+            "fee": fee,
+            "kind": str(state.get("kind") or "transfer"),
+            "offer_id": state.get("offer_id"),
+            "date": str(career.date)[:10],
+            "status": "completed"
+            if execute_on == str(career.date)[:10]
+            else "signed",
+        }
+    )
     career.transfer_contracts.pop(player_id, None)
     career.journal.append(
         {

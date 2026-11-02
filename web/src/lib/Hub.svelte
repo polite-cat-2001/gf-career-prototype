@@ -21,6 +21,7 @@
   import PlayerCard from './PlayerCard.svelte'
   import Scouting from './Scouting.svelte'
   import Tabs from './Tabs.svelte'
+  import TransferHistory from './TransferHistory.svelte'
   import TransferPlayers from './TransferPlayers.svelte'
   import TransferOfferModal from './TransferOfferModal.svelte'
   import IncomingOfferModal from './IncomingOfferModal.svelte'
@@ -168,9 +169,9 @@
     {
       id: 'history',
       label: 'История',
-      note: 'Сделки, аренды и переходы',
+      note: 'Все сделки, офферы и переходы',
       icon: 'news',
-      soon: '#20',
+      enabled: true,
     },
   ]
 
@@ -302,6 +303,7 @@
   let networkEntryId = $state(null)
   let networkBackToHub = $state(false)
   let networkHints = $state([])
+  let historyHints = $state([])
   let reportPage = $state(0)
   let scoutPickerOpen = $state(false)
   let scoutPickerPlayer = $state(null)
@@ -716,6 +718,9 @@
       }
       if (transfersView === 'network') {
         return networkHints
+      }
+      if (transfersView === 'history') {
+        return historyHints
       }
       if (scoutPickerOpen) {
         return [
@@ -1731,6 +1736,18 @@
     else focusFirst()
   }
 
+  function openTransferHistory() {
+    transfersView = 'history'
+    historyHints = []
+    tick().then(focusFirst)
+  }
+
+  function closeTransferHistory() {
+    transfersView = 'hub'
+    historyHints = []
+    tick().then(focusFirst)
+  }
+
   function openTransferNetwork(mode = 'scouts', entryId = null, backToHub = false) {
     transfersView = 'network'
     networkMode = mode
@@ -1807,8 +1824,13 @@
       tick().then(focusFirst)
       return
     }
-    if (transfersView === 'filters' || transfersView === 'centre') {
+    if (
+      transfersView === 'filters' ||
+      transfersView === 'centre' ||
+      transfersView === 'history'
+    ) {
       transfersView = 'hub'
+      historyHints = []
       tick().then(focusFirst)
       return
     }
@@ -3707,6 +3729,7 @@
                 if (card.id === 'search') openTransferFilters()
                 else if (card.id === 'centre') openTransferCentre()
                 else if (card.id === 'network') openTransferNetwork('scouts')
+                else if (card.id === 'history') openTransferHistory()
               }}
             >
               <div class="tf-hub-card-head">
@@ -3957,6 +3980,12 @@
           onaction={onaction}
           onoffer={openTransferOffer}
           onnegotiate={openTransferContractFromPlayer}
+        />
+      {:else if transfersView === 'history'}
+        <TransferHistory
+          career={career}
+          bind:hints={historyHints}
+          onclose={closeTransferHistory}
         />
       {:else if transfersView === 'centre'}
         <div

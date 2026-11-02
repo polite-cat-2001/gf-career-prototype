@@ -73,6 +73,7 @@ class Career:
     world_market_date: str | None = None
     world_transfers: list[dict] = field(default_factory=list)
     club_deltas: dict[str, dict[str, list[str]]] = field(default_factory=dict)
+    transfer_history: list[dict] = field(default_factory=list)
     shortlist: list[str] = field(default_factory=list)
     scouts: list[dict] = field(default_factory=list)
     scout_assignments: dict[str, dict] = field(default_factory=dict)
@@ -222,6 +223,10 @@ class Career:
                 }
                 for club_id, delta in self.club_deltas.items()
             }
+        if self.transfer_history:
+            payload["transfer_history"] = [
+                dict(entry) for entry in self.transfer_history
+            ]
         if self.negotiations:
             payload["negotiations"] = {
                 player_id: {
@@ -456,6 +461,11 @@ class Career:
                 for club_id, delta in (club_deltas or {}).items()
                 if isinstance(delta, dict)
             },
+            transfer_history=[
+                dict(entry)
+                for entry in (raw.get("transfer_history") or [])
+                if isinstance(entry, dict)
+            ],
             shortlist=[
                 str(player_id) for player_id in (raw.get("shortlist") or [])
             ],

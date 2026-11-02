@@ -223,6 +223,7 @@ def create_transfer_offer(
         offer["status"] = "pending"
         offer["counter"] = None
         offer["responded_at"] = None
+        offer["overall"] = round(float(player.get("overall") or 0), 1)
         offer["due"] = _response_due(career, offer)
         offer["message"] = PENDING_MESSAGE
         career.transfer_offers.append(offer)
@@ -247,6 +248,7 @@ def create_transfer_offer(
     offer = {
         "id": offer_id,
         "player_id": player_id,
+        "overall": round(float(player.get("overall") or 0), 1),
         "kind": kind,
         "amount": int(amount),
         "loan_fee": int(loan_fee),

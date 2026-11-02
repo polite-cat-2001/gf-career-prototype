@@ -389,6 +389,7 @@ class TransferCenterBlock(BaseModel):
     loaned: list[dict] = Field(default_factory=list)
     pending: list[dict] = Field(default_factory=list)
     contracts: dict[str, dict] = Field(default_factory=dict)
+    history: list[dict] = Field(default_factory=list)
 
 
 class CreateCareerRequest(BaseModel):
@@ -702,6 +703,15 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
 
     world_clubs: list[dict] | None = None
     world_free_agents: list[dict] | None = None
+    world_club_index: dict[str, dict] | None = None
+
+    def club_index() -> dict[str, dict]:
+        nonlocal world_clubs, world_club_index
+        if world_club_index is None:
+            if world_clubs is None:
+                world_clubs = canon.clubs(limit=10_000)
+            world_club_index = {str(club["id"]): club for club in world_clubs}
+        return world_club_index
 
     def effective_squad(career, club_id: str, with_stats: bool = False) -> list[dict]:
         base = canon.squad(club_id)
@@ -1054,6 +1064,143 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             "latest_offer": latest_offer_payload(career, player_id),
         }
 
+    def transfer_history_entries(career, scope: str = "all") -> list[dict]:
+        clubs = club_index()
+        player_ids = {
+            str(record.get("player_id") or "")
+            for record in (
+                career.world_transfers
+                + career.transfer_history
+                + career.transfer_offers
+                + career.incoming_offers
+            )
+            if record.get("player_id")
+        }
+        players = {
+            str(player["id"]): player
+            for player in canon.players_by_ids(sorted(player_ids))
+        }
+        manager_club_id = str(career.club_id)
+        manager_league_id = str(career.league_id or "")
+
+        def club_ref(club_id) -> dict:
+            if not club_id:
+                return {}
+            return clubs.get(str(club_id)) or {}
+
+        def entry(record: dict) -> dict:
+            player_id = str(record.get("player_id") or "")
+            player = players.get(player_id) or {}
+            from_club = club_ref(record.get("from_club_id"))
+            to_club = club_ref(record.get("to_club_id"))
+            from_id = None if not record.get("from_club_id") else str(record["from_club_id"])
+            to_id = None if not record.get("to_club_id") else str(record["to_club_id"])
+            from_league = str(from_club.get("league_id") or "")
+            to_league = str(to_club.get("league_id") or "")
+            overall = record.get("overall")
+            if overall is None:
+                overall = player.get("overall") or 0
+            with_manager = manager_club_id in (from_id, to_id)
+            in_my_league = bool(manager_league_id) and manager_league_id in (
+                from_league,
+                to_league,
+            )
+            return {
+                "id": str(record.get("id") or record.get("offer_id") or player_id),
+                "player_id": player_id,
+                "player_name": str(
+                    player.get("name") or record.get("player_name") or ""
+                ),
+                "photo": player.get("photo"),
+                "role": player.get("role"),
+                "age": player.get("age"),
+                "overall": round(float(overall or 0), 1),
+                "from_club_id": from_id,
+                "from_club_name": str(from_club.get("name") or ""),
+                "from_club_logo": str(from_club.get("logo") or ""),
+                "from_league_id": from_league or None,
+                "from_league_name": str(from_club.get("league_name") or ""),
+                "to_club_id": to_id,
+                "to_club_name": str(to_club.get("name") or ""),
+                "to_club_logo": str(to_club.get("logo") or ""),
+                "to_league_id": to_league or None,
+                "to_league_name": str(to_club.get("league_name") or ""),
+                "fee": int(record.get("fee") or 0),
+                "kind": str(record.get("kind") or "transfer"),
+                "status": str(record.get("status") or "completed"),
+                "source": str(record.get("source") or "world"),
+                "date": str(record.get("date") or "")[:10],
+                "with_manager": with_manager,
+                "in_my_league": in_my_league,
+            }
+
+        entries = [
+            entry({**transfer, "source": "world"})
+            for transfer in career.world_transfers
+        ]
+        entries.extend(
+            entry({**record, "source": "manager"})
+            for record in career.transfer_history
+        )
+        settled_offers = {
+            str(record.get("offer_id"))
+            for record in career.transfer_history
+            if record.get("offer_id")
+        }
+        for offer in career.transfer_offers:
+            if str(offer.get("id")) in settled_offers:
+                continue
+            player = players.get(str(offer.get("player_id") or "")) or {}
+            fee = (
+                int(offer.get("loan_fee") or 0)
+                if str(offer.get("kind")) == "loan"
+                else int(offer.get("amount") or 0)
+            )
+            entries.append(
+                entry(
+                    {
+                        "id": str(offer.get("id") or ""),
+                        "player_id": str(offer.get("player_id") or ""),
+                        "overall": offer.get("overall", player.get("overall")),
+                        "from_club_id": player.get("club_id"),
+                        "to_club_id": manager_club_id,
+                        "fee": fee,
+                        "kind": str(offer.get("kind") or "transfer"),
+                        "status": str(offer.get("status") or "pending"),
+                        "source": "sent",
+                        "date": offer.get("created_at"),
+                    }
+                )
+            )
+        for offer in career.incoming_offers:
+            if str(offer.get("id")) in settled_offers:
+                continue
+            player = players.get(str(offer.get("player_id") or "")) or {}
+            entries.append(
+                entry(
+                    {
+                        "id": str(offer.get("id") or ""),
+                        "player_id": str(offer.get("player_id") or ""),
+                        "overall": offer.get("overall", player.get("overall")),
+                        "from_club_id": offer.get("club_id"),
+                        "to_club_id": manager_club_id,
+                        "fee": int(offer.get("amount") or 0),
+                        "kind": str(offer.get("kind") or "transfer"),
+                        "status": str(offer.get("status") or "pending"),
+                        "source": "received",
+                        "date": offer.get("created_at"),
+                    }
+                )
+            )
+
+        if scope == "league":
+            entries = [item for item in entries if item["in_my_league"]]
+        elif scope == "club":
+            entries = [item for item in entries if item["with_manager"]]
+        entries.sort(key=lambda item: (item["date"], item["id"]), reverse=True)
+        entries.sort(key=lambda item: -float(item["overall"] or 0))
+        return entries
+
     def transfer_center_snapshot(career) -> dict:
         scouts_by_id = {str(scout["id"]): scout for scout in career.scouts}
         squad_players = canon.players_by_ids(career.player_ids)
@@ -1157,6 +1304,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 str(player_id): transfer_contract_view(career, player_id) or {}
                 for player_id in career.transfer_contracts
             },
+            "history": transfer_history_entries(career),
         }
 
     def division_context(career, club):
@@ -1490,6 +1638,22 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             "offset": offset,
             "has_more": offset + len(items) < total,
         }
+
+    @app.get("/api/careers/{career_id}/transfers/history")
+    def transfer_history(
+        career_id: str,
+        filter: str = "all",
+        scope: str | None = None,
+    ):
+        chosen = (scope or filter or "all").strip().lower()
+        if chosen not in ("all", "league", "club"):
+            raise HTTPException(
+                status_code=422,
+                detail="filter must be one of: all, league, club",
+            )
+        career = load_career(career_id)
+        items = transfer_history_entries(career, chosen)
+        return {"items": items, "total": len(items), "filter": chosen}
 
     @app.post("/api/careers", response_model=CareerSnapshot, status_code=201)
     def create_career_endpoint(payload: CreateCareerRequest):
