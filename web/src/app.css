@@ -2665,6 +2665,27 @@ button.squad-tile:hover {
   border-bottom-color: var(--lime);
 }
 
+.centre-tab-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--lime);
+  color: #10160a;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.tf-offer-card.is-unread {
+  border-color: rgba(200, 245, 105, 0.45);
+}
+
 .centre-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.86fr);
@@ -4697,6 +4718,11 @@ button.squad-tile:hover {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--dim);
+}
+
+.amount-hint {
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .negotiation {

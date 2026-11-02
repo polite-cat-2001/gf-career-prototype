@@ -23,6 +23,7 @@
   import Tabs from './Tabs.svelte'
   import TransferPlayers from './TransferPlayers.svelte'
   import TransferOfferModal from './TransferOfferModal.svelte'
+  import IncomingOfferModal from './IncomingOfferModal.svelte'
   import { focusElement, focusFirst, inputDevice } from './input.js'
   import {
     CONTRACT_ROLES,
@@ -228,6 +229,7 @@
     accepted: 'Принято',
     refused: 'Отказ',
     withdrawn: 'Отозвано',
+    expired: 'Истекло',
   }
 
   const OFFER_KIND_LABELS = {
@@ -339,6 +341,9 @@
   let transferOfferPlayer = $state(null)
   let transferOfferBackView = $state('results')
   let transferOfferModalId = $state(null)
+  let incomingOfferModalId = $state(null)
+  let incomingCounterOffer = $state(null)
+  let incomingCounterPlayer = $state(null)
   let transferContractPlayerId = $state(null)
   let transferContractOfferId = $state(null)
   let transferContractFallback = $state(null)
@@ -520,6 +525,13 @@
     ['shortlist', 'listed', 'loaned'].includes(transferCentreTab),
   )
   let sentOffers = $derived(transferCentre.sent_offers ?? [])
+  let receivedOffers = $derived(transferCentre.received_offers ?? [])
+  let receivedUnread = $derived(
+    receivedOffers.filter((offer) => offer.unread).length,
+  )
+  let incomingOfferModal = $derived(
+    receivedOffers.find((offer) => offer.offer_id === incomingOfferModalId) ?? null,
+  )
   let transferOfferModal = $derived(
     sentOffers.find((offer) => offer.offer_id === transferOfferModalId) ?? null,
   )
@@ -643,6 +655,14 @@
       return [{ gamepad: ['A'], keyboard: ['Enter'], label: centreAction }]
     }
     if (tab === 'transfers') {
+      if (transfersView === 'incomingCounter') {
+        return [
+          { gamepad: ['←', '→'], keyboard: ['←', '→'], label: 'Разряд' },
+          { gamepad: ['↑', '↓'], keyboard: ['↑', '↓'], label: 'Цифра' },
+          { gamepad: ['A'], keyboard: ['Enter'], label: 'Отправить' },
+          { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+        ]
+      }
       if (transfersView === 'contractAmount') {
         return [
           { gamepad: ['←', '→'], keyboard: ['←', '→'], label: 'Разряд' },
@@ -735,6 +755,19 @@
         ]
       }
       if (transfersView === 'centre') {
+        if (incomingOfferModalId) {
+          const offer = incomingOfferModal
+          const hasAction =
+            offer && ['pending'].includes(offer.status)
+          if (!hasAction) {
+            return [{ gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' }]
+          }
+          return [
+            { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Действие' },
+            { gamepad: ['A'], keyboard: ['Enter'], label: 'Выбор' },
+            { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+          ]
+        }
         if (transferOfferModalId) {
           const offer = transferOfferModal
           const hasAction =
@@ -761,7 +794,7 @@
         const list = [
           { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Вкладки' },
         ]
-        if (transferCentreIsSent) {
+        if (transferCentreIsSent || transferCentreTab === 'received') {
           list.push({ gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Действие' })
           list.push({ gamepad: ['A'], keyboard: ['Enter'], label: 'Выбор' })
         } else if (transferCentreIsList) {
@@ -1157,6 +1190,7 @@
     transferCentreSelectedId = transferCentre.shortlist?.[0]?.id ?? null
     transferCentreActionsOpen = false
     transferOfferModalId = null
+    incomingOfferModalId = null
     transferError = ''
     await tick()
     focusFirst()
@@ -1168,6 +1202,7 @@
     transferCentreSelectedId = null
     transferCentreActionsOpen = false
     transferOfferModalId = null
+    incomingOfferModalId = null
     tick().then(() => {
       if (focus === 'tab') {
         const tabElement = document.querySelector(
@@ -1600,6 +1635,94 @@
     if (!offer) return
     await acceptTransferCounter(offer)
     closeSentOfferModal()
+  }
+
+  function incomingOfferCard(offerId) {
+    return document.querySelector(`[data-incoming-card="${offerId}"]`)
+  }
+
+  function openIncomingOfferModal(offer) {
+    if (!offer) return
+    incomingOfferModalId = offer.offer_id
+    if (offer.unread) {
+      onaction({ type: 'incoming_ack', offer_id: offer.offer_id })
+    }
+    tick().then(() => {
+      const modal = document.querySelector('.tf-incoming-modal')
+      const action = modal?.querySelector('[data-nav]')
+      focusElement(action ?? modal)
+    })
+  }
+
+  function closeIncomingOfferModal() {
+    const offerId = incomingOfferModalId
+    incomingOfferModalId = null
+    if (!offerId) return
+    tick().then(() => focusElement(incomingOfferCard(offerId)))
+  }
+
+  function focusReceivedTab() {
+    const tabElement = document.querySelector(
+      '.centre-tab[data-centre-tab="received"]',
+    )
+    if (tabElement) focusElement(tabElement)
+    else focusFirst()
+  }
+
+  async function submitIncomingOffer(offer, type) {
+    if (!offer || centreActionBusy) return
+    centreActionBusy = true
+    const updated = await onaction({ type, offer_id: offer.offer_id })
+    centreActionBusy = false
+    if (!updated) return
+    incomingOfferModalId = null
+    await tick()
+    focusReceivedTab()
+  }
+
+  function startIncomingCounter(offer) {
+    if (!offer) return
+    incomingCounterOffer = offer
+    incomingCounterPlayer = offer
+    incomingOfferModalId = null
+    const value = Math.max(
+      0,
+      Math.min(999_999_999, Math.round((Number(offer.amount) || 0) * 1.15)),
+    )
+    amountDigits = String(value).padStart(9, '0')
+    const firstDigit = amountDigits.search(/[1-9]/)
+    amountIndex = firstDigit === -1 ? 8 : firstDigit
+    transfersView = 'incomingCounter'
+    tick().then(focusFirst)
+  }
+
+  function closeIncomingCounter() {
+    incomingCounterOffer = null
+    incomingCounterPlayer = null
+    transfersView = 'centre'
+    tick().then(focusReceivedTab)
+  }
+
+  async function finishIncomingCounterAmount() {
+    if (!incomingCounterOffer || centreActionBusy) return
+    const value = Math.max(
+      0,
+      Math.min(999_999_999, Number.parseInt(amountDigits || '0', 10) || 0),
+    )
+    centreActionBusy = true
+    const updated = await onaction({
+      type: 'incoming_counter',
+      offer_id: incomingCounterOffer.offer_id,
+      amount: value,
+    })
+    centreActionBusy = false
+    if (!updated) return
+    incomingCounterOffer = null
+    incomingCounterPlayer = null
+    transfersView = 'centre'
+    transferCentreTab = 'received'
+    await tick()
+    focusReceivedTab()
   }
 
   function focusTransferTile(field) {
@@ -2211,6 +2334,14 @@
   }
 
   function handleBack() {
+    if (tab === 'transfers' && transfersView === 'incomingCounter') {
+      closeIncomingCounter()
+      return
+    }
+    if (tab === 'transfers' && incomingOfferModalId) {
+      closeIncomingOfferModal()
+      return
+    }
     if (tab === 'transfers' && transfersView === 'contractAmount') {
       closeTransferContractAmount()
       return
@@ -2415,6 +2546,9 @@
     transferCentreSelectedId = null
     transferCentreActionsOpen = false
     transferOfferModalId = null
+    incomingOfferModalId = null
+    incomingCounterOffer = null
+    incomingCounterPlayer = null
     transferError = ''
     await tick()
     focusFirst()
@@ -2426,7 +2560,8 @@
         transfersView === 'centre' &&
         !transferCentreActionsOpen &&
         !scoutPickerOpen &&
-        !transferOfferModalId
+        !transferOfferModalId &&
+        !incomingOfferModalId
       ) {
         switchTransferCentreTab(direction)
       }
@@ -2801,6 +2936,10 @@
 
   function handleCycle(direction) {
     if (tab === 'transfers') {
+      if (transfersView === 'incomingCounter') {
+        adjustAmount(direction)
+        return
+      }
       if (transfersView === 'contractAmount') {
         adjustAmount(direction)
         return
@@ -3820,7 +3959,10 @@
           onnegotiate={openTransferContractFromPlayer}
         />
       {:else if transfersView === 'centre'}
-        <div class="tf-centre" inert={transferOfferModalId ? true : undefined}>
+        <div
+          class="tf-centre"
+          inert={transferOfferModalId || incomingOfferModalId ? true : undefined}
+        >
           <header class="tf-filters-head">
             <span class="tf-crumbs">Трансферы <i>›</i> Центр трансферов</span>
             <span class="tf-crumbs-note">L1 / R1 — вкладки · Y — вид</span>
@@ -3835,6 +3977,9 @@
                 onclick={() => setTransferCentreTab(item.id)}
               >
                 {item.label}
+                {#if item.id === 'received' && receivedUnread}
+                  <span class="centre-tab-badge">{receivedUnread}</span>
+                {/if}
               </button>
             {/each}
           </nav>
@@ -3913,11 +4058,69 @@
                 <p>{transferCentreEmpty}</p>
               </div>
             {/if}
-          {:else if transferCentreIsOffer}
-            <div class="tf-empty-state">
-              <strong>{transferCentreTitle}</strong>
-              <p>{transferCentreEmpty}</p>
-            </div>
+          {:else if transferCentreTab === 'received'}
+            {#if receivedOffers.length}
+              <div class="tf-offers scroll-area">
+                {#each receivedOffers as offer (offer.offer_id)}
+                  <article
+                    class="tf-offer-card is-{offer.status}"
+                    class:is-unread={offer.unread}
+                  >
+                    <button
+                      class="tf-offer-card-main is-clickable"
+                      data-nav
+                      data-incoming-card={offer.offer_id}
+                      onclick={() => openIncomingOfferModal(offer)}
+                    >
+                      <span class="tf-offer-card-photo">
+                        <img src={offer.photo} alt="" onerror={hideBrokenImage} />
+                      </span>
+                      <div class="tf-offer-card-info">
+                        <span class="tf-offer-card-name">{offer.name}</span>
+                        <span class="tf-offer-card-meta">
+                          {offer.club_name} · {offerKindLabel(offer.kind)} ·
+                          {formatValue(offer.amount)}
+                          {#if offer.kind === 'loan'}
+                            · зарплата {offer.wage_share}%
+                          {/if}
+                        </span>
+                        <span class="tf-offer-card-status">
+                          {offerStatusLabel(offer.status)}
+                          {#if offer.status === 'pending' && offer.expires_at}
+                            · до {formatDate(offer.expires_at)}
+                          {/if}
+                          {#if offer.status === 'counter' && offer.due}
+                            · ответ до {formatDate(offer.due)}
+                          {/if}
+                          {#if offer.execute_on && offer.status === 'accepted'}
+                            · переход {formatDate(offer.execute_on)}
+                          {/if}
+                        </span>
+                        <span class="tf-offer-card-message">{offer.message}</span>
+                        {#if offer.counter}
+                          <span class="tf-offer-card-counter">
+                            Контрпредложение: {formatValue(offer.counter.amount)}
+                          </span>
+                        {/if}
+                      </div>
+                      {#if offer.club_logo}
+                        <img
+                          class="tf-offer-card-crest"
+                          src={offer.club_logo}
+                          alt=""
+                          onerror={hideBrokenImage}
+                        />
+                      {/if}
+                    </button>
+                  </article>
+                {/each}
+              </div>
+            {:else}
+              <div class="tf-empty-state">
+                <strong>{transferCentreTitle}</strong>
+                <p>{transferCentreEmpty}</p>
+              </div>
+            {/if}
           {:else}
             <TransferPlayers
               players={transferCentrePlayers}
@@ -3942,6 +4145,14 @@
             onaccept={() => acceptSentOfferCounter(transferOfferModal)}
             onreoffer={() => reofferSentOffer(transferOfferModal)}
             onnegotiate={() => openTransferContractFromOffer(transferOfferModal)}
+          />
+        {/if}
+        {#if incomingOfferModal}
+          <IncomingOfferModal
+            offer={incomingOfferModal}
+            onaccept={() => submitIncomingOffer(incomingOfferModal, 'incoming_accept')}
+            onrefuse={() => submitIncomingOffer(incomingOfferModal, 'incoming_refuse')}
+            oncounter={() => startIncomingCounter(incomingOfferModal)}
           />
         {/if}
       {:else if transfersView === 'contractAmount' && transferContractPlayer}
@@ -4201,6 +4412,38 @@
               {/if}
             </div>
           </section>
+        </div>
+      {:else if transfersView === 'incomingCounter' && incomingCounterOffer}
+        <div class="amount-screen">
+          <span class="eyebrow">
+            Контрпредложение · {incomingCounterPlayer?.name ?? ''}
+          </span>
+          <button
+            class="amount-value"
+            data-nav
+            data-amount
+            data-cycle="amount"
+            data-autofocus
+            aria-label="Сумма контрпредложения"
+            onclick={finishIncomingCounterAmount}
+          >
+            {#each amountGroups as group, groupIndex (groupIndex)}
+              <span class="amount-group">
+                {#each group.digits as digit, digitIndex (digitIndex)}
+                  <span
+                    class="amount-digit"
+                    class:is-selected={group.start + digitIndex === amountIndex}
+                  >
+                    {digit}
+                  </span>
+                {/each}
+              </span>
+            {/each}
+          </button>
+          <span class="amount-place">Разряд: {AMOUNT_PLACES[amountIndex]}</span>
+          <span class="amount-hint">
+            Предложение клуба: {formatValue(incomingCounterOffer.amount)}
+          </span>
         </div>
       {:else if transfersView === 'offerAmount' && transferOffer}
         <div class="amount-screen">

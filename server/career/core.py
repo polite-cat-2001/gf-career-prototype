@@ -67,6 +67,9 @@ class Career:
     transfer_offers: list[dict] = field(default_factory=list)
     transfer_contracts: dict[str, dict] = field(default_factory=dict)
     pending_transfers: list[dict] = field(default_factory=list)
+    incoming_offers: list[dict] = field(default_factory=list)
+    pending_departures: list[dict] = field(default_factory=list)
+    incoming_market_date: str | None = None
     shortlist: list[str] = field(default_factory=list)
     scouts: list[dict] = field(default_factory=list)
     scout_assignments: dict[str, dict] = field(default_factory=dict)
@@ -178,6 +181,23 @@ class Career:
                 {**item, "terms": dict(item.get("terms") or {})}
                 for item in self.pending_transfers
             ]
+        if self.incoming_offers:
+            payload["incoming_offers"] = [
+                {
+                    **offer,
+                    "counter": None
+                    if offer.get("counter") is None
+                    else dict(offer["counter"]),
+                    "demand": dict(offer.get("demand") or {}),
+                }
+                for offer in self.incoming_offers
+            ]
+        if self.pending_departures:
+            payload["pending_departures"] = [
+                dict(item) for item in self.pending_departures
+            ]
+        if self.incoming_market_date is not None:
+            payload["incoming_market_date"] = self.incoming_market_date
         if self.negotiations:
             payload["negotiations"] = {
                 player_id: {
@@ -352,6 +372,25 @@ class Career:
                 for item in (raw.get("pending_transfers") or [])
                 if isinstance(item, dict)
             ],
+            incoming_offers=[
+                {
+                    **offer,
+                    "counter": None
+                    if offer.get("counter") is None
+                    else dict(offer["counter"]),
+                    "demand": dict(offer.get("demand") or {}),
+                }
+                for offer in (raw.get("incoming_offers") or [])
+                if isinstance(offer, dict)
+            ],
+            pending_departures=[
+                dict(item)
+                for item in (raw.get("pending_departures") or [])
+                if isinstance(item, dict)
+            ],
+            incoming_market_date=None
+            if raw.get("incoming_market_date") is None
+            else str(raw["incoming_market_date"]),
             shortlist=[
                 str(player_id) for player_id in (raw.get("shortlist") or [])
             ],
@@ -415,4 +454,5 @@ def create_career(
         ),
         club_id=club_id,
         player_ids=list(player_ids),
+        incoming_market_date=START_DATE,
     )

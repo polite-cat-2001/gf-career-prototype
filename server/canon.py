@@ -180,6 +180,23 @@ class Canon:
         rows.sort(key=lambda player: (ROLE_ORDER.get(player["role"], 99), -player["overall"], player["name"]))
         return rows
 
+    def club_role_stats(self) -> dict[str, dict[str, dict]]:
+        query = """
+            SELECT club_id, role, COUNT(*) AS count, MAX(overall) AS best
+            FROM players
+            WHERE club_id IS NOT NULL
+            GROUP BY club_id, role
+        """
+        with self._connect() as connection:
+            rows = connection.execute(query).fetchall()
+        result: dict[str, dict[str, dict]] = {}
+        for row in rows:
+            result.setdefault(str(row["club_id"]), {})[str(row["role"])] = {
+                "count": int(row["count"]),
+                "best": float(row["best"] or 0),
+            }
+        return result
+
     def players_by_ids(self, player_ids: list[str], with_stats: bool = False) -> list[dict]:
         if not player_ids:
             return []

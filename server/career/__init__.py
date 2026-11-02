@@ -62,6 +62,16 @@ from server.career.transfer_contracts import (
     transfer_contract_view,
     transfer_window_open,
 )
+from server.career.incoming_offers import (
+    accept_incoming_offer,
+    acknowledge_incoming_offer,
+    counter_incoming_offer,
+    execute_pending_departures,
+    generate_incoming_offers,
+    incoming_offer_view,
+    refuse_incoming_offer,
+    resolve_incoming_offers,
+)
 
 __all__ = [
     "SAVE_VERSION",
@@ -71,11 +81,19 @@ __all__ = [
     "Manager",
     "SeasonError",
     "accept_counter_offer",
+    "accept_incoming_offer",
     "accept_offer_counter",
     "accept_transfer_counter",
-    "can_discuss_contract",
     "acknowledge_contract_negotiation",
+    "acknowledge_incoming_offer",
     "add_to_shortlist",
+    "counter_incoming_offer",
+    "execute_pending_departures",
+    "generate_incoming_offers",
+    "incoming_offer_view",
+    "refuse_incoming_offer",
+    "resolve_incoming_offers",
+    "can_discuss_contract",
     "advance_to",
     "confirm_contract",
     "create_career",

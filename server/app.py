@@ -16,12 +16,20 @@ from server.career import (
     SaveVersionError,
     SeasonError,
     accept_counter_offer,
+    accept_incoming_offer,
     accept_offer_counter,
     accept_transfer_counter,
     acknowledge_contract_negotiation,
+    acknowledge_incoming_offer,
     can_discuss_contract,
     add_to_shortlist,
     advance_to,
+    counter_incoming_offer,
+    execute_pending_departures,
+    generate_incoming_offers,
+    incoming_offer_view,
+    refuse_incoming_offer,
+    resolve_incoming_offers,
     build_lineup,
     build_match_setup,
     build_match_simulation,
@@ -700,7 +708,10 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         resolve_negotiations(career)
         resolve_transfer_offers(career)
         resolve_transfer_contracts(career)
+        advance_incoming_offers(career)
+        resolve_incoming_offers(career)
         execute_pending_transfers(career)
+        execute_pending_departures(career)
         return career
 
     def strength_resolver(career=None, players=None):
@@ -747,6 +758,33 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 }
             )
     region_by_id = {region["id"]: region for region in regions}
+
+    club_catalog: list[dict] | None = None
+    club_roles: dict[str, dict[str, dict]] | None = None
+
+    def incoming_market() -> tuple[list[dict], dict[str, dict[str, dict]]]:
+        nonlocal club_catalog, club_roles
+        if club_catalog is None:
+            club_catalog = canon.clubs(limit=10_000)
+        if club_roles is None:
+            club_roles = canon.club_role_stats()
+        return club_catalog, club_roles
+
+    def advance_incoming_offers(career) -> None:
+        players = canon.players_by_ids(career.player_ids)
+        previous_date = career.incoming_market_date or career.date
+        if players and previous_date < career.date:
+            catalog, roles = incoming_market()
+            generate_incoming_offers(
+                career,
+                previous_date,
+                career.date,
+                players,
+                catalog,
+                roles,
+            )
+        career.incoming_market_date = career.date
+        execute_pending_departures(career)
 
     def latest_offer_payload(career, player_id: str) -> dict | None:
         player_id = str(player_id)
@@ -1051,10 +1089,18 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             player.update(offer_view(career, offer))
             sent_offers.append(player)
 
+        received_offers = []
+        for offer in reversed(career.incoming_offers):
+            player = entry(str(offer.get("player_id") or ""), True)
+            if player is None:
+                continue
+            player.update(incoming_offer_view(career, offer))
+            received_offers.append(player)
+
         return {
             "shortlist": collect(career.shortlist),
             "sent_offers": sent_offers,
-            "received_offers": [],
+            "received_offers": received_offers,
             "listed": collect(
                 (
                     player_id
@@ -1568,6 +1614,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                     career, country_id, criteria
                 ),
             )
+            advance_incoming_offers(career)
             resolve_transfer_offers(career)
             resolve_transfer_contracts(career)
             execute_pending_transfers(career)
@@ -1606,7 +1653,9 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                     )
             except SeasonError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
+            career.incoming_market_date = career.date
             execute_pending_transfers(career)
+            execute_pending_departures(career)
         elif payload.type == "play":
             club = canon.club(career.club_id)
             if club is None:
@@ -1733,6 +1782,51 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                     accept_transfer_counter(career, payload.player_id)
                 else:
                     sign_transfer_contract(career, player)
+            except ValueError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+        elif payload.type in {
+            "incoming_accept",
+            "accept_incoming_offer",
+            "incoming_offer_accept",
+            "incoming_refuse",
+            "refuse_incoming_offer",
+            "reject_incoming_offer",
+            "incoming_offer_refuse",
+            "incoming_counter",
+            "counter_incoming_offer",
+            "incoming_offer_counter",
+            "incoming_ack",
+            "ack_incoming_offer",
+            "acknowledge_incoming_offer",
+        }:
+            if not payload.offer_id:
+                raise HTTPException(
+                    status_code=422, detail=f"{payload.type} requires offer_id"
+                )
+            try:
+                if payload.type in {
+                    "incoming_accept",
+                    "accept_incoming_offer",
+                    "incoming_offer_accept",
+                }:
+                    accept_incoming_offer(career, payload.offer_id)
+                elif payload.type in {
+                    "incoming_refuse",
+                    "refuse_incoming_offer",
+                    "reject_incoming_offer",
+                    "incoming_offer_refuse",
+                }:
+                    refuse_incoming_offer(career, payload.offer_id)
+                elif payload.type in {
+                    "incoming_counter",
+                    "counter_incoming_offer",
+                    "incoming_offer_counter",
+                }:
+                    counter_incoming_offer(
+                        career, payload.offer_id, int(payload.amount or 0)
+                    )
+                else:
+                    acknowledge_incoming_offer(career, payload.offer_id)
             except ValueError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
         elif payload.type in {"shortlist_add", "shortlist_remove", "shortlist_toggle"}:
