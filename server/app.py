@@ -88,6 +88,10 @@ from server.career.scouting import (
     update_task,
 )
 from server.career.snapshot import lineup_for, lineup_strength
+from server.career.world_market import (
+    advance_world_market as run_world_market,
+    effective_players,
+)
 from server.career.squad import (
     TRANSFER_STATUSES,
     contract_expiry_for,
@@ -696,6 +700,32 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
     app.state.canon = canon
     app.state.saves = saves
 
+    world_clubs: list[dict] | None = None
+    world_free_agents: list[dict] | None = None
+
+    def effective_squad(career, club_id: str, with_stats: bool = False) -> list[dict]:
+        base = canon.squad(club_id)
+        return effective_players(
+            career,
+            club_id,
+            base,
+            lambda player_ids: canon.players_by_ids(player_ids, with_stats=with_stats),
+        )
+
+    def advance_world_market(career) -> list[dict]:
+        nonlocal world_clubs, world_free_agents
+        if world_clubs is None:
+            world_clubs = canon.clubs(limit=10_000)
+        if world_free_agents is None:
+            world_free_agents = canon.free_agents(limit=2_000)
+        return run_world_market(
+            career,
+            world_clubs,
+            canon.squads_for_clubs,
+            world_free_agents,
+            player_lookup=canon.players_by_ids,
+        )
+
     def load_career(career_id: str):
         try:
             career = saves.load(career_id)
@@ -712,6 +742,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         resolve_incoming_offers(career)
         execute_pending_transfers(career)
         execute_pending_departures(career)
+        advance_world_market(career)
         return career
 
     def strength_resolver(career=None, players=None):
@@ -721,6 +752,10 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             if club_id not in cache:
                 if career is not None and players and club_id == career.club_id:
                     cache[club_id] = lineup_strength(career, players)
+                elif career is not None:
+                    cache[club_id] = squad_strength(
+                        effective_squad(career, club_id)
+                    )
                 else:
                     cache[club_id] = squad_strength(canon.squad(club_id))
             return cache[club_id]
@@ -1211,8 +1246,12 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         recover_condition(career, career.date)
         blocked = blocked_player_ids(career)
         own_home = fixture["home"] == career.club_id
-        home_players = our_players if own_home else canon.squad(fixture["home"])
-        away_players = our_players if not own_home else canon.squad(fixture["away"])
+        home_players = (
+            our_players if own_home else effective_squad(career, fixture["home"])
+        )
+        away_players = (
+            our_players if not own_home else effective_squad(career, fixture["away"])
+        )
         home_order = career.lineup if own_home else None
         home_bench = career.bench_order if own_home else None
         away_order = career.lineup if not own_home else None
@@ -1484,6 +1523,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         ensure_player_contracts(career, squad)
         ensure_player_finances(career, squad)
         ensure_scouts(career)
+        advance_world_market(career)
         saves.save(career)
         return snapshot(career)
 
@@ -1607,6 +1647,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 advance_to(career, payload.date, context["clubs"])
             except SeasonError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
+            advance_world_market(career)
             recover_condition(career, career.date)
             advance_scouting(
                 career,
@@ -1623,8 +1664,8 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             if club is None:
                 raise HTTPException(status_code=409, detail="career club is missing from canon.db")
             context = division_context(career, club)
-            strength_for = strength_resolver()
             players = canon.players_by_ids(career.player_ids)
+            strength_for = strength_resolver(career, players)
             transition = season_transition(
                 career,
                 context["league"],
@@ -1656,6 +1697,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             career.incoming_market_date = career.date
             execute_pending_transfers(career)
             execute_pending_departures(career)
+            advance_world_market(career)
         elif payload.type == "play":
             club = canon.club(career.club_id)
             if club is None:

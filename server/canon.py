@@ -180,6 +180,36 @@ class Canon:
         rows.sort(key=lambda player: (ROLE_ORDER.get(player["role"], 99), -player["overall"], player["name"]))
         return rows
 
+    def squads_for_clubs(self, club_ids: list[str]) -> dict[str, list[dict]]:
+        if not club_ids:
+            return {}
+        placeholders = ",".join("?" for _ in club_ids)
+        rows = self._player_rows(
+            f"WHERE p.club_id IN ({placeholders})", tuple(str(club_id) for club_id in club_ids)
+        )
+        result: dict[str, list[dict]] = {str(club_id): [] for club_id in club_ids}
+        for player in rows:
+            player.pop("stats", None)
+            result.setdefault(str(player["club_id"]), []).append(player)
+        for players in result.values():
+            players.sort(
+                key=lambda player: (
+                    ROLE_ORDER.get(player["role"], 99),
+                    -float(player["overall"] or 0),
+                    player["name"],
+                )
+            )
+        return result
+
+    def free_agents(self, limit: int = 2000, offset: int = 0) -> list[dict]:
+        rows = self._player_rows(
+            "WHERE p.club_id IS NULL ORDER BY p.id LIMIT ? OFFSET ?",
+            (limit, offset),
+        )
+        for player in rows:
+            player.pop("stats", None)
+        return rows
+
     def club_role_stats(self) -> dict[str, dict[str, dict]]:
         query = """
             SELECT club_id, role, COUNT(*) AS count, MAX(overall) AS best

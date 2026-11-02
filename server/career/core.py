@@ -70,6 +70,9 @@ class Career:
     incoming_offers: list[dict] = field(default_factory=list)
     pending_departures: list[dict] = field(default_factory=list)
     incoming_market_date: str | None = None
+    world_market_date: str | None = None
+    world_transfers: list[dict] = field(default_factory=list)
+    club_deltas: dict[str, dict[str, list[str]]] = field(default_factory=dict)
     shortlist: list[str] = field(default_factory=list)
     scouts: list[dict] = field(default_factory=list)
     scout_assignments: dict[str, dict] = field(default_factory=dict)
@@ -198,6 +201,27 @@ class Career:
             ]
         if self.incoming_market_date is not None:
             payload["incoming_market_date"] = self.incoming_market_date
+        if self.world_market_date is not None:
+            payload["world_market_date"] = self.world_market_date
+        if self.world_transfers:
+            payload["world_transfers"] = [
+                {
+                    **transfer,
+                    "from_club_id": None
+                    if transfer.get("from_club_id") is None
+                    else str(transfer["from_club_id"]),
+                    "to_club_id": str(transfer.get("to_club_id") or ""),
+                }
+                for transfer in self.world_transfers
+            ]
+        if self.club_deltas:
+            payload["club_deltas"] = {
+                str(club_id): {
+                    "in": [str(player_id) for player_id in delta.get("in") or []],
+                    "out": [str(player_id) for player_id in delta.get("out") or []],
+                }
+                for club_id, delta in self.club_deltas.items()
+            }
         if self.negotiations:
             payload["negotiations"] = {
                 player_id: {
@@ -269,6 +293,25 @@ class Career:
                 }
             )
         transfer_offers.reverse()
+        world_market = raw.get("world_market")
+        if not isinstance(world_market, dict):
+            world_market = {}
+        world_transfers = (
+            raw.get("world_transfers")
+            or world_market.get("transfers")
+            or raw.get("ai_transfers")
+            or []
+        )
+        club_deltas = (
+            raw.get("club_deltas")
+            or world_market.get("clubs")
+            or raw.get("ai_club_deltas")
+            or {}
+        )
+        world_market_date = (
+            raw.get("world_market_date")
+            or world_market.get("date")
+        )
         return cls(
             version=int(raw["version"]),
             id=str(raw["id"]),
@@ -391,6 +434,28 @@ class Career:
             incoming_market_date=None
             if raw.get("incoming_market_date") is None
             else str(raw["incoming_market_date"]),
+            world_market_date=None
+            if world_market_date is None
+            else str(world_market_date),
+            world_transfers=[
+                dict(transfer)
+                for transfer in world_transfers
+                if isinstance(transfer, dict)
+            ],
+            club_deltas={
+                str(club_id): {
+                    "in": [
+                        str(player_id)
+                        for player_id in (delta or {}).get("in") or []
+                    ],
+                    "out": [
+                        str(player_id)
+                        for player_id in (delta or {}).get("out") or []
+                    ],
+                }
+                for club_id, delta in (club_deltas or {}).items()
+                if isinstance(delta, dict)
+            },
             shortlist=[
                 str(player_id) for player_id in (raw.get("shortlist") or [])
             ],

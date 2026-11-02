@@ -72,6 +72,17 @@ from server.career.incoming_offers import (
     refuse_incoming_offer,
     resolve_incoming_offers,
 )
+from server.career.world_market import (
+    advance_world_market,
+    batch_schedule,
+    batches_between,
+    club_budget,
+    club_value,
+    effective_players,
+    role_counts,
+    run_world_batch,
+    window_bounds,
+)
 
 __all__ = [
     "SAVE_VERSION",
@@ -93,6 +104,15 @@ __all__ = [
     "incoming_offer_view",
     "refuse_incoming_offer",
     "resolve_incoming_offers",
+    "advance_world_market",
+    "batch_schedule",
+    "batches_between",
+    "club_budget",
+    "club_value",
+    "effective_players",
+    "role_counts",
+    "run_world_batch",
+    "window_bounds",
     "can_discuss_contract",
     "advance_to",
     "confirm_contract",
