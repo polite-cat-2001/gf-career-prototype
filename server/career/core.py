@@ -65,6 +65,8 @@ class Career:
     shirt_numbers: dict[str, int] = field(default_factory=dict)
     negotiations: dict[str, dict] = field(default_factory=dict)
     transfer_offers: list[dict] = field(default_factory=list)
+    transfer_contracts: dict[str, dict] = field(default_factory=dict)
+    pending_transfers: list[dict] = field(default_factory=list)
     shortlist: list[str] = field(default_factory=list)
     scouts: list[dict] = field(default_factory=list)
     scout_assignments: dict[str, dict] = field(default_factory=dict)
@@ -156,6 +158,26 @@ class Career:
             ]
         if self.shortlist:
             payload["shortlist"] = list(self.shortlist)
+        if self.transfer_contracts:
+            payload["transfer_contracts"] = {
+                player_id: {
+                    **state,
+                    "demand": dict(state.get("demand") or {}),
+                    "offer": None if state.get("offer") is None else dict(state["offer"]),
+                    "counter": None
+                    if state.get("counter") is None
+                    else dict(state["counter"]),
+                    "agreed": None
+                    if state.get("agreed") is None
+                    else dict(state["agreed"]),
+                }
+                for player_id, state in self.transfer_contracts.items()
+            }
+        if self.pending_transfers:
+            payload["pending_transfers"] = [
+                {**item, "terms": dict(item.get("terms") or {})}
+                for item in self.pending_transfers
+            ]
         if self.negotiations:
             payload["negotiations"] = {
                 player_id: {
@@ -305,6 +327,31 @@ class Career:
                 for player_id, state in (raw.get("negotiations") or {}).items()
                 if isinstance(state, dict)
             },
+            transfer_contracts={
+                str(player_id): {
+                    **state,
+                    "demand": dict(state.get("demand") or {}),
+                    "offer": None
+                    if state.get("offer") is None
+                    else dict(state["offer"]),
+                    "counter": None
+                    if state.get("counter") is None
+                    else dict(state["counter"]),
+                    "agreed": None
+                    if state.get("agreed") is None
+                    else dict(state["agreed"]),
+                }
+                for player_id, state in (raw.get("transfer_contracts") or {}).items()
+                if isinstance(state, dict)
+            },
+            pending_transfers=[
+                {
+                    **item,
+                    "terms": dict(item.get("terms") or {}),
+                }
+                for item in (raw.get("pending_transfers") or [])
+                if isinstance(item, dict)
+            ],
             shortlist=[
                 str(player_id) for player_id in (raw.get("shortlist") or [])
             ],

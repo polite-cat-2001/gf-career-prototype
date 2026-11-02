@@ -3,6 +3,7 @@
   import { inputDevice } from './input.js'
   import {
     attributeGroups,
+    formatDate,
     formatValue,
     plural,
     shortRole,
@@ -23,6 +24,7 @@
     onremove = null,
     ontransfer = null,
     onloan = null,
+    ondiscuss = null,
   } = $props()
 
   let photoFailed = $state(false)
@@ -34,6 +36,17 @@
   )
   let expiring = $derived(
     contractMonths !== null && contractMonths > 0 && contractMonths <= 6,
+  )
+  let offerState = $derived(player?.latest_offer ?? null)
+  let canNegotiate = $derived(Boolean(offerState?.can_negotiate))
+  let transferSigned = $derived(Boolean(offerState?.signed))
+  let transferJoinOn = $derived(offerState?.execute_on ?? null)
+  let canDiscuss = $derived(
+    Boolean(
+      player?.can_discuss ??
+        (player?.status === 'free' ||
+          (contractMonths !== null && contractMonths <= 6)),
+    ),
   )
   let canAssign = $derived(
     !revealed &&
@@ -190,32 +203,50 @@
         <span>{shortlisted ? 'Убрать из шортлиста' : 'Добавить в шортлист'}</span>
         <span class="tf-action-key">A</span>
       </button>
-      {#if ontransfer}
-        <button class="tf-action" data-nav onclick={ontransfer}>
-          <span>Сделать предложение трансфера</span>
+      {#if canNegotiate && ondiscuss}
+        <button class="tf-action" data-nav onclick={ondiscuss}>
+          <span>Переговоры по контракту</span>
           <span class="tf-action-key">A</span>
         </button>
+      {:else if transferSigned}
+        <p class="tf-action-note">
+          Переход завершён{#if transferJoinOn} · присоединится {formatDate(transferJoinOn)}{/if}
+        </p>
       {:else}
-        <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
-          <span>Сделать предложение трансфера</span>
-          <span class="tf-action-ticket">Недоступно</span>
-        </div>
+        {#if ontransfer}
+          <button class="tf-action" data-nav onclick={ontransfer}>
+            <span>Сделать предложение трансфера</span>
+            <span class="tf-action-key">A</span>
+          </button>
+        {:else}
+          <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
+            <span>Сделать предложение трансфера</span>
+            <span class="tf-action-ticket">Недоступно</span>
+          </div>
+        {/if}
+        {#if onloan}
+          <button class="tf-action" data-nav onclick={onloan}>
+            <span>Сделать предложение аренды</span>
+            <span class="tf-action-key">A</span>
+          </button>
+        {:else}
+          <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
+            <span>Сделать предложение аренды</span>
+            <span class="tf-action-ticket">Недоступно</span>
+          </div>
+        {/if}
+        {#if canDiscuss && ondiscuss}
+          <button class="tf-action" data-nav onclick={ondiscuss}>
+            <span>Обсудить переход</span>
+            <span class="tf-action-key">A</span>
+          </button>
+        {:else}
+          <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
+            <span>Обсудить переход</span>
+            <span class="tf-action-ticket">#17</span>
+          </div>
+        {/if}
       {/if}
-      {#if onloan}
-        <button class="tf-action" data-nav onclick={onloan}>
-          <span>Сделать предложение аренды</span>
-          <span class="tf-action-key">A</span>
-        </button>
-      {:else}
-        <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
-          <span>Сделать предложение аренды</span>
-          <span class="tf-action-ticket">Недоступно</span>
-        </div>
-      {/if}
-      <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
-        <span>Обсудить переход</span>
-        <span class="tf-action-ticket">#17</span>
-      </div>
 
       {#if removeLabel}
         <div class="tf-actions-sep" aria-hidden="true"></div>

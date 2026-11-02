@@ -7,7 +7,7 @@
     shortRole,
   } from './format.js'
 
-  let { offer, onaccept = null, onreoffer = null } = $props()
+  let { offer, onaccept = null, onreoffer = null, onnegotiate = null } = $props()
 
   const STATUS_LABELS = {
     pending: 'Ожидает ответа',
@@ -107,22 +107,45 @@
           </div>
         {/if}
       {/if}
+      {#if offer.contract_status === 'accepted'}
+        <div class="tf-offer-modal-row is-counter">
+          <span>Контракт</span>
+          <strong>Согласован</strong>
+        </div>
+      {:else if offer.contract_status === 'signed'}
+        <div class="tf-offer-modal-row is-counter">
+          <span>Контракт</span>
+          <strong>Подписан</strong>
+        </div>
+      {/if}
       <p class="tf-offer-modal-message">{offer.message}</p>
     </div>
 
     <div class="tf-action-list">
       {#if offer.status === 'accepted'}
-        <div
-          class="tf-action is-disabled"
-          data-nav
-          data-autofocus
-          role="button"
-          tabindex="0"
-          aria-disabled="true"
-        >
-          <span>Переговоры по контракту</span>
-          <span class="tf-action-ticket">#17</span>
-        </div>
+        {#if offer.signed}
+          <p class="tf-action-note">
+            Переход завершён
+            {#if offer.execute_on}· присоединится {formatDate(offer.execute_on)}{/if}
+          </p>
+        {:else if onnegotiate}
+          <button class="tf-action" data-nav data-autofocus onclick={onnegotiate}>
+            <span>Переговоры по контракту</span>
+            <span class="tf-action-key">A</span>
+          </button>
+        {:else}
+          <div
+            class="tf-action is-disabled"
+            data-nav
+            data-autofocus
+            role="button"
+            tabindex="0"
+            aria-disabled="true"
+          >
+            <span>Переговоры по контракту</span>
+            <span class="tf-action-ticket">#17</span>
+          </div>
+        {/if}
       {:else if offer.status === 'counter'}
         {#if offer.can_accept_counter}
           <button class="tf-action" data-nav data-autofocus onclick={onaccept}>

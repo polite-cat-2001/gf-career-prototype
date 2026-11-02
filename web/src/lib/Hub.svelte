@@ -339,6 +339,11 @@
   let transferOfferPlayer = $state(null)
   let transferOfferBackView = $state('results')
   let transferOfferModalId = $state(null)
+  let transferContractPlayerId = $state(null)
+  let transferContractOfferId = $state(null)
+  let transferContractFallback = $state(null)
+  let transferContractBackView = $state('centre')
+  let transferContractDraft = $state(null)
   let oskOpen = $state(false)
   let oskText = $state('')
 
@@ -518,6 +523,41 @@
   let transferOfferModal = $derived(
     sentOffers.find((offer) => offer.offer_id === transferOfferModalId) ?? null,
   )
+  let transferContractOffer = $derived(
+    sentOffers.find((offer) => offer.offer_id === transferContractOfferId) ?? null,
+  )
+  let transferContractPlayer = $derived.by(() => {
+    if (!transferContractPlayerId) return null
+    const lists = [
+      sentOffers,
+      transferResults,
+      transferCentre.shortlist ?? [],
+      transferCentre.listed ?? [],
+      transferCentre.loaned ?? [],
+    ]
+    for (const list of lists) {
+      const found = list.find((player) => player.id === transferContractPlayerId)
+      if (found) return found
+    }
+    return transferContractFallback
+  })
+  let transferContractState = $derived(
+    career.transfers?.contracts?.[transferContractPlayerId] ??
+      transferContractPlayer?.transfer_contract ??
+      null,
+  )
+  let transferContractTerms = $derived(
+    transferContractState?.agreed ??
+      transferContractState?.counter ??
+      transferContractState?.offer ??
+      transferContractDraft,
+  )
+  let transferContractFee = $derived(
+    Number(transferContractOffer?.amount ?? transferContractState?.fee ?? 0),
+  )
+  let transferContractBalanceAfter = $derived(
+    Number(finance?.balance ?? 0) - transferContractFee,
+  )
   let transferCentreTitle = $derived(
     TRANSFER_CENTRE_TABS.find((item) => item.id === transferCentreTab)?.label ?? 'Список',
   )
@@ -603,6 +643,41 @@
       return [{ gamepad: ['A'], keyboard: ['Enter'], label: centreAction }]
     }
     if (tab === 'transfers') {
+      if (transfersView === 'contractAmount') {
+        return [
+          { gamepad: ['←', '→'], keyboard: ['←', '→'], label: 'Разряд' },
+          { gamepad: ['↑', '↓'], keyboard: ['↑', '↓'], label: 'Цифра' },
+          { gamepad: ['A'], keyboard: ['Enter'], label: 'Готово' },
+          { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+        ]
+      }
+      if (transfersView === 'contract') {
+        if (transferContractState?.status === 'pending') {
+          return [
+            { gamepad: ['A'], keyboard: ['Enter'], label: 'Вернуться' },
+            { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+          ]
+        }
+        if (transferContractState?.status === 'accepted') {
+          return [
+            {
+              gamepad: ['A'],
+              keyboard: ['Enter'],
+              label:
+                transferContractState.affordable === false
+                  ? 'Недостаточно средств'
+                  : 'Подписать',
+            },
+            { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+          ]
+        }
+        return [
+          { gamepad: ['D-pad'], keyboard: ['↑', '↓'], label: 'Условие' },
+          { gamepad: ['←', '→'], keyboard: ['←', '→'], label: 'Значение' },
+          { gamepad: ['A'], keyboard: ['Enter'], label: 'Изменить' },
+          { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+        ]
+      }
       if (transfersView === 'offerAmount') {
         return [
           { gamepad: ['←', '→'], keyboard: ['←', '→'], label: 'Разряд' },
@@ -665,6 +740,7 @@
           const hasAction =
             offer &&
             offer.status !== 'pending' &&
+            !offer.signed &&
             !(offer.status === 'refused' && !offer.can_offer_again)
           if (!hasAction) {
             return [{ gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' }]
@@ -1124,6 +1200,14 @@
     return OFFER_KIND_LABELS[kind] ?? kind
   }
 
+  function contractStatusLabel(status) {
+    if (status === 'pending') return 'переговоры'
+    if (status === 'counter') return 'контрпредложение'
+    if (status === 'accepted') return 'согласован'
+    if (status === 'signed') return 'подписан'
+    return null
+  }
+
   function openTransferOffer(player, kind = 'transfer', preset = null) {
     if (!player) return
     const clause = Number(player.release_clause) || 0
@@ -1157,6 +1241,184 @@
     amountField = null
     transfersView = transferOfferBackView || 'centre'
     tick().then(focusFirst)
+  }
+
+  function contractDraftFrom(player) {
+    if (!player) return null
+    const state = player.transfer_contract
+    const source =
+      state?.offer ??
+      state?.counter ??
+      player.contract_defaults ?? {
+        years: 3,
+        weekly_wage: player.weekly_wage ?? 1_000,
+        squad_role: 'rotation',
+        release_clause: Math.round((player.market_value ?? 1_000_000) * 1.2),
+      }
+    return { ...source }
+  }
+
+  function openTransferContractFromOffer(offer) {
+    if (!offer) return
+    transferContractPlayerId = offer.id
+    transferContractOfferId = offer.offer_id
+    transferContractFallback = offer
+    transferContractBackView = transfersView
+    transferContractDraft = contractDraftFrom(offer)
+    transferOfferModalId = null
+    transferSearchActionsOpen = false
+    transferCentreActionsOpen = false
+    transfersView = 'contract'
+    tick().then(focusFirst)
+  }
+
+  function openTransferContractFromPlayer(player) {
+    if (!player) return
+    transferContractPlayerId = player.id
+    transferContractOfferId = player.latest_offer?.can_negotiate
+      ? player.latest_offer.offer_id
+      : null
+    transferContractFallback = player
+    transferContractBackView = transfersView
+    transferContractDraft = contractDraftFrom(player)
+    transferSearchActionsOpen = false
+    transferCentreActionsOpen = false
+    transfersView = 'contract'
+    tick().then(focusFirst)
+  }
+
+  function closeTransferContract() {
+    transferContractPlayerId = null
+    transferContractOfferId = null
+    transferContractFallback = null
+    transferContractDraft = null
+    amountField = null
+    transfersView = transferContractBackView || 'centre'
+    tick().then(focusFirst)
+  }
+
+  function contractWageStep() {
+    const base =
+      transferContractState?.terms?.weekly_wage ??
+      transferContractPlayer?.contract_defaults?.weekly_wage ??
+      transferContractPlayer?.weekly_wage ??
+      1_000
+    return Math.max(1_000, Math.round((base * 0.1) / 100) * 100)
+  }
+
+  function contractClauseStep() {
+    const base = transferContractPlayer?.market_value ?? 1_000_000
+    return Math.max(100_000, Math.round((base * 0.05) / 100_000) * 100_000)
+  }
+
+  function adjustTransferContractField(field, step) {
+    if (!transferContractDraft) return
+    if (field === 'years') {
+      transferContractDraft.years = Math.min(
+        5,
+        Math.max(1, transferContractDraft.years + step),
+      )
+    } else if (field === 'weekly_wage') {
+      transferContractDraft.weekly_wage = Math.max(
+        1_000,
+        Math.min(2_000_000, transferContractDraft.weekly_wage + step * contractWageStep()),
+      )
+    } else if (field === 'release_clause') {
+      transferContractDraft.release_clause = Math.max(
+        0,
+        transferContractDraft.release_clause + step * contractClauseStep(),
+      )
+    } else if (field === 'squad_role') {
+      const index = Math.max(
+        0,
+        CONTRACT_ROLES.findIndex((role) => role.id === transferContractDraft.squad_role),
+      )
+      const next = (index + step + CONTRACT_ROLES.length) % CONTRACT_ROLES.length
+      transferContractDraft.squad_role = CONTRACT_ROLES[next].id
+    }
+    transferContractDraft = { ...transferContractDraft }
+  }
+
+  function openTransferContractAmount(field) {
+    if (!transferContractDraft || !field) return
+    const value = Math.max(
+      0,
+      Math.min(999_999_999, Math.round(Number(transferContractDraft[field]) || 0)),
+    )
+    amountField = field
+    amountDigits = String(value).padStart(9, '0')
+    const firstDigit = amountDigits.search(/[1-9]/)
+    amountIndex = firstDigit === -1 ? 8 : firstDigit
+    transfersView = 'contractAmount'
+    tick().then(focusFirst)
+  }
+
+  function closeTransferContractAmount() {
+    amountField = null
+    transfersView = 'contract'
+    tick().then(focusFirst)
+  }
+
+  function finishTransferContractAmount() {
+    if (!transferContractDraft || !amountField) return
+    const value = Math.max(
+      0,
+      Math.min(999_999_999, Number.parseInt(amountDigits || '0', 10) || 0),
+    )
+    if (amountField === 'weekly_wage') {
+      transferContractDraft.weekly_wage = Math.max(1_000, Math.min(2_000_000, value))
+    } else {
+      transferContractDraft.release_clause = Math.max(0, value)
+    }
+    transferContractDraft = { ...transferContractDraft }
+    amountField = null
+    transfersView = 'contract'
+    tick().then(focusFirst)
+  }
+
+  async function submitTransferContract() {
+    if (!transferContractPlayer || !transferContractDraft || centreActionBusy) return
+    if (transferContractState?.status === 'accepted') {
+      await signTransferContract()
+      return
+    }
+    centreActionBusy = true
+    const updated = await onaction({
+      type: 'transfer_contract',
+      player_id: transferContractPlayer.id,
+      offer_id: transferContractOfferId || undefined,
+      ...transferContractDraft,
+    })
+    centreActionBusy = false
+    if (!updated) return
+    await tick()
+    focusFirst()
+  }
+
+  async function acceptTransferContractCounter() {
+    if (!transferContractPlayer || centreActionBusy) return
+    centreActionBusy = true
+    const updated = await onaction({
+      type: 'transfer_accept_counter',
+      player_id: transferContractPlayer.id,
+    })
+    centreActionBusy = false
+    if (!updated) return
+    await tick()
+    focusFirst()
+  }
+
+  async function signTransferContract() {
+    if (!transferContractPlayer || centreActionBusy) return
+    if (transferContractState?.affordable === false) return
+    centreActionBusy = true
+    const updated = await onaction({
+      type: 'transfer_sign',
+      player_id: transferContractPlayer.id,
+    })
+    centreActionBusy = false
+    if (!updated) return
+    closeTransferContract()
   }
 
   function transferOfferBase() {
@@ -1949,6 +2211,14 @@
   }
 
   function handleBack() {
+    if (tab === 'transfers' && transfersView === 'contractAmount') {
+      closeTransferContractAmount()
+      return
+    }
+    if (tab === 'transfers' && transfersView === 'contract') {
+      closeTransferContract()
+      return
+    }
     if (tab === 'transfers' && transfersView === 'offerAmount') {
       closeOfferAmount()
       return
@@ -2531,6 +2801,15 @@
 
   function handleCycle(direction) {
     if (tab === 'transfers') {
+      if (transfersView === 'contractAmount') {
+        adjustAmount(direction)
+        return
+      }
+      if (transfersView === 'contract') {
+        const field = document.activeElement?.dataset?.field
+        if (field) adjustTransferContractField(field, direction === 'right' ? 1 : -1)
+        return
+      }
       if (transfersView === 'offerAmount') {
         adjustAmount(direction)
         return
@@ -3538,6 +3817,7 @@
           onclose={closeTransferNetwork}
           onaction={onaction}
           onoffer={openTransferOffer}
+          onnegotiate={openTransferContractFromPlayer}
         />
       {:else if transfersView === 'centre'}
         <div class="tf-centre" inert={transferOfferModalId ? true : undefined}>
@@ -3588,6 +3868,9 @@
                             {/if}
                             {#if offer.status === 'refused' && offer.retry_after}
                               · повтор после {formatDate(offer.retry_after)}
+                            {/if}
+                            {#if contractStatusLabel(offer.contract_status)}
+                              · контракт: {contractStatusLabel(offer.contract_status)}
                             {/if}
                           </span>
                           <span class="tf-offer-card-message">{offer.message}</span>
@@ -3649,6 +3932,7 @@
               onaction={onaction}
               onassign={openScoutPicker}
               onoffer={openTransferOffer}
+              onnegotiate={openTransferContractFromPlayer}
             />
           {/if}
         </div>
@@ -3657,8 +3941,267 @@
             offer={transferOfferModal}
             onaccept={() => acceptSentOfferCounter(transferOfferModal)}
             onreoffer={() => reofferSentOffer(transferOfferModal)}
+            onnegotiate={() => openTransferContractFromOffer(transferOfferModal)}
           />
         {/if}
+      {:else if transfersView === 'contractAmount' && transferContractPlayer}
+        <div class="amount-screen">
+          <span class="eyebrow">
+            {amountField === 'weekly_wage' ? 'Зарплата в неделю' : 'Отступные'}
+          </span>
+          <button
+            class="amount-value"
+            data-nav
+            data-amount
+            data-cycle="amount"
+            data-autofocus
+            aria-label="Сумма"
+            onclick={finishTransferContractAmount}
+          >
+            {#each amountGroups as group, groupIndex (groupIndex)}
+              <span class="amount-group">
+                {#each group.digits as digit, digitIndex (digitIndex)}
+                  <span
+                    class="amount-digit"
+                    class:is-selected={group.start + digitIndex === amountIndex}
+                  >
+                    {digit}
+                  </span>
+                {/each}
+              </span>
+            {/each}
+          </button>
+          <span class="amount-place">Разряд: {AMOUNT_PLACES[amountIndex]}</span>
+        </div>
+      {:else if transfersView === 'contract' && transferContractPlayer}
+        <div class="negotiation tf-contract">
+          <aside class="negotiation-player scroll-area">
+            <div class="centre-profile">
+              <span class="centre-photo">
+                <img
+                  src={transferContractPlayer.photo}
+                  alt=""
+                  onerror={hideBrokenImage}
+                />
+              </span>
+              <div class="centre-profile-info">
+                <span class="eyebrow">
+                  {(transferContractState?.kind ?? transferContractOffer?.kind) === 'loan'
+                    ? 'Аренда'
+                    : transferContractOffer || transferContractPlayer.club_id
+                      ? 'Трансфер'
+                      : 'Свободный агент'}
+                </span>
+                <strong class="centre-name">{transferContractPlayer.name}</strong>
+                <span class="centre-sub">
+                  {positionLabel(transferContractPlayer.position)} ·
+                  {shortRole(transferContractPlayer.role)} ·
+                  {transferContractPlayer.overall
+                    ? `${Math.round(transferContractPlayer.overall)} OVR`
+                    : '—'}
+                </span>
+              </div>
+            </div>
+
+            <section class="centre-block">
+              <div class="centre-block-head">Условия сделки</div>
+              {@render centreRow(
+                (transferContractState?.kind ?? transferContractOffer?.kind) === 'loan'
+                  ? 'Плата за аренду'
+                  : 'Согласованный fee',
+                transferContractFee > 0
+                  ? formatValue(transferContractFee)
+                  : 'Без компенсации',
+              )}
+              {@render centreRow('Баланс после сделки', formatValue(transferContractBalanceAfter))}
+              {@render centreRow(
+                transferContractPlayer.club_id ? 'Текущая зарплата' : 'Зарплата по отчёту',
+                transferContractPlayer.weekly_wage != null
+                  ? formatValue(transferContractPlayer.weekly_wage)
+                  : '—',
+              )}
+              {#if (transferContractState?.kind ?? transferContractOffer?.kind) === 'loan'}
+                {@render centreRow(
+                  'Доля зарплаты',
+                  `${transferContractState?.wage_share ?? transferContractOffer?.wage_share ?? 100}%`,
+                )}
+              {/if}
+              {@render centreRow('Клуб', transferContractPlayer.club_name ?? 'Свободный агент')}
+              {#if !transferContractPlayer.club_id}
+                <p class="negotiation-note">
+                  Приблизительная зарплата по отчёту скаута. Точные требования игрок
+                  раскроет в контрпредложении.
+                </p>
+              {/if}
+            </section>
+          </aside>
+
+          <section class="negotiation-form scroll-area">
+            {#if transferContractState?.status === 'pending'}
+              <div class="negotiation-head">
+                <span class="eyebrow">Ожидание ответа</span>
+                <strong class="negotiation-title">Игрок думает</strong>
+              </div>
+              <p class="negotiation-note">
+                {transferContractState.message}
+                {#if transferContractState.due}
+                  Ответ до {formatDate(transferContractState.due)}
+                {/if}
+              </p>
+              {#if transferContractState.offer}
+                {@render contractTerms(transferContractState.offer)}
+              {/if}
+            {:else if transferContractState?.status === 'accepted'}
+              <div class="negotiation-head">
+                <span class="eyebrow">Согласовано</span>
+                <strong class="negotiation-title">Условия приняты</strong>
+              </div>
+              <p class="negotiation-note">{transferContractState.message}</p>
+              {#if transferContractTerms}
+                {@render contractTerms(transferContractTerms)}
+              {/if}
+              <p class="negotiation-note">
+                Переход вступит в силу сразу, если трансферное окно открыто, иначе — при его
+                открытии.
+              </p>
+            {:else}
+              <div class="negotiation-head">
+                <span class="eyebrow">Личный контракт</span>
+                <strong class="negotiation-title">Условия</strong>
+              </div>
+
+              {#if transferContractDraft}
+                <div class="negotiation-fields">
+                  <button
+                    class="neg-field"
+                    data-nav
+                    data-cycle="contract"
+                    data-field="weekly_wage"
+                    data-autofocus
+                    onclick={() => openTransferContractAmount('weekly_wage')}
+                  >
+                    <span class="neg-field-label">Зарплата в неделю</span>
+                    <strong class="neg-field-value">
+                      {formatValue(transferContractDraft.weekly_wage)}
+                    </strong>
+                    <span class="neg-field-hint">← → шаг · A точная сумма</span>
+                  </button>
+                  <button
+                    class="neg-field"
+                    data-nav
+                    data-cycle="contract"
+                    data-field="years"
+                    onclick={() => adjustTransferContractField('years', 1)}
+                  >
+                    <span class="neg-field-label">Срок</span>
+                    <strong class="neg-field-value">
+                      {transferContractDraft.years}
+                      {plural(transferContractDraft.years, 'год', 'года', 'лет')}
+                    </strong>
+                    <span class="neg-field-hint">← → изменить срок</span>
+                  </button>
+                  <button
+                    class="neg-field"
+                    data-nav
+                    data-cycle="contract"
+                    data-field="squad_role"
+                    onclick={() => adjustTransferContractField('squad_role', 1)}
+                  >
+                    <span class="neg-field-label">Амплуа</span>
+                    <strong class="neg-field-value">
+                      {contractRoleLabel(transferContractDraft.squad_role)}
+                    </strong>
+                    <span class="neg-field-hint">← → выбрать амплуа</span>
+                  </button>
+                  <button
+                    class="neg-field"
+                    data-nav
+                    data-cycle="contract"
+                    data-field="release_clause"
+                    onclick={() => openTransferContractAmount('release_clause')}
+                  >
+                    <span class="neg-field-label">Отступные</span>
+                    <strong class="neg-field-value">
+                      {formatValue(transferContractDraft.release_clause)}
+                    </strong>
+                    <span class="neg-field-hint">← → шаг · A точная сумма</span>
+                  </button>
+                </div>
+
+                {#if transferContractState?.counter}
+                  <div class="neg-reply">
+                    <span class="eyebrow">Контрпредложение игрока</span>
+                    <p class="negotiation-note">{transferContractState.message}</p>
+                    {@render contractTerms(transferContractState.counter)}
+                  </div>
+                {:else if transferContractState?.status === 'refused'}
+                  <div class="neg-reply is-refused">
+                    <span class="eyebrow">Отказ</span>
+                    <p class="negotiation-note">{transferContractState.message}</p>
+                  </div>
+                {/if}
+              {:else}
+                <p class="negotiation-note">Условия контракта недоступны.</p>
+              {/if}
+            {/if}
+
+            <div class="negotiation-actions">
+              {#if transferContractState?.status === 'pending'}
+                <button
+                  class="shelf-action is-primary"
+                  data-nav
+                  data-autofocus
+                  onclick={closeTransferContract}
+                >
+                  Вернуться
+                </button>
+              {:else if transferContractState?.status === 'accepted'}
+                {#if transferContractState.affordable === false}
+                  <p class="negotiation-note is-warning">
+                    Недостаточно средств, чтобы завершить переход.
+                  </p>
+                {/if}
+                <button
+                  class="shelf-action is-primary"
+                  data-nav
+                  data-autofocus
+                  disabled={transferContractState.affordable === false || centreActionBusy}
+                  onclick={signTransferContract}
+                >
+                  {centreActionBusy ? 'Подписываем…' : 'Подписать'}
+                </button>
+              {:else}
+                {#if transferContractState?.counter}
+                  {#if transferContractState.affordable === false}
+                    <p class="negotiation-note is-warning">
+                      Недостаточно средств, чтобы принять условия игрока.
+                    </p>
+                  {/if}
+                  <button
+                    class="shelf-action"
+                    data-nav
+                    disabled={
+                      transferContractState.affordable === false || centreActionBusy
+                    }
+                    onclick={acceptTransferContractCounter}
+                  >
+                    Принять условия игрока
+                  </button>
+                {/if}
+                <button
+                  class="shelf-action is-primary"
+                  data-nav
+                  onclick={submitTransferContract}
+                  disabled={centreActionBusy}
+                >
+                  {transferContractState?.status === 'refused'
+                    ? 'Предложить снова'
+                    : 'Предложить условия'}
+                </button>
+              {/if}
+            </div>
+          </section>
+        </div>
       {:else if transfersView === 'offerAmount' && transferOffer}
         <div class="amount-screen">
           <span class="eyebrow">
@@ -3838,6 +4381,7 @@
           onaction={onaction}
           onassign={openScoutPicker}
           onoffer={openTransferOffer}
+          onnegotiate={openTransferContractFromPlayer}
         />
 
         {#if scoutPickerOpen && scoutPickerPlayer}

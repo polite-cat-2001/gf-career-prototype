@@ -32,8 +32,19 @@
     onclose = () => {},
     onaction = async () => null,
     onoffer = null,
+    onnegotiate = null,
     hints = $bindable([]),
   } = $props()
+
+  function monthsUntil(value) {
+    if (!value || !career?.date) return null
+    const target = new Date(`${value}T00:00:00`)
+    const current = new Date(`${career.date}T00:00:00`)
+    if (Number.isNaN(target.getTime()) || Number.isNaN(current.getTime())) return null
+    const days = (target.getTime() - current.getTime()) / 86_400_000
+    if (days <= 0) return 0
+    return Math.ceil(days / 30.44)
+  }
 
   const ROLE_FILTERS = [
     { id: '', label: 'Все' },
@@ -1515,6 +1526,7 @@
       player={entryActionsEntry.player}
       revealed
       shortlisted={Boolean(entryActionsEntry.player.shortlisted)}
+      contractMonths={monthsUntil(entryActionsEntry.player.contract_expires)}
       removeLabel="Удалить из отчёта"
       onremove={removeActiveEntry}
       onshortlist={() => toggleShortlist(entryActionsEntry.player)}
@@ -1523,6 +1535,9 @@
         : null}
       onloan={onoffer
         ? () => onoffer(entryActionsEntry.player, 'loan')
+        : null}
+      ondiscuss={onnegotiate
+        ? () => onnegotiate(entryActionsEntry.player)
         : null}
     />
   {/if}

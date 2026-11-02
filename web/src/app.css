@@ -6693,6 +6693,15 @@ button.squad-tile:hover {
   color: var(--muted);
 }
 
+.tf-action-note {
+  padding: 2px 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
 .tf-action-ticket {
   flex: 0 0 auto;
   padding: 2px 7px;

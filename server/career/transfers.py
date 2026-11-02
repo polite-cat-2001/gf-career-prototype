@@ -427,4 +427,9 @@ def offer_view(career: Career, offer: dict) -> dict:
         and counter_view is not None
         and affordable,
         "affordable": affordable,
+        "signed": bool(offer.get("signed")),
+        "signed_at": offer.get("signed_at"),
+        "execute_on": offer.get("execute_on"),
+        "contract_status": offer.get("contract_status"),
+        "can_negotiate": status == "accepted" and not bool(offer.get("signed")),
     }

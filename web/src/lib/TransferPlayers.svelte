@@ -32,6 +32,7 @@
     onaction = async () => null,
     onassign = null,
     onoffer = null,
+    onnegotiate = null,
   } = $props()
 
   let shortlistOverrides = $state({})
@@ -147,7 +148,9 @@
     const labels = []
     const scouting = scoutingStateLabel(player)
     if (scouting) labels.push(scouting)
-    const negotiation = negotiationStateLabel(player.negotiation_status)
+    const negotiation = negotiationStateLabel(
+      player.transfer_contract?.status ?? player.negotiation_status,
+    )
     if (negotiation) labels.push(negotiation)
     return labels
   }
@@ -249,8 +252,13 @@
           {#if scoutingStateLabel(selected)}
             <span><i>Скаутинг</i> {scoutingStateLabel(selected)}</span>
           {/if}
-          {#if negotiationStateLabel(selected.negotiation_status)}
-            <span><i>Переговоры</i> {negotiationStateLabel(selected.negotiation_status)}</span>
+          {#if negotiationStateLabel(selected.transfer_contract?.status ?? selected.negotiation_status)}
+            <span>
+              <i>Переговоры</i>
+              {negotiationStateLabel(
+                selected.transfer_contract?.status ?? selected.negotiation_status,
+              )}
+            </span>
           {/if}
           {#if isShortlisted(selected)}
             <span class="is-lime"><i>Шортлист</i> В списке</span>
@@ -370,6 +378,7 @@
       onshortlist={toggleShortlist}
       ontransfer={onoffer ? () => onoffer(actionsPlayer, 'transfer') : null}
       onloan={onoffer ? () => onoffer(actionsPlayer, 'loan') : null}
+      ondiscuss={onnegotiate ? () => onnegotiate(actionsPlayer) : null}
     />
   {/if}
 </div>

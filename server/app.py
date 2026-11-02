@@ -17,7 +17,9 @@ from server.career import (
     SeasonError,
     accept_counter_offer,
     accept_offer_counter,
+    accept_transfer_counter,
     acknowledge_contract_negotiation,
+    can_discuss_contract,
     add_to_shortlist,
     advance_to,
     build_lineup,
@@ -28,6 +30,7 @@ from server.career import (
     create_career,
     create_transfer_offer,
     ensure_schedule,
+    execute_pending_transfers,
     negotiate_contract,
     next_fixture,
     next_season,
@@ -35,13 +38,18 @@ from server.career import (
     play_next_match,
     release_player,
     remove_from_shortlist,
+    resolve_transfer_contracts,
     resolve_transfer_offers,
     season_transition,
     set_shirt_number,
     set_transfer_status,
+    sign_transfer_contract,
     squad_strength,
+    start_transfer_contract,
     swap_players,
     toggle_shortlist,
+    transfer_contract_defaults,
+    transfer_contract_view,
 )
 from server.career.condition import (
     apply_match_outcome,
@@ -243,39 +251,6 @@ class PlayerDetail(PlayerSummary):
     stats: dict[str, float]
 
 
-class TransferPlayer(BaseModel):
-    id: str
-    name: str
-    first_name: str | None = None
-    last_name: str | None = None
-    age: int | None = None
-    height: int | None = None
-    citizenship: list[str]
-    position: str
-    role: str | None = None
-    club_id: str | None = None
-    club_name: str | None = None
-    club_logo: str | None = None
-    league_id: str | None = None
-    league_name: str | None = None
-    country_id: str | None = None
-    country_name: str | None = None
-    release_clause: int
-    status: str
-    photo: str
-    scouted: bool = False
-    shortlisted: bool = False
-    contract_expires: str | None = None
-    foot: str | None = None
-    overall: float | None = None
-    pot: int | None = None
-    stats: dict[str, float] | None = None
-    weekly_wage: int | None = None
-    market_value: int | None = None
-    weak_foot: int | None = None
-    skill_moves: int | None = None
-
-
 class ScoutCriteria(BaseModel):
     role: str = ""
     age_min: int | None = None
@@ -357,7 +332,7 @@ class ScoutRegion(BaseModel):
 
 
 class ScoutEntry(BaseModel):
-    player: TransferPlayer
+    player: dict
     kind: str
     scout_id: str
     scout_name: str
@@ -400,6 +375,8 @@ class TransferCenterBlock(BaseModel):
     received_offers: list[dict] = Field(default_factory=list)
     listed: list[dict] = Field(default_factory=list)
     loaned: list[dict] = Field(default_factory=list)
+    pending: list[dict] = Field(default_factory=list)
+    contracts: dict[str, dict] = Field(default_factory=dict)
 
 
 class CreateCareerRequest(BaseModel):
@@ -722,6 +699,8 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             raise HTTPException(status_code=422, detail=str(error)) from error
         resolve_negotiations(career)
         resolve_transfer_offers(career)
+        resolve_transfer_contracts(career)
+        execute_pending_transfers(career)
         return career
 
     def strength_resolver(career=None, players=None):
@@ -769,6 +748,23 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             )
     region_by_id = {region["id"]: region for region in regions}
 
+    def latest_offer_payload(career, player_id: str) -> dict | None:
+        player_id = str(player_id)
+        for offer in reversed(career.transfer_offers):
+            if str(offer.get("player_id")) != player_id:
+                continue
+            status = str(offer.get("status") or "")
+            signed = bool(offer.get("signed"))
+            return {
+                "offer_id": str(offer.get("id") or ""),
+                "kind": str(offer.get("kind") or "transfer"),
+                "status": status,
+                "signed": signed,
+                "execute_on": offer.get("execute_on"),
+                "can_negotiate": status == "accepted" and not signed,
+            }
+        return None
+
     def scouting_player(career, player_id: str) -> dict | None:
         player = canon.player(str(player_id))
         if player is None:
@@ -808,6 +804,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             "market_value": player.get("market_value"),
             "weak_foot": player.get("weak_foot"),
             "skill_moves": player.get("skill_moves"),
+            "latest_offer": latest_offer_payload(career, player_id),
         }
 
     def scouting_candidates(career, country_id: str, criteria: dict) -> list[dict]:
@@ -970,8 +967,23 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             "contract_max": CONTRACT_MAX,
         }
 
+    def transfer_contract_payload(career, player: dict, squad_players: list[dict]) -> dict:
+        player_id = str(player["id"])
+        if player_id in career.player_ids:
+            return {"can_discuss": False}
+        can_discuss = can_discuss_contract(career, player)
+        return {
+            "transfer_contract": transfer_contract_view(career, player_id),
+            "contract_defaults": transfer_contract_defaults(
+                career, player, squad_players
+            ),
+            "can_discuss": can_discuss,
+            "latest_offer": latest_offer_payload(career, player_id),
+        }
+
     def transfer_center_snapshot(career) -> dict:
         scouts_by_id = {str(scout["id"]): scout for scout in career.scouts}
+        squad_players = canon.players_by_ids(career.player_ids)
 
         revealed = scouted_ids(career)
 
@@ -996,6 +1008,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                     player.pop(hidden, None)
                 player["scouted"] = False
             player["shortlisted"] = player_id in career.shortlist
+            player.update(transfer_contract_payload(career, player, squad_players))
             assignment = next(
                 (
                     report
@@ -1058,6 +1071,11 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 ),
                 reveal=True,
             ),
+            "pending": [dict(item) for item in career.pending_transfers],
+            "contracts": {
+                str(player_id): transfer_contract_view(career, player_id) or {}
+                for player_id in career.transfer_contracts
+            },
         }
 
     def division_context(career, club):
@@ -1349,6 +1367,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         )
         items = []
         revealed = scouted_ids(career)
+        squad_players = canon.players_by_ids(career.player_ids)
         for player in players:
             target_status = career.player_transfers.get(player["id"])
             if target_status is None:
@@ -1377,6 +1396,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                     "skill_moves",
                 ):
                     item.pop(hidden, None)
+            item.update(transfer_contract_payload(career, player, squad_players))
             items.append(item)
         return {
             "items": items,
@@ -1549,6 +1569,8 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 ),
             )
             resolve_transfer_offers(career)
+            resolve_transfer_contracts(career)
+            execute_pending_transfers(career)
         elif payload.type == "next_season":
             club = canon.club(career.club_id)
             if club is None:
@@ -1584,6 +1606,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                     )
             except SeasonError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
+            execute_pending_transfers(career)
         elif payload.type == "play":
             club = canon.club(career.club_id)
             if club is None:
@@ -1665,6 +1688,51 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 )
             try:
                 accept_offer_counter(career, payload.offer_id)
+            except ValueError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+        elif payload.type in {
+            "transfer_contract",
+            "transfer_accept_counter",
+            "transfer_sign",
+        }:
+            if not payload.player_id:
+                raise HTTPException(
+                    status_code=422, detail=f"{payload.type} requires player_id"
+                )
+            player = canon.player(str(payload.player_id))
+            if player is None:
+                raise HTTPException(status_code=422, detail="player not found")
+            squad_players = canon.players_by_ids(career.player_ids)
+            try:
+                if payload.type == "transfer_contract":
+                    offer = None
+                    if payload.offer_id:
+                        offer = next(
+                            (
+                                item
+                                for item in career.transfer_offers
+                                if str(item.get("id")) == str(payload.offer_id)
+                            ),
+                            None,
+                        )
+                        if offer is None:
+                            raise ValueError("offer not found")
+                    start_transfer_contract(
+                        career,
+                        player,
+                        {
+                            "years": payload.years,
+                            "weekly_wage": payload.weekly_wage,
+                            "squad_role": payload.squad_role,
+                            "release_clause": payload.release_clause,
+                        },
+                        offer=offer,
+                        squad_players=squad_players,
+                    )
+                elif payload.type == "transfer_accept_counter":
+                    accept_transfer_counter(career, payload.player_id)
+                else:
+                    sign_transfer_contract(career, player)
             except ValueError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
         elif payload.type in {"shortlist_add", "shortlist_remove", "shortlist_toggle"}:
