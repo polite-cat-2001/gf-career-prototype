@@ -49,7 +49,6 @@
   } from './career/constants/transfers.js'
   import { OSK_LIMIT, OSK_ROWS, REPORT_PAGE_SIZE } from './career/constants/scouting.js'
   import { pitchX, pitchY } from './career/utils/pitch.js'
-  import { radarGrid, radarLabelPos, radarPoints } from './career/utils/radar.js'
   import { addDay, daysBetween, nextSeasonLabel } from './career/utils/dates.js'
   import {
     average,
@@ -79,6 +78,7 @@
     transferValueMeta,
   } from './career/utils/transfers.js'
   import ContractTerms from './career/shared/ContractTerms.svelte'
+  import RadarChart from './career/shared/RadarChart.svelte'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -2761,20 +2761,6 @@
   </header>
 
   <main class="screen hub-screen">
-    {#snippet radarChart(values, secondary)}
-      <svg class="radar" viewBox="0 0 144 144" aria-hidden="true">
-        <polygon class="radar-grid" points={radarGrid(values)}></polygon>
-        <polygon class="radar-grid inner" points={radarGrid(values, 22)}></polygon>
-        {#if secondary?.length}
-          <polygon class="radar-compare" points={radarPoints(secondary)}></polygon>
-        {/if}
-        <polygon class="radar-fill" points={radarPoints(values)}></polygon>
-        {#each values as axis, index (axis.label)}
-          {@const pos = radarLabelPos(index, values.length)}
-          <text class="radar-label" x={pos.x} y={pos.y}>{axis.label}</text>
-        {/each}
-      </svg>
-    {/snippet}
 
     {#snippet strengthBadge()}
       <div class="team-strength">
@@ -4606,7 +4592,7 @@
 
                 <div class="attribute-layout">
                   <div class="attribute-radar">
-                    {@render radarChart(centreRadar)}
+                    <RadarChart values={centreRadar} />
                   </div>
                   <div class="attribute-detail">
                     <div class="centre-pager" role="group" aria-label="Группы характеристик">
@@ -4873,7 +4859,10 @@
             <div class="player-head compare-head">
               {@render playerBlock(anchorPlayer, false)}
               {#if radar.length && focusedPlayer.role !== 'GK'}
-                {@render radarChart(anchorRadar.length ? anchorRadar : radar, anchorRadar.length ? radar : null)}
+                <RadarChart
+              values={anchorRadar.length ? anchorRadar : radar}
+              secondary={anchorRadar.length ? radar : null}
+            />
               {:else}
                 <span class="radar-empty">Вратарский профиль не входит в канон</span>
               {/if}
@@ -4883,7 +4872,7 @@
             <div class="player-head">
               {@render playerBlock(focusedPlayer, false)}
               {#if radar.length && focusedPlayer.role !== 'GK'}
-                {@render radarChart(radar)}
+                <RadarChart values={radar} />
               {:else}
                 <span class="radar-empty">Вратарский профиль не входит в канон</span>
               {/if}
