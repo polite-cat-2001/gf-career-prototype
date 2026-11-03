@@ -85,6 +85,7 @@
   import SquadActions from './career/shared/SquadActions.svelte'
   import CentreRoster from './career/shared/CentreRoster.svelte'
   import PlayerBlock from './career/shared/PlayerBlock.svelte'
+  import CentreTab from './career/centre/CentreTab.svelte'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -2776,212 +2777,25 @@
     {/if}
 
     {#if tab === 'centre'}
-      <div class="hub-grid" inert={seasonReview || matchSimOpen || matchdayOpen ? true : undefined}>
-        {#if isMatchDay && nextMatch && !simulating && !advancing}
-          <div class="match-actions" style="grid-area: next">
-            <button class="match-action" data-nav data-autofocus onclick={playMatch}>
-              <div class="match-action-head">
-                <div>
-                  <span class="eyebrow">Матч</span>
-                  <strong class="match-action-title">Играть</strong>
-                </div>
-                <img
-                  class="match-action-crest"
-                  src={nextMatch.opponent.logo}
-                  alt=""
-                  onerror={hideBrokenImage}
-                />
-              </div>
-              <span class="match-action-meta">
-                Тур {nextMatch.round} · {shortDate(nextMatch.date)} · {nextMatch.home
-                  ? 'Дома'
-                  : 'В гостях'}
-              </span>
-              <div class="match-action-foot">
-                <span>vs {nextMatch.opponent.name}</span>
-                <span>{career.club.league_name}</span>
-              </div>
-            </button>
-
-            <button class="match-action" data-nav onclick={openMatchSimulation}>
-              <div class="match-action-head">
-                <div>
-                  <span class="eyebrow">Матч</span>
-                  <strong class="match-action-title">Симуляция</strong>
-                </div>
-                <Icon name="clock" size={34} />
-              </div>
-              <span class="match-action-meta">
-                Тур {nextMatch.round} · {shortDate(nextMatch.date)} · {nextMatch.home
-                  ? 'Дома'
-                  : 'В гостях'}
-              </span>
-              <div class="match-action-foot">
-                <span>vs {nextMatch.opponent.name}</span>
-                <span>{career.club.league_name}</span>
-              </div>
-            </button>
-          </div>
-        {:else}
-        <button
-          class="widget widget-next"
-          class:is-simulating={simulating}
-          style="grid-area: next"
-          data-nav
-          data-autofocus
-          onclick={handleNextWidget}
-        >
-          <div class="widget-head calendar-head">
-            <strong class="widget-title calendar-title" class:is-season={season.complete}>
-              {simulating
-                ? 'Остановить'
-                : season.complete
-                  ? 'Перейти в следующий сезон'
-                  : 'Далее'}
-            </strong>
-            <span class="calendar-month">{shortMonthLabel(displayDate)}</span>
-          </div>
-
-          <div class="day-window">
-            <div
-              class="day-track"
-              class:is-sliding={simulating}
-              style={`width:${trackWidth}%; --cells:${trackDays.length}; --shift:${trackShift}%`}
-            >
-              {#each trackDays as day (day.key)}
-                <div
-                  class="day"
-                  class:today={day.key === displayDate}
-                  class:is-match={nextMatch && day.key === nextMatch.date}
-                >
-                  <span class="day-week">{day.weekday}</span>
-                  <span class="day-num">{day.day}</span>
-                  {#if nextMatch && day.key === nextMatch.date}
-                    <img
-                      class="day-crest"
-                      src={nextMatch.opponent.logo}
-                      alt=""
-                      onerror={hideBrokenImage}
-                    />
-                  {/if}
-                </div>
-              {/each}
-            </div>
-          </div>
-
-          {#if nextMatch}
-            {@const homeTeam = nextMatch.home ? career.club : nextMatch.opponent}
-            {@const awayTeam = nextMatch.home ? nextMatch.opponent : career.club}
-            <div class="next-fixture">
-              <div class="fixture-side">
-                <img class="fixture-crest" src={homeTeam.logo} alt="" onerror={hideBrokenImage} />
-                <span class="fixture-name">{homeTeam.name}</span>
-              </div>
-              <span class="fixture-vs">VS</span>
-              <div class="fixture-side is-away">
-                <span class="fixture-name">{awayTeam.name}</span>
-                <img class="fixture-crest" src={awayTeam.logo} alt="" onerror={hideBrokenImage} />
-              </div>
-            </div>
-            <div class="calendar-foot">
-              <span class="next-meta">
-                {seasonLabel(displayDate)} · {competitionLabel(career.club.league_name)} · Тур
-                {nextMatch.round} · {nextMatch.home ? 'Дома' : 'В гостях'}
-              </span>
-              {#if season.form.length}
-                <div class="form-pills">
-                  {#each season.form as item (item.fixture_id)}
-                    <span
-                      class="form-pill"
-                      class:is-win={item.outcome === 'W'}
-                      class:is-draw={item.outcome === 'D'}
-                      class:is-loss={item.outcome === 'L'}
-                      title={`${item.opponent.name} ${item.goals_for}:${item.goals_against}`}
-                    >
-                      {item.outcome === 'W' ? 'В' : item.outcome === 'D' ? 'Н' : 'П'}
-                    </span>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-          {:else}
-            <div class="season-final">
-              <span class="season-final-title">Сезон завершён</span>
-              {#if ownRow}
-                <span>
-                  {ownRow.position}-е место · {ownRow.points}
-                  {plural(ownRow.points, 'очко', 'очка', 'очков')} · {ownRow.played}
-                  {plural(ownRow.played, 'матч', 'матча', 'матчей')}
-                </span>
-              {/if}
-            </div>
-            <div class="widget-action-bar season-cta">
-              <span>Перейти в следующий сезон</span>
-              <span>A</span>
-            </div>
-          {/if}
-        </button>
-        {/if}
-
-        <section class="widget widget-centre is-soon" style="grid-area: centre">
-          <div class="widget-head">
-            <div>
-              <span class="eyebrow">Переговоры</span>
-              <strong class="widget-title">Центр трансферов</strong>
-            </div>
-            <span class="soon-tag">нужен #4</span>
-          </div>
-          <Icon name="shirt" size={76} />
-          <p class="widget-note">Предложения, переговоры и подписания — после трансферного тикета.</p>
-          <div class="widget-dots" aria-hidden="true"><i class="active"></i><i></i><i></i></div>
-        </section>
-
-        <section class="widget widget-table" style="grid-area: table">
-          <div class="widget-head">
-            <strong class="widget-title widget-title-sm">Таблицы</strong>
-            <span class="soon-tag">{tableRound ? `Тур ${tableRound}` : 'Старт'}</span>
-          </div>
-          <div class="mini-table">
-            <div class="mini-row mini-head">
-              <span>#</span>
-              <span>Клуб</span>
-              <span>И</span>
-              <span>Р</span>
-              <span>О</span>
-            </div>
-            {#each tableRows as row (row.club_id)}
-              {#if row.gapBefore}
-                <div class="mini-gap" aria-hidden="true">⋯</div>
-              {/if}
-              <div class="mini-row" class:is-club={row.club_id === career.club.id}>
-                <span class="mini-pos">{row.position}</span>
-                <span class="mini-name">{row.club_name}</span>
-                <span>{row.played}</span>
-                <span>{row.goal_difference > 0 ? `+${row.goal_difference}` : row.goal_difference}</span>
-                <span class="mini-pts">{row.points}</span>
-              </div>
-            {/each}
-          </div>
-        </section>
-
-        <section class="widget widget-news is-soon" style="grid-area: news">
-          <div class="widget-head">
-            <strong class="widget-title widget-title-sm">Срочные новости</strong>
-            <span class="soon-tag">после #4</span>
-          </div>
-          <Icon name="news" size={68} />
-          <p class="widget-note">Лента новостей и результаты матчей — после календаря и матчей.</p>
-        </section>
-
-        <section class="widget widget-training is-soon" style="grid-area: training">
-          <div class="widget-head">
-            <strong class="widget-title widget-title-sm">Тренировка</strong>
-            <span class="soon-tag">после #4</span>
-          </div>
-          <Icon name="chart" size={56} />
-          <p class="widget-note">До пяти тренировок в неделю: характеристики, рейтинг и стоимость.</p>
-        </section>
-      </div>
+      <CentreTab
+        {career}
+        {season}
+        {nextMatch}
+        {displayDate}
+        {trackDays}
+        {trackWidth}
+        {trackShift}
+        {isMatchDay}
+        {simulating}
+        {advancing}
+        {ownRow}
+        {tableRows}
+        {tableRound}
+        inert={seasonReview || matchSimOpen || matchdayOpen}
+        onPlay={playMatch}
+        onOpenSimulation={openMatchSimulation}
+        onNext={handleNextWidget}
+      />
     {:else if tab === 'transfers'}
       {#if transfersView === 'hub'}
         <div class="tf-hub">
