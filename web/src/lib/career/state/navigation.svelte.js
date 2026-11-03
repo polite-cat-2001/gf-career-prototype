@@ -182,7 +182,7 @@ export function createNavigationState(ctx) {
         }
         if (transfers.transfersView === 'centre') {
           if (transfers.incomingOfferModalId) {
-            const offer = incomingOfferModal
+            const offer = transfers.incomingOfferModal
             const hasAction =
               offer && ['pending'].includes(offer.status)
             if (!hasAction) {
@@ -195,7 +195,7 @@ export function createNavigationState(ctx) {
             ]
           }
           if (transfers.transferOfferModalId) {
-            const offer = transferOfferModal
+            const offer = transfers.transferOfferModal
             const hasAction =
               offer &&
               offer.status !== 'pending' &&
