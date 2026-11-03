@@ -88,6 +88,11 @@
   import CentreTab from './career/centre/CentreTab.svelte'
   import SquadOverview from './career/squad/SquadOverview.svelte'
   import SquadCentre from './career/squad/SquadCentre.svelte'
+  import PlanView from './career/squad/PlanView.svelte'
+  import NumberScreen from './career/squad/NumberScreen.svelte'
+  import ReleaseScreen from './career/squad/ReleaseScreen.svelte'
+  import AmountKeypad from './career/squad/AmountKeypad.svelte'
+  import NegotiationScreen from './career/squad/NegotiationScreen.svelte'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -3945,385 +3950,72 @@
         {finance}
       />
     {:else if tab === 'squad' && (view === 'plan' || view === 'details') && focusedPlayer}
-      <div class="plan">
-        <div class="plan-stage" class:has-drawer={view === 'plan'}>
-          <nav class="plan-tabs" aria-label="План игры">
-            {#each planTabs as item (item.label)}
-              <span class="plan-tab" class:active={item.active}>{item.label}</span>
-            {/each}
-          </nav>
-
-          {#if comparing}
-            <div class="player-head compare-head">
-              <PlayerBlock player={anchorPlayer} mirrored={false} comparing={comparing} anchorPlayer={anchorPlayer} focusedPlayer={focusedPlayer} lineup={lineup} />
-              {#if radar.length && focusedPlayer.role !== 'GK'}
-                <RadarChart
-              values={anchorRadar.length ? anchorRadar : radar}
-              secondary={anchorRadar.length ? radar : null}
-            />
-              {:else}
-                <span class="radar-empty">Вратарский профиль не входит в канон</span>
-              {/if}
-              <PlayerBlock player={focusedPlayer} mirrored={true} comparing={comparing} anchorPlayer={anchorPlayer} focusedPlayer={focusedPlayer} lineup={lineup} />
-            </div>
-          {:else}
-            <div class="player-head">
-              <PlayerBlock player={focusedPlayer} mirrored={false} comparing={comparing} anchorPlayer={anchorPlayer} focusedPlayer={focusedPlayer} lineup={lineup} />
-              {#if radar.length && focusedPlayer.role !== 'GK'}
-                <RadarChart values={radar} />
-              {:else}
-                <span class="radar-empty">Вратарский профиль не входит в канон</span>
-              {/if}
-            </div>
-          {/if}
-
-          {#if view === 'details'}
-            <section class="details-panel" data-nav tabindex="-1" aria-label="Подробности игрока">
-              <strong class="details-title">{detailPages[detailsPage].label}</strong>
-
-              {#if detailsPage === 0}
-                <div class="details-list details-info">
-                  {#each infoRows as row (row.label)}
-                    <div class="details-row info-row" class:is-compare={comparing}>
-                      <span class="info-value">{row.left}</span>
-                      <span class="details-label">{row.label}</span>
-                      {#if comparing}
-                        <span class="info-value right">{row.right}</span>
-                      {:else}
-                        <span class="details-spacer"></span>
-                      {/if}
-                    </div>
-                  {/each}
-                </div>
-              {:else if detailsPage === 3}
-                <div class="details-list details-info">
-                  {#each seasonRows as row (row.key)}
-                    <div class="details-row info-row" class:is-compare={comparing}>
-                      <span class="info-value">{row.left}</span>
-                      <span class="details-label">{row.label}</span>
-                      {#if comparing}
-                        <span class="info-value right">{row.right}</span>
-                      {:else}
-                        <span class="details-spacer"></span>
-                      {/if}
-                    </div>
-                  {/each}
-                </div>
-              {:else}
-                <div class="details-list">
-                  {#each detailGroups as group (group.id)}
-                    <div class="details-group">
-                      <span class="details-group-label">{group.label}</span>
-                      {#each group.rows as row (row.key)}
-                        {@const right = comparing ? Math.round(focusedPlayer.stats[row.key] ?? 0) : null}
-                        {@const left = comparing ? Math.round(anchorPlayer.stats[row.key] ?? 0) : row.value}
-                        <div class="details-row" class:is-compare={comparing}>
-                          <span class="details-value {comparing ? compareTone(left, right) : statTone(left)}">
-                            {left}
-                          </span>
-                          <span class="details-label">{row.label}</span>
-                          {#if comparing}
-                            <span class="details-value {compareTone(right, left)}">{right}</span>
-                          {:else}
-                            <span class="details-spacer"></span>
-                          {/if}
-                        </div>
-                      {/each}
-                    </div>
-                  {/each}
-                </div>
-              {/if}
-
-              <div class="details-dots" aria-hidden="true">
-                {#each detailPages as page, index (page.id)}
-                  <i class:active={index === detailsPage}></i>
-                {/each}
-              </div>
-            </section>
-          {:else}
-            <div class="pitch pitch-plan-large">
-              <span class="pitch-surface"></span>
-              <svg class="pitch-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                <polygon points="13,2 87,2 98,98 2,98"></polygon>
-                <line x1="7" y1="50" x2="93" y2="50"></line>
-                <ellipse cx="50" cy="50" rx="12" ry="16"></ellipse>
-                <polygon points="33,2 67,2 70,18 30,18"></polygon>
-                <polygon points="25,98 75,98 70,80 30,80"></polygon>
-              </svg>
-              {#each lineup.slots as slot (slot.position + slot.player.id)}
-                <PlayerCard
-                  player={slot.player}
-                  role={slot.role}
-                  interactive
-                  selected={anchorId === slot.player.id}
-                  positionStyle={`left:${pitchX(slot.x, slot.y)}%; top:${pitchY(slot.y)}%`}
-                  onfocus={(event) => {
-                    focusPlayerId = slot.player.id
-                    benchFocused = false
-                    revealName(event)
-                  }}
-                  onmouseenter={revealName}
-                  onclick={() => activatePlayer(slot.player)}
-                />
-              {/each}
-              <StrengthBadge display={teamDisplay} comparing={comparing} delta={teamDelta} />
-            </div>
-
-          {/if}
-
-          {#if view === 'plan'}
-            <BenchDrawer
-              bench={lineup.bench}
-              reserve={lineup.reserve ?? []}
-              open={benchFocused}
-              selectedId={anchorId}
-              onfocus={(player) => {
-                benchFocused = true
-                focusPlayerId = player.id
-              }}
-              onactivate={activatePlayer}
-              onleave={() => (benchFocused = false)}
-            />
-          {/if}
-        </div>
-
-        <div class="plan-crest" aria-hidden="true">
-          <img src={career.club.logo} alt="" onerror={hideBrokenImage} />
-        </div>
-      </div>
+      <PlanView
+        {view}
+        {planTabs}
+        {comparing}
+        {anchorPlayer}
+        {focusedPlayer}
+        {lineup}
+        {radar}
+        {anchorRadar}
+        {detailsPage}
+        {detailPages}
+        {infoRows}
+        {seasonRows}
+        {detailGroups}
+        {anchorId}
+        {teamDisplay}
+        {teamDelta}
+        {career}
+        {benchFocused}
+        onCardFocus={(player, event) => {
+          focusPlayerId = player.id
+          benchFocused = false
+          revealName(event)
+        }}
+        onCardEnter={revealName}
+        onCardActivate={activatePlayer}
+        onBenchFocus={(player) => {
+          benchFocused = true
+          focusPlayerId = player.id
+        }}
+        onBenchActivate={activatePlayer}
+        onBenchLeave={() => (benchFocused = false)}
+      />
     {:else if tab === 'squad' && view === 'number' && centrePlayer}
-      <div class="number-screen">
-        <div class="number-stage">
-          <button
-            class="number-shirt"
-            data-nav
-            data-cycle="number"
-            data-autofocus
-            aria-label={`Игровой номер ${numberCandidate ?? '—'}`}
-            onclick={confirmNumber}
-          >
-            <svg viewBox="0 0 120 120" aria-hidden="true">
-              <path
-                class="number-shirt-shape"
-                d="M36 8 44 4 48 12Q60 20 72 12L76 4 84 8 116 32 104 50 94 44 94 112 26 112 26 44 16 50 4 32Z"
-              ></path>
-              <text x="60" y="84" text-anchor="middle">{numberCandidate ?? '—'}</text>
-            </svg>
-          </button>
-          <div class="number-copy">
-            <span class="eyebrow">Смена игрового номера</span>
-            <strong class="number-name">{playerInitialName(centrePlayer)}</strong>
-            <span class="number-note">Свободные номера 1–99 · занятые пропускаются</span>
-            <span class="number-note">Текущий номер: {centrePlayer.shirt_number ?? '—'}</span>
-          </div>
-        </div>
-      </div>
+      <NumberScreen
+        player={centrePlayer}
+        candidate={numberCandidate}
+        onConfirm={confirmNumber}
+      />
     {:else if tab === 'squad' && view === 'release' && centrePlayer}
-      <div class="release-screen">
-        <span class="eyebrow">Расторжение контракта</span>
-        <strong class="release-title">Отпустить {playerInitialName(centrePlayer)}?</strong>
-        <p class="release-note">
-          Игрок покинет клуб и исчезнет из состава. Действие нельзя отменить.
-        </p>
-        <div class="release-actions">
-          <button class="shelf-action is-danger" data-nav onclick={confirmRelease}>
-            Отпустить игрока
-          </button>
-          <button class="shelf-action" data-nav data-autofocus onclick={closeReleaseScreen}>
-            Отмена
-          </button>
-        </div>
-      </div>
+      <ReleaseScreen
+        player={centrePlayer}
+        onConfirm={confirmRelease}
+        onCancel={closeReleaseScreen}
+      />
     {:else if tab === 'squad' && view === 'amount' && centrePlayer && amountField}
-      <div class="amount-screen">
-        <span class="eyebrow">
-          {amountField === 'weekly_wage' ? 'Зарплата в неделю' : 'Отступные'}
-        </span>
-        <button
-          class="amount-value"
-          data-nav
-          data-amount
-          data-cycle="amount"
-          data-autofocus
-          aria-label="Сумма"
-          onclick={finishAmount}
-        >
-          {#each amountGroups as group, groupIndex (groupIndex)}
-            <span class="amount-group">
-              {#each group.digits as digit, digitIndex (digitIndex)}
-                <span
-                  class="amount-digit"
-                  class:is-selected={group.start + digitIndex === amountIndex}
-                >
-                  {digit}
-                </span>
-              {/each}
-            </span>
-          {/each}
-        </button>
-        <span class="amount-place">Разряд: {AMOUNT_PLACES[amountIndex]}</span>
-      </div>
+      <AmountKeypad
+        field={amountField}
+        groups={amountGroups}
+        index={amountIndex}
+        places={AMOUNT_PLACES}
+        onFinish={finishAmount}
+      />
     {:else if tab === 'squad' && view === 'negotiation' && centrePlayer && negotiationDraft}
-      <div class="negotiation">
-        <aside class="negotiation-player scroll-area">
-          <CentreProfile player={centrePlayer} eyebrow={'Продление контракта'} />
-          <section class="centre-block">
-            <div class="centre-block-head">Текущий контракт</div>
-            <CentreInfoRow label={'Амплуа'} value={centrePlayer.squad_role_label ?? '—'} />
-            <CentreInfoRow label={'Срок'} value={`${centrePlayer.contract?.years ?? 1} ${plural(
-                centrePlayer.contract?.years ?? 1,
-                'год',
-                'года',
-                'лет',
-              )}`} />
-            <CentreInfoRow label={'Зарплата'} value={`${formatValue(centrePlayer.contract?.weekly_wage ?? 0)} / нед.`} />
-            <CentreInfoRow label={'Отступные'} value={formatValue(centrePlayer.contract?.release_clause ?? 0)} />
-          </section>
-        </aside>
-
-        <section class="negotiation-form scroll-area">
-          {#if negotiationState?.status === 'pending'}
-            <div class="negotiation-head">
-              <span class="eyebrow">Ожидание ответа</span>
-              <strong class="negotiation-title">Игрок думает</strong>
-            </div>
-            <p class="negotiation-note">
-              {negotiationState.message}
-              {#if negotiationState.due}
-                Ответ до {formatDate(negotiationState.due)}
-              {/if}
-            </p>
-<ContractTerms terms={negotiationState.offer} />
-          {:else if negotiationState?.status === 'accepted'}
-            <div class="negotiation-head">
-              <span class="eyebrow">Согласовано</span>
-              <strong class="negotiation-title">Условия приняты</strong>
-            </div>
-            <p class="negotiation-note">{negotiationState.message}</p>
-<ContractTerms terms={negotiationTerms} />
-          {:else}
-            <div class="negotiation-head">
-              <span class="eyebrow">Новый контракт</span>
-              <strong class="negotiation-title">Условия</strong>
-            </div>
-
-            <div class="negotiation-fields">
-              <button
-                class="neg-field"
-                data-nav
-                data-cycle="negotiation"
-                data-field="weekly_wage"
-                data-autofocus
-                onclick={() => openAmount('weekly_wage')}
-              >
-                <span class="neg-field-label">Зарплата в неделю</span>
-                <strong class="neg-field-value">{formatValue(negotiationDraft.weekly_wage)}</strong>
-                <span class="neg-field-hint">← → шаг · A точная сумма</span>
-              </button>
-              <button
-                class="neg-field"
-                data-nav
-                data-cycle="negotiation"
-                data-field="years"
-                onclick={() => adjustNegotiationField('years', 1)}
-              >
-                <span class="neg-field-label">Срок</span>
-                <strong class="neg-field-value">
-                  {negotiationDraft.years}
-                  {plural(negotiationDraft.years, 'год', 'года', 'лет')}
-                </strong>
-                <span class="neg-field-hint">← → изменить срок</span>
-              </button>
-              <button
-                class="neg-field"
-                data-nav
-                data-cycle="negotiation"
-                data-field="squad_role"
-                onclick={() => adjustNegotiationField('squad_role', 1)}
-              >
-                <span class="neg-field-label">Амплуа</span>
-                <strong class="neg-field-value">{contractRoleLabel(negotiationDraft.squad_role)}</strong>
-                <span class="neg-field-hint">← → выбрать амплуа</span>
-              </button>
-              <button
-                class="neg-field"
-                data-nav
-                data-cycle="negotiation"
-                data-field="release_clause"
-                onclick={() => openAmount('release_clause')}
-              >
-                <span class="neg-field-label">Отступные</span>
-                <strong class="neg-field-value">
-                  {formatValue(negotiationDraft.release_clause)}
-                </strong>
-                <span class="neg-field-hint">← → шаг · A точная сумма</span>
-              </button>
-            </div>
-
-            {#if negotiationState?.counter}
-              <div class="neg-reply">
-                <span class="eyebrow">Контрпредложение игрока</span>
-                <p class="negotiation-note">{negotiationState.message}</p>
-<ContractTerms terms={negotiationState.counter} />
-              </div>
-            {:else if negotiationState?.status === 'refused'}
-              <div class="neg-reply is-refused">
-                <span class="eyebrow">Отказ</span>
-                <p class="negotiation-note">{negotiationState.message}</p>
-              </div>
-            {/if}
-          {/if}
-
-          <div class="negotiation-actions">
-            {#if negotiationState?.status === 'pending'}
-              <button
-                class="shelf-action is-primary"
-                data-nav
-                data-autofocus
-                onclick={closeNegotiationScreen}
-              >
-                Вернуться
-              </button>
-            {:else if negotiationState?.status === 'accepted'}
-              {#if negotiationState.affordable === false}
-                <p class="negotiation-note is-warning">
-                  Недостаточно средств, чтобы подписать контракт.
-                </p>
-              {/if}
-              <button
-                class="shelf-action is-primary"
-                data-nav
-                data-autofocus
-                disabled={negotiationState.affordable === false}
-                onclick={signNegotiation}
-              >
-                Подписать контракт
-              </button>
-            {:else}
-              {#if negotiationState?.counter}
-                {#if negotiationState.affordable === false}
-                  <p class="negotiation-note is-warning">
-                    Недостаточно средств, чтобы принять условия игрока.
-                  </p>
-                {/if}
-                <button
-                  class="shelf-action"
-                  data-nav
-                  disabled={negotiationState.affordable === false}
-                  onclick={acceptCounterOffer}
-                >
-                  Принять условия игрока
-                </button>
-              {/if}
-              <button class="shelf-action is-primary" data-nav onclick={submitNegotiation}>
-                {negotiationState?.status === 'refused'
-                  ? 'Предложить снова'
-                  : 'Предложить условия'}
-              </button>
-            {/if}
-          </div>
-        </section>
-      </div>
+      <NegotiationScreen
+        player={centrePlayer}
+        state={negotiationState}
+        terms={negotiationTerms}
+        draft={negotiationDraft}
+        onOpenAmount={openAmount}
+        onAdjustField={adjustNegotiationField}
+        onClose={closeNegotiationScreen}
+        onSign={signNegotiation}
+        onAcceptCounter={acceptCounterOffer}
+        onSubmit={submitNegotiation}
+      />
     {/if}
   </main>
 
