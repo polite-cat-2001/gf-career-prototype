@@ -50,6 +50,7 @@
     transferHubCards,
   } from './career/constants/transfers.js'
   import { OSK_LIMIT, OSK_ROWS, REPORT_PAGE_SIZE } from './career/constants/scouting.js'
+  import { pitchX, pitchY } from './career/utils/pitch.js'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -2904,14 +2905,6 @@
     focusPlayerId = player.id
     await tick()
     focusPlayer(player.id)
-  }
-
-  function pitchX(x, y) {
-    return 50 + (x - 50) * (0.62 + 0.38 * (y / 100))
-  }
-
-  function pitchY(y) {
-    return 8 + y * 0.84
   }
 
   function radarPoints(values, radius = 44, centre = 72) {
