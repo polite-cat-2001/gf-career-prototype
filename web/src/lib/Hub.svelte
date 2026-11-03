@@ -68,6 +68,12 @@
     tableRows as computeTableRows,
   } from './career/utils/table.js'
   import {
+    trackDays as computeTrackDays,
+    trackIndex as computeTrackIndex,
+    trackShift as computeTrackShift,
+    trackWidth as computeTrackWidth,
+  } from './career/utils/calendar.js'
+  import {
     CONTRACT_ROLES,
     attributeGroups,
     compareTone,
@@ -213,14 +219,12 @@
   let matchdayData = $derived(matchdaySnapshot ?? season?.last_matchday ?? null)
   let displayDate = $derived(simulating && simDate ? simDate : career.date)
   let days = $derived(weekStrip(displayDate, 7))
-  let trackDays = $derived(simulating && simStart ? weekStrip(simStart, 14) : days)
+  let trackDays = $derived(computeTrackDays(simulating, simStart, days))
   let trackIndex = $derived(
-    simulating && simStart && trackDays.length
-      ? Math.max(0, Math.min(daysBetween(simStart, displayDate), trackDays.length - 1))
-      : 0,
+    computeTrackIndex(simulating, simStart, trackDays, displayDate),
   )
-  let trackWidth = $derived((trackDays.length / 7) * 100)
-  let trackShift = $derived(trackDays.length ? (trackIndex / trackDays.length) * 100 : 0)
+  let trackWidth = $derived(computeTrackWidth(trackDays))
+  let trackShift = $derived(computeTrackShift(trackDays, trackIndex))
   let isMatchDay = $derived(Boolean(nextMatch && displayDate >= nextMatch.date))
   let daysToMatch = $derived(nextMatch ? daysBetween(displayDate, nextMatch.date) : 0)
   let ownRow = $derived(findOwnRow(season?.standings, career.club.id))
