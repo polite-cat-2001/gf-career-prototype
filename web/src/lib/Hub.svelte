@@ -78,6 +78,7 @@
     transferPositionShort,
     transferValueMeta,
   } from './career/utils/transfers.js'
+  import ContractTerms from './career/shared/ContractTerms.svelte'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -2759,30 +2760,6 @@
     </div>
   </header>
 
-    {#snippet contractTerms(terms)}
-      <div class="neg-term-grid">
-        <div class="neg-term">
-          <span>Зарплата / нед.</span>
-          <strong>{formatValue(terms.weekly_wage)}</strong>
-        </div>
-        <div class="neg-term">
-          <span>Срок</span>
-          <strong>
-            {terms.years}
-            {plural(terms.years, 'год', 'года', 'лет')}
-          </strong>
-        </div>
-        <div class="neg-term">
-          <span>Амплуа</span>
-          <strong>{contractRoleLabel(terms.squad_role)}</strong>
-        </div>
-        <div class="neg-term">
-          <span>Отступные</span>
-          <strong>{formatValue(terms.release_clause)}</strong>
-        </div>
-      </div>
-    {/snippet}
-
   <main class="screen hub-screen">
     {#snippet radarChart(values, secondary)}
       <svg class="radar" viewBox="0 0 144 144" aria-hidden="true">
@@ -3930,7 +3907,7 @@
                 {/if}
               </p>
               {#if transferContractState.offer}
-                {@render contractTerms(transferContractState.offer)}
+<ContractTerms terms={transferContractState.offer} />
               {/if}
             {:else if transferContractState?.status === 'accepted'}
               <div class="negotiation-head">
@@ -3939,7 +3916,7 @@
               </div>
               <p class="negotiation-note">{transferContractState.message}</p>
               {#if transferContractTerms}
-                {@render contractTerms(transferContractTerms)}
+<ContractTerms terms={transferContractTerms} />
               {/if}
               <p class="negotiation-note">
                 Переход вступит в силу сразу, если трансферное окно открыто, иначе — при его
@@ -4013,7 +3990,7 @@
                   <div class="neg-reply">
                     <span class="eyebrow">Контрпредложение игрока</span>
                     <p class="negotiation-note">{transferContractState.message}</p>
-                    {@render contractTerms(transferContractState.counter)}
+<ContractTerms terms={transferContractState.counter} />
                   </div>
                 {:else if transferContractState?.status === 'refused'}
                   <div class="neg-reply is-refused">
@@ -5138,14 +5115,14 @@
                 Ответ до {formatDate(negotiationState.due)}
               {/if}
             </p>
-            {@render contractTerms(negotiationState.offer)}
+<ContractTerms terms={negotiationState.offer} />
           {:else if negotiationState?.status === 'accepted'}
             <div class="negotiation-head">
               <span class="eyebrow">Согласовано</span>
               <strong class="negotiation-title">Условия приняты</strong>
             </div>
             <p class="negotiation-note">{negotiationState.message}</p>
-            {@render contractTerms(negotiationTerms)}
+<ContractTerms terms={negotiationTerms} />
           {:else}
             <div class="negotiation-head">
               <span class="eyebrow">Новый контракт</span>
@@ -5209,7 +5186,7 @@
               <div class="neg-reply">
                 <span class="eyebrow">Контрпредложение игрока</span>
                 <p class="negotiation-note">{negotiationState.message}</p>
-                {@render contractTerms(negotiationState.counter)}
+<ContractTerms terms={negotiationState.counter} />
               </div>
             {:else if negotiationState?.status === 'refused'}
               <div class="neg-reply is-refused">
