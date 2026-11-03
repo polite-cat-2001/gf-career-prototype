@@ -806,20 +806,23 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
 
     club_catalog: list[dict] | None = None
     club_roles: dict[str, dict[str, dict]] | None = None
+    club_market_stats: dict[str, dict] | None = None
 
-    def incoming_market() -> tuple[list[dict], dict[str, dict[str, dict]]]:
-        nonlocal club_catalog, club_roles
+    def incoming_market() -> tuple[list[dict], dict[str, dict[str, dict]], dict[str, dict]]:
+        nonlocal club_catalog, club_roles, club_market_stats
         if club_catalog is None:
             club_catalog = canon.clubs(limit=10_000)
         if club_roles is None:
             club_roles = canon.club_role_stats()
-        return club_catalog, club_roles
+        if club_market_stats is None:
+            club_market_stats = canon.club_market_stats()
+        return club_catalog, club_roles, club_market_stats
 
     def advance_incoming_offers(career) -> None:
         players = canon.players_by_ids(career.player_ids)
         previous_date = career.incoming_market_date or career.date
         if players and previous_date < career.date:
-            catalog, roles = incoming_market()
+            catalog, roles, stats = incoming_market()
             generate_incoming_offers(
                 career,
                 previous_date,
@@ -827,6 +830,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                 players,
                 catalog,
                 roles,
+                stats,
             )
         career.incoming_market_date = career.date
         execute_pending_departures(career)
@@ -1071,7 +1075,6 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             for record in (
                 career.world_transfers
                 + career.transfer_history
-                + career.transfer_offers
                 + career.incoming_offers
             )
             if record.get("player_id")
@@ -1142,53 +1145,29 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             entry({**record, "source": "manager"})
             for record in career.transfer_history
         )
-        settled_offers = {
+        recorded_offers = {
             str(record.get("offer_id"))
             for record in career.transfer_history
             if record.get("offer_id")
         }
-        for offer in career.transfer_offers:
-            if str(offer.get("id")) in settled_offers:
-                continue
-            player = players.get(str(offer.get("player_id") or "")) or {}
-            fee = (
-                int(offer.get("loan_fee") or 0)
-                if str(offer.get("kind")) == "loan"
-                else int(offer.get("amount") or 0)
-            )
-            entries.append(
-                entry(
-                    {
-                        "id": str(offer.get("id") or ""),
-                        "player_id": str(offer.get("player_id") or ""),
-                        "overall": offer.get("overall", player.get("overall")),
-                        "from_club_id": player.get("club_id"),
-                        "to_club_id": manager_club_id,
-                        "fee": fee,
-                        "kind": str(offer.get("kind") or "transfer"),
-                        "status": str(offer.get("status") or "pending"),
-                        "source": "sent",
-                        "date": offer.get("created_at"),
-                    }
-                )
-            )
         for offer in career.incoming_offers:
-            if str(offer.get("id")) in settled_offers:
+            if not offer.get("executed_at"):
                 continue
-            player = players.get(str(offer.get("player_id") or "")) or {}
+            if str(offer.get("id")) in recorded_offers:
+                continue
             entries.append(
                 entry(
                     {
                         "id": str(offer.get("id") or ""),
                         "player_id": str(offer.get("player_id") or ""),
-                        "overall": offer.get("overall", player.get("overall")),
-                        "from_club_id": offer.get("club_id"),
-                        "to_club_id": manager_club_id,
+                        "overall": offer.get("overall"),
+                        "from_club_id": manager_club_id,
+                        "to_club_id": offer.get("club_id"),
                         "fee": int(offer.get("amount") or 0),
                         "kind": str(offer.get("kind") or "transfer"),
-                        "status": str(offer.get("status") or "pending"),
-                        "source": "received",
-                        "date": offer.get("created_at"),
+                        "status": "completed",
+                        "source": "manager",
+                        "date": offer.get("executed_at"),
                     }
                 )
             )
@@ -1273,6 +1252,8 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
 
         received_offers = []
         for offer in reversed(career.incoming_offers):
+            if str(offer.get("status")) != "pending":
+                continue
             player = entry(str(offer.get("player_id") or ""), True)
             if player is None:
                 continue

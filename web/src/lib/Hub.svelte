@@ -4121,7 +4121,9 @@
                           {#if offer.status === 'counter' && offer.due}
                             · ответ до {formatDate(offer.due)}
                           {/if}
-                          {#if offer.execute_on && offer.status === 'accepted'}
+                          {#if offer.executed_at}
+                            · переход завершён
+                          {:else if offer.execute_on && offer.status === 'accepted'}
                             · переход {formatDate(offer.execute_on)}
                           {/if}
                         </span>

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date, timedelta
 
 from fastapi.testclient import TestClient
@@ -133,6 +134,69 @@ def test_ai_sends_one_or_two_offers_in_a_window_week(client: TestClient):
     assert len(pairs) == len(set(pairs))
 
 
+def test_top_players_are_only_bid_by_comparable_clubs(client: TestClient):
+    career = create_api_career(client)
+    updated = advance_days(client, career["id"], 6)
+    canon = client.app.state.canon
+    stats = canon.club_market_stats()
+    asserts = 0
+    for offer in received(updated):
+        club = canon.club(offer["club_id"])
+        overall = float(offer["overall"])
+        if overall >= 82:
+            assert club["tier_rank"] == 1
+        elif overall >= 75:
+            assert club["tier_rank"] <= 2
+        elif overall >= 68:
+            assert club["tier_rank"] <= 3
+        elif overall >= 60:
+            assert club["tier_rank"] <= 4
+        club_stats = stats[str(offer["club_id"])]
+        assert overall - club_stats["best"] <= 9
+        if offer["kind"] == "transfer":
+            player = canon.player(offer["id"])
+            value = max(int(player.get("market_value") or 0), 50_000)
+            assert value * 0.75 <= club_stats["value"] * 0.30
+        asserts += 1
+    assert asserts
+
+
+def test_low_division_clubs_do_not_bid_for_top_players():
+    career = make_career()
+    club_list = clubs()
+    club_list[1]["tier_rank"] = 4
+    generate_incoming_offers(
+        career,
+        "2026-07-01",
+        "2026-07-07",
+        players(12, overall=85.0),
+        club_list,
+        roles(),
+    )
+    assert career.incoming_offers
+    assert all(
+        offer["club_id"] != "domestic" for offer in career.incoming_offers
+    )
+
+
+def test_weak_clubs_are_filtered_by_strength_and_budget():
+    career = make_career()
+    club_stats = {
+        "domestic": {"count": 20, "value": 1_000_000, "best": 60.0},
+        "foreign": {"count": 20, "value": 1_000_000, "best": 60.0},
+    }
+    generate_incoming_offers(
+        career,
+        "2026-07-01",
+        "2026-07-07",
+        players(12, overall=80.0),
+        clubs(),
+        roles(),
+        club_stats,
+    )
+    assert career.incoming_offers == []
+
+
 def test_foreign_clubs_only_bid_for_players_above_threshold(client: TestClient):
     career = create_api_career(client)
     updated = advance_days(client, career["id"], 6)
@@ -178,6 +242,60 @@ def test_offer_expires_after_a_month():
     career.date = offer["expires_at"]
     resolve_incoming_offers(career)
     assert offer["status"] == "expired"
+
+
+def test_refused_offer_disappears_from_received_list(client: TestClient):
+    career = create_api_career(client)
+    updated = advance_days(client, career["id"], 6)
+    offer = received(updated)[0]
+    response = client.post(
+        f"/api/careers/{career['id']}/actions",
+        json={"type": "incoming_refuse", "offer_id": offer["offer_id"]},
+    )
+    assert response.status_code == 200, response.text
+    current = response.json()
+    assert all(
+        item["offer_id"] != offer["offer_id"]
+        for item in received(current)
+    )
+    assert all(item["status"] != "refused" for item in received(current))
+
+
+def test_received_list_only_contains_offers_that_need_an_answer(
+    client: TestClient, saves_dir
+):
+    career = create_api_career(client)
+    updated = advance_days(client, career["id"], 6)
+    first = received(updated)[0]
+    response = client.post(
+        f"/api/careers/{career['id']}/actions",
+        json={
+            "type": "incoming_counter",
+            "offer_id": first["offer_id"],
+            "amount": int(first["amount"] * 1.2),
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert all(
+        item["offer_id"] != first["offer_id"]
+        for item in received(response.json())
+    )
+
+    pending = received(response.json())
+    assert pending
+    target = pending[0]
+    path = saves_dir / f"{career['id']}.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    for offer in raw["incoming_offers"]:
+        if offer["id"] == target["offer_id"]:
+            offer["status"] = "expired"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    restored = client.get(f"/api/careers/{career['id']}")
+    assert restored.status_code == 200, restored.text
+    items = received(restored.json())
+    assert all(item["offer_id"] != target["offer_id"] for item in items)
+    assert all(item["status"] == "pending" for item in items)
 
 
 def test_accept_inside_window_removes_player_and_pays_fee():

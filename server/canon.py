@@ -210,6 +210,25 @@ class Canon:
             player.pop("stats", None)
         return rows
 
+    def club_market_stats(self) -> dict[str, dict]:
+        query = """
+            SELECT club_id, COUNT(*) AS count, SUM(market_value) AS value,
+                MAX(overall) AS best
+            FROM players
+            WHERE club_id IS NOT NULL
+            GROUP BY club_id
+        """
+        with self._connect() as connection:
+            rows = connection.execute(query).fetchall()
+        return {
+            str(row["club_id"]): {
+                "count": int(row["count"] or 0),
+                "value": int(row["value"] or 0),
+                "best": float(row["best"] or 0),
+            }
+            for row in rows
+        }
+
     def club_role_stats(self) -> dict[str, dict[str, dict]]:
         query = """
             SELECT club_id, role, COUNT(*) AS count, MAX(overall) AS best

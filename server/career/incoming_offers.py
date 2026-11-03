@@ -16,6 +16,10 @@ DAILY_LIMIT = 2
 RESPONSE_DAYS = (2, 3, 4)
 FOREIGN_OVERALL_THRESHOLD = 75.0
 MIN_MARKET_VALUE = 50_000
+MAX_OVERALL_GAP = 9.0
+MAX_FEE_SQUAD_SHARE = 0.30
+MIN_OFFER_VALUE_SHARE = 0.75
+TIER_LIMITS = ((82.0, 1), (75.0, 2), (68.0, 3), (60.0, 4))
 
 ACTIVE_STATUSES = ("pending", "counter")
 
@@ -61,6 +65,13 @@ def _player_value(career: Career, player: dict) -> int:
 
 def _player_overall(player: dict) -> float:
     return float(player.get("overall") or 0)
+
+
+def _max_tier(overall: float) -> int:
+    for threshold, tier in TIER_LIMITS:
+        if overall >= threshold:
+            return tier
+    return 6
 
 
 def _window_bounds(day: date) -> tuple[date, date] | None:
@@ -208,6 +219,8 @@ def _buyer_candidates(
     player: dict,
     clubs: list[dict],
     roles: dict[str, dict[str, dict]],
+    club_stats: dict[str, dict] | None = None,
+    kind: str = "transfer",
 ) -> tuple[list[dict], list[float]]:
     own_club_id = str(career.club_id)
     own_country = None
@@ -215,7 +228,10 @@ def _buyer_candidates(
         if str(club["id"]) == own_club_id:
             own_country = str(club.get("country_id") or "")
             break
-    foreign_allowed = _player_overall(player) >= FOREIGN_OVERALL_THRESHOLD
+    overall = _player_overall(player)
+    foreign_allowed = overall >= FOREIGN_OVERALL_THRESHOLD
+    max_tier = _max_tier(overall)
+    value = _player_value(career, player)
     role = str(player.get("role") or "")
     candidates: list[dict] = []
     weights: list[float] = []
@@ -228,14 +244,33 @@ def _buyer_candidates(
         foreign = str(club.get("country_id") or "") != own_country
         if foreign and not foreign_allowed:
             continue
+        tier = int(club.get("tier_rank") or 99)
+        if tier > max_tier:
+            continue
         need = _club_need(club_id, role, player, roles)
         if need <= 0:
             continue
+        stats = (club_stats or {}).get(club_id) or {}
+        if stats:
+            best = float(stats.get("best") or 0)
+            if best and overall - best > MAX_OVERALL_GAP:
+                continue
+            squad_value = int(stats.get("value") or 0)
+            if (
+                kind == "transfer"
+                and squad_value > 0
+                and value * MIN_OFFER_VALUE_SHARE
+                > squad_value * MAX_FEE_SQUAD_SHARE
+            ):
+                continue
         weight = need
         if not foreign:
             weight *= 1.6
-        tier = int(club.get("tier_rank") or 99)
         weight *= 1.0 if tier <= 1 else 0.8
+        if stats:
+            best = float(stats.get("best") or 0)
+            if best:
+                weight *= 1.0 + max(0.0, best - overall + 5.0) / 10.0
         candidates.append(club)
         weights.append(weight)
     return candidates, weights
@@ -287,6 +322,7 @@ def create_incoming_offer(
     players: list[dict],
     clubs: list[dict],
     roles: dict[str, dict[str, dict]],
+    club_stats: dict[str, dict] | None = None,
 ) -> dict | None:
     rng = _rng(career, "incoming-offer", day.isoformat(), len(career.incoming_offers))
     for _ in range(24):
@@ -294,7 +330,9 @@ def create_incoming_offer(
         if player is None:
             return None
         kind = _choose_kind(career, player, rng)
-        candidates, weights = _buyer_candidates(career, player, clubs, roles)
+        candidates, weights = _buyer_candidates(
+            career, player, clubs, roles, club_stats, kind
+        )
         if not candidates:
             continue
         club = rng.choices(candidates, weights=weights, k=1)[0]
@@ -356,6 +394,7 @@ def generate_incoming_offers(
     players: list[dict],
     clubs: list[dict],
     roles: dict[str, dict[str, dict]],
+    club_stats: dict[str, dict] | None = None,
 ) -> None:
     try:
         current = date.fromisoformat(previous_date[:10])
@@ -374,7 +413,9 @@ def generate_incoming_offers(
         while created < pace_target:
             if not deadline and daily >= DAILY_LIMIT:
                 break
-            offer = create_incoming_offer(career, day, players, clubs, roles)
+            offer = create_incoming_offer(
+                career, day, players, clubs, roles, club_stats
+            )
             if offer is None:
                 break
             created += 1

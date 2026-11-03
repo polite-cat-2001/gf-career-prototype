@@ -92,7 +92,7 @@ def test_world_transfers_are_in_history_with_price_and_rating(client: TestClient
     )
 
 
-def test_sent_offer_appears_in_history_and_club_filter(client: TestClient):
+def test_pending_offers_are_not_completed_deals(client: TestClient):
     career = create_career(client)
     player = pick_external_player(client, career)
     updated = action(
@@ -100,21 +100,14 @@ def test_sent_offer_appears_in_history_and_club_filter(client: TestClient):
         career["id"],
         {"type": "transfer_offer", "player_id": player["id"], "amount": 100_000},
     )
-    entry = find_entry(updated, player["id"], "sent")
-    assert entry["fee"] == 100_000
-    assert entry["with_manager"] is True
-    assert entry["status"] == "pending"
-    assert entry["overall"] > 0
+    assert all(item["player_id"] != player["id"] for item in history(updated))
+    assert all(item["source"] != "sent" for item in history(updated))
 
-    response = client.get(
+    club = client.get(
         f"/api/careers/{career['id']}/transfers/history?filter=club"
     )
-    assert response.status_code == 200, response.text
-    payload = response.json()
-    assert payload["filter"] == "club"
-    assert payload["items"]
-    assert all(item["with_manager"] for item in payload["items"])
-    assert any(item["player_id"] == player["id"] for item in payload["items"])
+    assert club.status_code == 200, club.text
+    assert club.json()["items"] == []
 
     league = client.get(
         f"/api/careers/{career['id']}/transfers/history?filter=league"
@@ -125,6 +118,80 @@ def test_sent_offer_appears_in_history_and_club_filter(client: TestClient):
         f"/api/careers/{career['id']}/transfers/history?filter=nope"
     )
     assert invalid.status_code == 422
+
+
+def test_accepted_incoming_offer_keeps_seller_and_buyer_on_correct_sides(
+    client: TestClient,
+):
+    career = create_career(client)
+    updated = action(
+        client, career["id"], {"type": "advance", "date": "2026-07-07"}
+    )
+    received = updated["transfers"]["received_offers"]
+    assert received
+    offer = received[0]
+    accepted = action(
+        client,
+        career["id"],
+        {"type": "incoming_accept", "offer_id": offer["offer_id"]},
+    )
+    assert all(
+        item["offer_id"] != offer["offer_id"]
+        for item in accepted["transfers"]["received_offers"]
+    )
+    entries = [
+        item
+        for item in history(accepted)
+        if item["player_id"] == offer["id"] and item["source"] == "manager"
+    ]
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry["from_club_id"] == career["club"]["id"]
+    assert entry["to_club_id"] == offer["club_id"]
+    assert entry["from_club_name"] == career["club"]["name"]
+    assert entry["to_club_name"] == offer["club_name"]
+    assert entry["fee"] == offer["amount"]
+    assert entry["kind"] == offer["kind"]
+    assert entry["overall"] > 0
+
+
+def test_executed_incoming_offer_is_backfilled_in_history(
+    client: TestClient, saves_dir: Path
+):
+    career = create_career(client)
+    updated = action(
+        client, career["id"], {"type": "advance", "date": "2026-07-07"}
+    )
+    offer = updated["transfers"]["received_offers"][0]
+    accepted = action(
+        client,
+        career["id"],
+        {"type": "incoming_accept", "offer_id": offer["offer_id"]},
+    )
+
+    path = saves_dir / f"{career['id']}.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw.pop("transfer_history", None)
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    restored = career_state(client, career["id"])
+    entries = [
+        item
+        for item in history(restored)
+        if item["player_id"] == offer["id"] and item["source"] == "manager"
+    ]
+    assert len(entries) == 1
+    assert entries[0]["from_club_id"] == career["club"]["id"]
+    assert entries[0]["to_club_id"] == offer["club_id"]
+    assert entries[0]["fee"] == offer["amount"]
+    assert all(
+        item["offer_id"] != offer["offer_id"]
+        for item in accepted["transfers"]["received_offers"]
+    )
+    assert all(
+        item["offer_id"] != offer["offer_id"]
+        for item in restored["transfers"]["received_offers"]
+    )
 
 
 def test_free_agent_signing_is_recorded_with_zero_fee(
@@ -173,6 +240,15 @@ def test_free_agent_signing_is_recorded_with_zero_fee(
     assert entry["from_club_id"] is None
     assert entry["overall"] > 0
     assert entry["with_manager"] is True
+
+    club = client.get(
+        f"/api/careers/{career['id']}/transfers/history?filter=club"
+    )
+    assert club.status_code == 200, club.text
+    items = club.json()["items"]
+    assert items
+    assert all(item["with_manager"] for item in items)
+    assert any(item["player_id"] == player["id"] for item in items)
 
 
 def test_history_fields_survive_save_and_load(client: TestClient):
