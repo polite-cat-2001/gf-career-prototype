@@ -76,6 +76,7 @@
     transferValueMeta,
   } from './career/utils/transfers.js'
   import { createMatchState } from './career/state/match.svelte.js'
+  import { createSquadState } from './career/state/squad.svelte.js'
   import ContractTerms from './career/shared/ContractTerms.svelte'
   import RadarChart from './career/shared/RadarChart.svelte'
   import StrengthBadge from './career/shared/StrengthBadge.svelte'
@@ -145,20 +146,6 @@
   let tab = $state('centre')
   let view = $state('overview')
   let detailsPage = $state(0)
-  let centreTab = $state('status')
-  let centrePlayerId = $state(null)
-  let centreOpenId = $state(null)
-  let centreActionBusy = $state(false)
-  let negotiationDraft = $state(null)
-  let numberCandidate = $state(null)
-  let amountField = $state(null)
-  let amountDigits = $state('000000000')
-  let amountIndex = $state(8)
-  let centreAttributePage = $state('overview')
-  let focusPlayerId = $state(null)
-  let anchorId = $state(null)
-  let swapping = $state(false)
-  let benchFocused = $state(false)
   let transfersView = $state('hub')
   let networkMode = $state('scouts')
   let networkEntryId = $state(null)
@@ -238,6 +225,22 @@
     focusFirst,
   })
 
+  const squad = createSquadState({
+    getCareer: () => career,
+    getLineup: () => lineup,
+    getSummary: () => summary,
+    getDetailsPage: () => detailsPage,
+    setTab: (value) => {
+      tab = value
+    },
+    setView: (value) => {
+      view = value
+    },
+    onaction,
+    onswap,
+    focusFirst,
+  })
+
   let centreAction = $derived(
     match.advancing
       ? 'Сохраняем дату…'
@@ -251,106 +254,6 @@
               ? 'Играть матч'
               : 'Перемотать',
   )
-  let squadPlayers = $derived([
-    ...lineup.slots.map((slot) => slot.player),
-    ...lineup.bench,
-    ...(lineup.reserve ?? []),
-  ])
-  let centrePlayers = $derived(
-    career.squad.groups.flatMap((group) => group.players),
-  )
-  let centrePlayer = $derived(
-    centrePlayers.find((player) => player.id === centrePlayerId) ?? centrePlayers[0] ?? null,
-  )
-  let negotiationState = $derived(centrePlayer?.negotiation ?? null)
-  let negotiationTerms = $derived(
-    negotiationState?.offer ?? negotiationState?.counter ?? null,
-  )
-  let amountGroups = $derived.by(() => {
-    const digits = amountDigits.padStart(9, '0').slice(-9)
-    return [
-      { digits: digits.slice(0, 3), start: 0 },
-      { digits: digits.slice(3, 6), start: 3 },
-      { digits: digits.slice(6, 9), start: 6 },
-    ]
-  })
-  let centreTotals = $derived(centrePlayer?.season_stats ?? {})
-  let centreCompetitions = $derived(centrePlayer?.competition_stats ?? [])
-  let centreRadar = $derived(centrePlayer ? radarValues(centrePlayer.stats) : [])
-  let centreAttributeGroups = $derived(
-    centrePlayer ? attributeGroups(centrePlayer.stats) : [],
-  )
-  let centreAttributeGroup = $derived(
-    centreAttributeGroups.find((group) => group.id === centreAttributePage) ??
-      centreAttributeGroups[0] ??
-      null,
-  )
-  let finance = $derived(
-    career.squad.finance ?? {
-      balance: 0,
-      total_market_value: summary?.total_market_value ?? 0,
-      weekly_wage_bill: 0,
-    },
-  )
-  let focusedPlayer = $derived(
-    squadPlayers.find((player) => player.id === focusPlayerId) ?? lineup.slots[0]?.player ?? null,
-  )
-  let anchorPlayer = $derived(
-    anchorId ? squadPlayers.find((player) => player.id === anchorId) ?? null : null,
-  )
-  let comparing = $derived(
-    Boolean(anchorPlayer && focusedPlayer && anchorPlayer.id !== focusedPlayer.id),
-  )
-  let canSwap = $derived(
-    comparing && anchorPlayer?.available !== false && focusedPlayer?.available !== false,
-  )
-  let anchorRadar = $derived(anchorPlayer ? radarValues(anchorPlayer.stats) : [])
-  let teamAverage = $derived(average(lineup.slots.map((slot) => slot.player.effective_overall ?? slot.player.overall)))
-  let teamStrength = $derived(Math.round(teamAverage))
-  let projectedTeamAverage = $derived(
-    teamAfterSwap(comparing, teamAverage, lineup, anchorPlayer, focusedPlayer),
-  )
-  let teamDelta = $derived(comparing ? projectedTeamAverage - teamAverage : 0)
-  let teamDisplay = $derived(Math.round(comparing ? projectedTeamAverage : teamAverage))
-  let profileGroups = $derived(focusedPlayer ? attributeGroups(focusedPlayer.stats) : [])
-  let detailGroups = $derived(
-    detailsPage === 1
-      ? profileGroups.filter((group) => group.id !== 'technical')
-      : detailsPage === 2
-        ? profileGroups.filter((group) => group.id === 'technical')
-        : [],
-  )
-  let seasonRows = $derived.by(() => {
-    if (!focusedPlayer) return []
-    const right = focusedPlayer.season_stats ?? {}
-    const left = anchorPlayer ? (anchorPlayer.season_stats ?? {}) : null
-    return [
-      ['apps', 'Матчи'],
-      ['starts', 'В старте'],
-      ['minutes', 'Минуты'],
-      ['goals', 'Голы'],
-      ['assists', 'Ассисты'],
-      ['yellow', 'Жёлтые'],
-      ['red', 'Красные'],
-    ].map(([key, label]) => ({
-      key,
-      label,
-      left: left ? left[key] ?? 0 : right[key] ?? 0,
-      right: comparing ? right[key] ?? 0 : null,
-    }))
-  })
-  let infoRows = $derived.by(() => {
-    if (!focusedPlayer) return []
-    const right = infoValues(focusedPlayer)
-    const left = anchorPlayer ? infoValues(anchorPlayer) : null
-    return INFO_LABELS.map((item) => ({
-      label: item.label,
-      left: left ? left[item.key] : right[item.key],
-      right: comparing ? right[item.key] : null,
-    }))
-  })
-  let radar = $derived(focusedPlayer ? radarValues(focusedPlayer.stats) : [])
-
   let transferFiltersActive = $derived(computeTransferFiltersActive(transferFilters))
   let transferCentre = $derived(
     career.transfers ?? {
@@ -421,7 +324,7 @@
     Number(transferContractOffer?.amount ?? transferContractState?.fee ?? 0),
   )
   let transferContractBalanceAfter = $derived(
-    Number(finance?.balance ?? 0) - transferContractFee,
+    Number(squad.finance?.balance ?? 0) - transferContractFee,
   )
   let transferCentreTitle = $derived(
     TRANSFER_CENTRE_TABS.find((item) => item.id === transferCentreTab)?.label ?? 'Список',
@@ -690,20 +593,20 @@
       ]
     }
     if (tab === 'squad' && view === 'negotiation') {
-      if (negotiationState?.status === 'pending') {
+      if (squad.negotiationState?.status === 'pending') {
         return [
           { gamepad: ['A'], keyboard: ['Enter'], label: 'Вернуться' },
           { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
           start,
         ]
       }
-      if (negotiationState?.status === 'accepted') {
+      if (squad.negotiationState?.status === 'accepted') {
         return [
           {
             gamepad: ['A'],
             keyboard: ['Enter'],
             label:
-              negotiationState.affordable === false
+              squad.negotiationState.affordable === false
                 ? 'Недостаточно средств'
                 : 'Подписать',
           },
@@ -735,14 +638,14 @@
     }
     if (tab === 'squad' && view === 'centre') {
       const list = [{ gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Игрок' }]
-      if (centreOpenId) {
+      if (squad.centreOpenId) {
         list[0].label = 'Пункт'
         list.push({ gamepad: ['A'], keyboard: ['Enter'], label: 'Действие' })
         list.push({ gamepad: ['B'], keyboard: ['Esc'], label: 'Закрыть' })
         list.push(start)
         return list
       }
-      if (centreTab === 'attributes') {
+      if (squad.centreTab === 'attributes') {
         list.push({
           gamepad: ['R-stick'],
           keyboard: ['←', '→'],
@@ -765,11 +668,11 @@
     if (tab === 'squad' && view === 'plan') {
       return [
         { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Игрок' },
-        comparing
-          ? { gamepad: ['A'], keyboard: ['Enter'], label: canSwap ? 'Обменять' : 'Просмотр' }
+        squad.comparing
+          ? { gamepad: ['A'], keyboard: ['Enter'], label: squad.canSwap ? 'Обменять' : 'Просмотр' }
           : { gamepad: ['A'], keyboard: ['Enter'], label: 'Сравнить' },
         { gamepad: ['Y'], keyboard: ['R'], label: 'Подробности' },
-        { gamepad: ['B'], keyboard: ['Esc'], label: comparing ? 'Отменить' : 'Назад' },
+        { gamepad: ['B'], keyboard: ['Esc'], label: squad.comparing ? 'Отменить' : 'Назад' },
         start,
       ]
     }
@@ -1046,7 +949,7 @@
   function closeTransferOffer() {
     transferOffer = null
     transferOfferPlayer = null
-    amountField = null
+    squad.amountField = null
     transfersView = transferOfferBackView || 'centre'
     tick().then(focusFirst)
   }
@@ -1100,7 +1003,7 @@
     transferContractOfferId = null
     transferContractFallback = null
     transferContractDraft = null
-    amountField = null
+    squad.amountField = null
     transfersView = transferContractBackView || 'centre'
     tick().then(focusFirst)
   }
@@ -1153,78 +1056,78 @@
       0,
       Math.min(999_999_999, Math.round(Number(transferContractDraft[field]) || 0)),
     )
-    amountField = field
-    amountDigits = String(value).padStart(9, '0')
-    const firstDigit = amountDigits.search(/[1-9]/)
-    amountIndex = firstDigit === -1 ? 8 : firstDigit
+    squad.amountField = field
+    squad.amountDigits = String(value).padStart(9, '0')
+    const firstDigit = squad.amountDigits.search(/[1-9]/)
+    squad.amountIndex = firstDigit === -1 ? 8 : firstDigit
     transfersView = 'contractAmount'
     tick().then(focusFirst)
   }
 
   function closeTransferContractAmount() {
-    amountField = null
+    squad.amountField = null
     transfersView = 'contract'
     tick().then(focusFirst)
   }
 
   function finishTransferContractAmount() {
-    if (!transferContractDraft || !amountField) return
+    if (!transferContractDraft || !squad.amountField) return
     const value = Math.max(
       0,
-      Math.min(999_999_999, Number.parseInt(amountDigits || '0', 10) || 0),
+      Math.min(999_999_999, Number.parseInt(squad.amountDigits || '0', 10) || 0),
     )
-    if (amountField === 'weekly_wage') {
+    if (squad.amountField === 'weekly_wage') {
       transferContractDraft.weekly_wage = Math.max(1_000, Math.min(2_000_000, value))
     } else {
       transferContractDraft.release_clause = Math.max(0, value)
     }
     transferContractDraft = { ...transferContractDraft }
-    amountField = null
+    squad.amountField = null
     transfersView = 'contract'
     tick().then(focusFirst)
   }
 
   async function submitTransferContract() {
-    if (!transferContractPlayer || !transferContractDraft || centreActionBusy) return
+    if (!transferContractPlayer || !transferContractDraft || squad.centreActionBusy) return
     if (transferContractState?.status === 'accepted') {
       await signTransferContract()
       return
     }
-    centreActionBusy = true
+    squad.centreActionBusy = true
     const updated = await onaction({
       type: 'transfer_contract',
       player_id: transferContractPlayer.id,
       offer_id: transferContractOfferId || undefined,
       ...transferContractDraft,
     })
-    centreActionBusy = false
+    squad.centreActionBusy = false
     if (!updated) return
     await tick()
     focusFirst()
   }
 
   async function acceptTransferContractCounter() {
-    if (!transferContractPlayer || centreActionBusy) return
-    centreActionBusy = true
+    if (!transferContractPlayer || squad.centreActionBusy) return
+    squad.centreActionBusy = true
     const updated = await onaction({
       type: 'transfer_accept_counter',
       player_id: transferContractPlayer.id,
     })
-    centreActionBusy = false
+    squad.centreActionBusy = false
     if (!updated) return
     await tick()
     focusFirst()
   }
 
   async function signTransferContract() {
-    if (!transferContractPlayer || centreActionBusy) return
+    if (!transferContractPlayer || squad.centreActionBusy) return
     if (transferContractState?.affordable === false) return
-    centreActionBusy = true
+    squad.centreActionBusy = true
     const updated = await onaction({
       type: 'transfer_sign',
       player_id: transferContractPlayer.id,
     })
-    centreActionBusy = false
+    squad.centreActionBusy = false
     if (!updated) return
     closeTransferContract()
   }
@@ -1289,30 +1192,30 @@
       0,
       Math.min(999_999_999, Math.round(Number(current) || 0)),
     )
-    amountField = field
-    amountDigits = String(value).padStart(9, '0')
-    const firstDigit = amountDigits.search(/[1-9]/)
-    amountIndex = firstDigit === -1 ? 8 : firstDigit
+    squad.amountField = field
+    squad.amountDigits = String(value).padStart(9, '0')
+    const firstDigit = squad.amountDigits.search(/[1-9]/)
+    squad.amountIndex = firstDigit === -1 ? 8 : firstDigit
     transfersView = 'offerAmount'
     tick().then(focusFirst)
   }
 
   function closeOfferAmount() {
-    amountField = null
+    squad.amountField = null
     transfersView = 'offer'
     tick().then(focusFirst)
   }
 
   function finishOfferAmount() {
-    if (!transferOffer || !amountField) return
+    if (!transferOffer || !squad.amountField) return
     const value = Math.max(
       0,
-      Math.min(999_999_999, Number.parseInt(amountDigits || '0', 10) || 0),
+      Math.min(999_999_999, Number.parseInt(squad.amountDigits || '0', 10) || 0),
     )
-    if (amountField === 'loan_fee') transferOffer.loan_fee = value
+    if (squad.amountField === 'loan_fee') transferOffer.loan_fee = value
     else transferOffer.amount = value
     transferOffer = { ...transferOffer }
-    amountField = null
+    squad.amountField = null
     transfersView = 'offer'
     tick().then(focusFirst)
   }
@@ -1339,12 +1242,12 @@
   }
 
   async function submitTransferOffer() {
-    if (!transferOffer || centreActionBusy) return
+    if (!transferOffer || squad.centreActionBusy) return
     const payload = offerPayload()
     if (!payload) return
-    centreActionBusy = true
+    squad.centreActionBusy = true
     const updated = await onaction(payload)
-    centreActionBusy = false
+    squad.centreActionBusy = false
     if (!updated) return
     transferOffer = null
     transferOfferPlayer = null
@@ -1358,13 +1261,13 @@
   }
 
   async function acceptTransferCounter(offer) {
-    if (!offer || centreActionBusy) return
-    centreActionBusy = true
+    if (!offer || squad.centreActionBusy) return
+    squad.centreActionBusy = true
     const updated = await onaction({
       type: 'accept_offer_counter',
       offer_id: offer.offer_id,
     })
-    centreActionBusy = false
+    squad.centreActionBusy = false
     if (!updated) return
     await tick()
     focusFirst()
@@ -1443,10 +1346,10 @@
   }
 
   async function submitIncomingOffer(offer, type) {
-    if (!offer || centreActionBusy) return
-    centreActionBusy = true
+    if (!offer || squad.centreActionBusy) return
+    squad.centreActionBusy = true
     const updated = await onaction({ type, offer_id: offer.offer_id })
-    centreActionBusy = false
+    squad.centreActionBusy = false
     if (!updated) return
     incomingOfferModalId = null
     await tick()
@@ -1462,9 +1365,9 @@
       0,
       Math.min(999_999_999, Math.round((Number(offer.amount) || 0) * 1.15)),
     )
-    amountDigits = String(value).padStart(9, '0')
-    const firstDigit = amountDigits.search(/[1-9]/)
-    amountIndex = firstDigit === -1 ? 8 : firstDigit
+    squad.amountDigits = String(value).padStart(9, '0')
+    const firstDigit = squad.amountDigits.search(/[1-9]/)
+    squad.amountIndex = firstDigit === -1 ? 8 : firstDigit
     transfersView = 'incomingCounter'
     tick().then(focusFirst)
   }
@@ -1477,18 +1380,18 @@
   }
 
   async function finishIncomingCounterAmount() {
-    if (!incomingCounterOffer || centreActionBusy) return
+    if (!incomingCounterOffer || squad.centreActionBusy) return
     const value = Math.max(
       0,
-      Math.min(999_999_999, Number.parseInt(amountDigits || '0', 10) || 0),
+      Math.min(999_999_999, Number.parseInt(squad.amountDigits || '0', 10) || 0),
     )
-    centreActionBusy = true
+    squad.centreActionBusy = true
     const updated = await onaction({
       type: 'incoming_counter',
       offer_id: incomingCounterOffer.offer_id,
       amount: value,
     })
-    centreActionBusy = false
+    squad.centreActionBusy = false
     if (!updated) return
     incomingCounterOffer = null
     incomingCounterPlayer = null
@@ -1789,21 +1692,6 @@
     closeOsk()
   }
 
-  function revealName(event) {
-    const wrapper = event.currentTarget.querySelector('.player-name-wrap')
-    const name = wrapper?.querySelector('.player-name')
-    if (!name || name.classList.contains('is-scrolling')) return
-    const shift = wrapper.clientWidth - name.scrollWidth
-    if (shift >= -1) return
-    name.style.setProperty('--name-shift', `${shift}px`)
-    name.classList.remove('is-scrolling')
-    void name.offsetWidth
-    name.classList.add('is-scrolling')
-    name.addEventListener('animationend', () => name.classList.remove('is-scrolling'), {
-      once: true,
-    })
-  }
-
   function handleBack() {
     if (tab === 'transfers' && transfersView === 'incomingCounter') {
       closeIncomingCounter()
@@ -1834,19 +1722,19 @@
       return
     }
     if (tab === 'squad' && view === 'amount') {
-      closeAmountScreen()
+      squad.closeAmountScreen()
       return
     }
     if (tab === 'squad' && view === 'negotiation') {
-      closeNegotiationScreen()
+      squad.closeNegotiationScreen()
       return
     }
     if (tab === 'squad' && view === 'number') {
-      closeNumberScreen()
+      squad.closeNumberScreen()
       return
     }
     if (tab === 'squad' && view === 'release') {
-      closeReleaseScreen()
+      squad.closeReleaseScreen()
       return
     }
     if (match.matchdayOpen) {
@@ -1898,8 +1786,8 @@
     }
     if (tab === 'squad') {
       if (view === 'centre') {
-        if (centreOpenId) {
-          closeCentreActions()
+        if (squad.centreOpenId) {
+          squad.closeCentreActions()
           return
         }
         backToOverview()
@@ -1910,10 +1798,10 @@
         return
       }
       if (view === 'plan') {
-        if (anchorId) {
-          const anchor = anchorId
-          anchorId = null
-          tick().then(() => focusPlayer(anchor))
+        if (squad.anchorId) {
+          const anchor = squad.anchorId
+          squad.anchorId = null
+          tick().then(() => squad.focusPlayer(anchor))
           return
         }
         backToOverview()
@@ -1931,12 +1819,12 @@
 
   function closeDetails() {
     view = 'plan'
-    tick().then(() => focusPlayer(focusPlayerId))
+    tick().then(() => squad.focusPlayer(squad.focusPlayerId))
   }
 
   function handlePrimaryAction() {
     if (tab === 'squad' && view === 'number') {
-      confirmNumber()
+      squad.confirmNumber()
       return true
     }
     if (match.matchdayOpen) {
@@ -1960,15 +1848,15 @@
 
   function toggleDetails() {
     if (match.matchdayOpen || match.seasonReview) return
-    if (tab !== 'squad' || !focusedPlayer) return
+    if (tab !== 'squad' || !squad.focusedPlayer) return
     if (view === 'centre') return
     if (view === 'details') {
       closeDetails()
       return
     }
     if (view === 'plan') {
-      anchorId = null
-      benchFocused = false
+      squad.anchorId = null
+      squad.benchFocused = false
       detailsPage = 0
       view = 'details'
       tick().then(() => {
@@ -1979,10 +1867,10 @@
 
   async function backToOverview() {
     view = 'overview'
-    anchorId = null
-    benchFocused = false
-    focusPlayerId = null
-    centreOpenId = null
+    squad.anchorId = null
+    squad.benchFocused = false
+    squad.focusPlayerId = null
+    squad.centreOpenId = null
     await tick()
     focusFirst()
   }
@@ -1992,12 +1880,12 @@
     if (!enabledTabs.includes(next)) return
     tab = next
     view = 'overview'
-    anchorId = null
-    benchFocused = false
-    focusPlayerId = null
-    centrePlayerId = null
-    centreOpenId = null
-    centreTab = 'status'
+    squad.anchorId = null
+    squad.benchFocused = false
+    squad.focusPlayerId = null
+    squad.centrePlayerId = null
+    squad.centreOpenId = null
+    squad.centreTab = 'status'
     transfersView = 'hub'
     networkMode = 'scouts'
     networkEntryId = null
@@ -2042,7 +1930,7 @@
     if (transferEditing || oskOpen) return
     if (match.simulating || match.advancing || match.seasonReview || match.matchSimOpen || match.matchdayOpen) return
     if (tab === 'squad' && view === 'centre') {
-      switchCentreTab(direction)
+      squad.switchCentreTab(direction)
       return
     }
     if (tab === 'squad' && view === 'details') {
@@ -2060,359 +1948,14 @@
     detailsPage = (detailsPage + offset + detailPages.length) % detailPages.length
   }
 
-  async function openSquadCentre() {
-    tab = 'squad'
-    view = 'centre'
-    centreTab = 'status'
-    centreAttributePage = 'overview'
-    anchorId = null
-    benchFocused = false
-    focusPlayerId = null
-    centreOpenId = null
-    centrePlayerId = centrePlayers[0]?.id ?? null
-    await tick()
-    focusFirst()
-  }
-
-  async function setCentreTab(next) {
-    if (centreOpenId) return
-    if (next === centreTab) return
-    centreTab = next
-    centreOpenId = null
-    await tick()
-    focusFirst()
-  }
-
-  function switchCentreTab(direction) {
-    const index = centreTabs.findIndex((item) => item.id === centreTab)
-    const offset = direction === 'right' ? 1 : -1
-    const next = centreTabs[(index + offset + centreTabs.length) % centreTabs.length]
-    setCentreTab(next.id)
-  }
-
-  async function toggleCentreActions(player) {
-    if (!player) return
-    if (centreOpenId === player.id) {
-      closeCentreActions()
-      return
-    }
-    centrePlayerId = player.id
-    centreOpenId = player.id
-    await tick()
-    focusActions(player.id)
-    revealRow(player.id)
-  }
-
-  function focusActions(playerId = centreOpenId, actionKey = null) {
-    if (!playerId) return
-    const panel = document.querySelector(`[data-actions="${playerId}"]`)
-    const selector = actionKey ? `[data-action="${actionKey}"]` : '[data-autofocus]'
-    const target = panel?.querySelector(selector) ?? panel?.querySelector('[data-nav]')
-    focusElement(target)
-  }
-
-  function rowElement(playerId) {
-    return document.querySelector(`.centre [data-player="${playerId}"]`)
-  }
-
-  function revealRow(playerId) {
-    const wrap = document.querySelector(`.centre-row-wrap[data-row="${playerId}"]`)
-    if (!wrap) return
-    window.setTimeout(() => {
-      wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-    }, 220)
-  }
-
-  function closeCentreActions() {
-    const playerId = centreOpenId
-    centreOpenId = null
-    if (!playerId) return
-    tick().then(() => focusElement(rowElement(playerId)))
-  }
-
-  async function applyTransferStatus(status) {
-    if (!centrePlayer || centreActionBusy) return
-    const playerId = centrePlayer.id
-    const next = centrePlayer.transfer_status === status ? 'none' : status
-    centreActionBusy = true
-    const updated = await onaction({
-      type: 'transfer_status',
-      player_id: playerId,
-      status: next,
-    })
-    centreActionBusy = false
-    if (!updated) return
-    await tick()
-    focusActions(playerId, status)
-    revealRow(playerId)
-  }
-
-  function freeShirtNumbers(player) {
-    if (!player) return []
-    const taken = new Set(
-      centrePlayers
-        .filter((other) => other.id !== player.id)
-        .map((other) => other.shirt_number),
-    )
-    return Array.from({ length: 99 }, (_, index) => index + 1).filter(
-      (number) => !taken.has(number),
-    )
-  }
-
-  function openNumberScreen() {
-    if (!centrePlayer) return
-    const free = freeShirtNumbers(centrePlayer)
-    numberCandidate = free.includes(centrePlayer.shirt_number)
-      ? centrePlayer.shirt_number
-      : free[0] ?? null
-    view = 'number'
-    tick().then(focusFirst)
-  }
-
-  function cycleNumber(direction) {
-    if (!centrePlayer || numberCandidate === null) return
-    const free = freeShirtNumbers(centrePlayer)
-    if (!free.length) return
-    const index = Math.max(0, free.indexOf(numberCandidate))
-    const next = (index + (direction === 'right' ? 1 : -1) + free.length) % free.length
-    numberCandidate = free[next]
-  }
-
-  async function confirmNumber() {
-    if (!centrePlayer || numberCandidate === null || centreActionBusy) return
-    const playerId = centrePlayer.id
-    centreActionBusy = true
-    const updated = await onaction({
-      type: 'shirt_number',
-      player_id: playerId,
-      number: numberCandidate,
-    })
-    centreActionBusy = false
-    if (!updated) return
-    view = 'centre'
-    await tick()
-    focusActions(playerId, 'number')
-    revealRow(playerId)
-  }
-
-  function closeNumberScreen() {
-    const playerId = centrePlayer?.id
-    view = 'centre'
-    tick().then(() => focusActions(playerId, 'number'))
-  }
-
-  function openReleaseScreen() {
-    if (!centrePlayer) return
-    view = 'release'
-    tick().then(focusFirst)
-  }
-
-  function closeReleaseScreen() {
-    const playerId = centrePlayer?.id
-    view = 'centre'
-    tick().then(() => focusActions(playerId, 'release'))
-  }
-
-  async function confirmRelease() {
-    if (!centrePlayer || centreActionBusy) return
-    centreActionBusy = true
-    const updated = await onaction({ type: 'release_player', player_id: centrePlayer.id })
-    centreActionBusy = false
-    if (!updated) return
-    view = 'centre'
-    centreOpenId = null
-    centrePlayerId = centrePlayers[0]?.id ?? null
-    await tick()
-    focusFirst()
-  }
-
-  function negotiationSource() {
-    const current = centrePlayer
-    if (!current) return null
-    const state = current.negotiation
-    const source = state?.offer ??
-      state?.counter ?? {
-        years: current.contract?.years ?? 1,
-        weekly_wage: current.contract?.weekly_wage ?? 1_000,
-        squad_role: current.squad_role ?? 'rotation',
-        release_clause: current.contract?.release_clause ?? 0,
-      }
-    return { ...source }
-  }
-
-  function openNegotiationScreen() {
-    if (!centrePlayer) return
-    negotiationDraft = negotiationSource()
-    view = 'negotiation'
-    if (negotiationNotice(centrePlayer)) {
-      onaction({ type: 'ack_negotiation', player_id: centrePlayer.id })
-    }
-    tick().then(focusFirst)
-  }
-
-  function closeNegotiationScreen() {
-    const playerId = centrePlayer?.id
-    view = 'centre'
-    negotiationDraft = null
-    tick().then(() => focusActions(playerId, 'renew'))
-  }
-
-  function negotiationNotice(player) {
-    const state = player?.negotiation
-    return Boolean(state && state.status !== 'pending' && state.acknowledged === false)
-  }
-
-  function openAmount(field) {
-    if (!negotiationDraft) return
-    const value = Math.max(
-      0,
-      Math.min(999_999_999, Math.round(Number(negotiationDraft[field]) || 0)),
-    )
-    amountField = field
-    amountDigits = String(value).padStart(9, '0')
-    const firstDigit = amountDigits.search(/[1-9]/)
-    amountIndex = firstDigit === -1 ? 8 : firstDigit
-    view = 'amount'
-    tick().then(focusFirst)
-  }
-
-  function adjustAmount(direction) {
-    if (direction === 'left') {
-      amountIndex = Math.max(0, amountIndex - 1)
-      return
-    }
-    if (direction === 'right') {
-      amountIndex = Math.min(8, amountIndex + 1)
-      return
-    }
-    const digits = amountDigits.split('')
-    const digit = Number(digits[amountIndex])
-    digits[amountIndex] = String(direction === 'up' ? (digit + 1) % 10 : (digit + 9) % 10)
-    amountDigits = digits.join('')
-  }
-
-  function focusNegotiationField(field) {
-    focusElement(document.querySelector(`.negotiation [data-field="${field}"]`))
-  }
-
-  function closeAmountScreen() {
-    const field = amountField ?? 'weekly_wage'
-    amountField = null
-    view = 'negotiation'
-    tick().then(() => focusNegotiationField(field))
-  }
-
-  function finishAmount() {
-    if (!negotiationDraft || !amountField) return
-    const value = Number.parseInt(amountDigits || '0', 10) || 0
-    if (amountField === 'weekly_wage') {
-      negotiationDraft.weekly_wage = Math.max(1_000, Math.min(2_000_000, value))
-    } else {
-      negotiationDraft.release_clause = Math.max(0, Math.min(999_999_999, value))
-    }
-    negotiationDraft = { ...negotiationDraft }
-    const field = amountField
-    amountField = null
-    view = 'negotiation'
-    tick().then(() => focusNegotiationField(field))
-  }
-
-  function wageStep() {
-    const base = centrePlayer?.contract?.weekly_wage ?? 1_000
-    return Math.max(1_000, Math.round((base * 0.1) / 100) * 100)
-  }
-
-  function clauseStep() {
-    const base = centrePlayer?.market_value ?? 1_000_000
-    return Math.max(100_000, Math.round((base * 0.05) / 100_000) * 100_000)
-  }
-
-  function adjustNegotiationField(field, step) {
-    if (!negotiationDraft) return
-    if (field === 'years') {
-      negotiationDraft.years = Math.min(5, Math.max(1, negotiationDraft.years + step))
-    } else if (field === 'weekly_wage') {
-      negotiationDraft.weekly_wage = Math.max(
-        1_000,
-        negotiationDraft.weekly_wage + step * wageStep(),
-      )
-    } else if (field === 'release_clause') {
-      negotiationDraft.release_clause = Math.max(
-        0,
-        negotiationDraft.release_clause + step * clauseStep(),
-      )
-    } else if (field === 'squad_role') {
-      const index = Math.max(
-        0,
-        CONTRACT_ROLES.findIndex((role) => role.id === negotiationDraft.squad_role),
-      )
-      const next = (index + step + CONTRACT_ROLES.length) % CONTRACT_ROLES.length
-      negotiationDraft.squad_role = CONTRACT_ROLES[next].id
-    }
-    negotiationDraft = { ...negotiationDraft }
-  }
-
-  async function submitNegotiation() {
-    if (!centrePlayer || !negotiationDraft || centreActionBusy) return
-    if (centrePlayer.negotiation?.status === 'accepted') {
-      await signNegotiation()
-      return
-    }
-    const playerId = centrePlayer.id
-    centreActionBusy = true
-    const updated = await onaction({
-      type: 'negotiate',
-      player_id: playerId,
-      ...negotiationDraft,
-    })
-    centreActionBusy = false
-    if (!updated) return
-    await tick()
-    focusFirst()
-  }
-
-  async function acceptCounterOffer() {
-    if (!centrePlayer || centreActionBusy) return
-    const playerId = centrePlayer.id
-    centreActionBusy = true
-    const updated = await onaction({ type: 'accept_counter', player_id: playerId })
-    centreActionBusy = false
-    if (!updated) return
-    view = 'centre'
-    negotiationDraft = null
-    await tick()
-    focusActions(playerId, 'renew')
-  }
-
-  async function signNegotiation() {
-    if (!centrePlayer || centreActionBusy) return
-    const playerId = centrePlayer.id
-    centreActionBusy = true
-    const updated = await onaction({ type: 'sign_contract', player_id: playerId })
-    centreActionBusy = false
-    if (!updated) return
-    view = 'centre'
-    negotiationDraft = null
-    await tick()
-    focusActions(playerId, 'renew')
-  }
-
-  async function manageTeamFromCentre() {
-    if (!centrePlayer) return
-    const playerId = centrePlayer.id
-    centreOpenId = null
-    negotiationDraft = null
-    await openPlan(playerId)
-  }
-
   function handleCycle(direction) {
     if (tab === 'transfers') {
       if (transfersView === 'incomingCounter') {
-        adjustAmount(direction)
+        squad.adjustAmount(direction)
         return
       }
       if (transfersView === 'contractAmount') {
-        adjustAmount(direction)
+        squad.adjustAmount(direction)
         return
       }
       if (transfersView === 'contract') {
@@ -2421,7 +1964,7 @@
         return
       }
       if (transfersView === 'offerAmount') {
-        adjustAmount(direction)
+        squad.adjustAmount(direction)
         return
       }
       if (transfersView === 'offer') {
@@ -2443,30 +1986,22 @@
       return
     }
     if (tab === 'squad' && view === 'number') {
-      cycleNumber(direction)
+      squad.cycleNumber(direction)
       return
     }
     if (tab === 'squad' && view === 'amount') {
-      adjustAmount(direction)
+      squad.adjustAmount(direction)
       return
     }
     const field = document.activeElement?.dataset?.field
     if (tab === 'squad' && view === 'negotiation' && field) {
-      adjustNegotiationField(field, direction === 'right' ? 1 : -1)
+      squad.adjustNegotiationField(field, direction === 'right' ? 1 : -1)
       return
     }
-    if (tab !== 'squad' || view !== 'centre' || centreTab !== 'attributes') return
-    shiftAttributePage(direction === 'right' ? 1 : -1)
+    if (tab !== 'squad' || view !== 'centre' || squad.centreTab !== 'attributes') return
+    squad.shiftAttributePage(direction === 'right' ? 1 : -1)
   }
 
-  function shiftAttributePage(offset) {
-    const index = Math.max(
-      0,
-      attributePages.findIndex((page) => page.id === centreAttributePage),
-    )
-    const next = (index + offset + attributePages.length) % attributePages.length
-    centreAttributePage = attributePages[next].id
-  }
 
   function reportForPlayer(playerId) {
     if (!playerId) return null
@@ -2476,46 +2011,6 @@
       )?.report ?? null
     )
   }
-
-  async function openPlan(playerId = null) {
-    tab = 'squad'
-    view = 'plan'
-    anchorId = null
-    benchFocused = false
-    focusPlayerId = playerId ?? lineup.slots[0]?.player.id ?? null
-    await tick()
-    focusPlayer(focusPlayerId)
-  }
-
-  function focusPlayer(playerId) {
-    if (!playerId) return
-    const element = document.querySelector(`[data-player="${playerId}"]`)
-    focusElement(element)
-  }
-
-  async function activatePlayer(player) {
-    if (swapping || player.available === false) return
-    if (!anchorId) {
-      anchorId = player.id
-      focusPlayerId = player.id
-      return
-    }
-    if (anchorId === player.id) {
-      anchorId = null
-      return
-    }
-    if (!canSwap) return
-    swapping = true
-    const anchor = anchorId
-    const updated = await onswap(anchor, player.id)
-    swapping = false
-    if (!updated) return
-    anchorId = null
-    focusPlayerId = player.id
-    await tick()
-    focusPlayer(player.id)
-  }
-
 </script>
 
 <div class="app" class:is-simulating={match.matchSimOpen || match.matchdayOpen}>
@@ -2643,9 +2138,9 @@
         {openTransferContractFromOffer}
         {submitIncomingOffer}
         {startIncomingCounter}
-        {amountField}
-        {amountGroups}
-        {amountIndex}
+        amountField={squad.amountField}
+        amountGroups={squad.amountGroups}
+        amountIndex={squad.amountIndex}
         {finishTransferContractAmount}
         {finishOfferAmount}
         {finishIncomingCounterAmount}
@@ -2656,7 +2151,7 @@
         {transferContractOffer}
         {transferContractFee}
         {transferContractBalanceAfter}
-        {centreActionBusy}
+        centreActionBusy={squad.centreActionBusy}
         {openTransferContractAmount}
         {adjustTransferContractField}
         {closeTransferContract}
@@ -2667,7 +2162,7 @@
         {incomingCounterPlayer}
         {transferOffer}
         {transferOfferPlayer}
-        {finance}
+        finance={squad.finance}
         {adjustOfferField}
         {toggleOfferBuyout}
         {openOfferAmount}
@@ -2700,104 +2195,104 @@
         {lineup}
         {summary}
         {squadTiles}
-        {teamDisplay}
-        {comparing}
-        {teamDelta}
-        onPlan={() => openPlan()}
-        onCentre={openSquadCentre}
+        teamDisplay={squad.teamDisplay}
+        comparing={squad.comparing}
+        teamDelta={squad.teamDelta}
+        onPlan={() => squad.openPlan()}
+        onCentre={squad.openSquadCentre}
       />
     {:else if tab === 'squad' && view === 'centre'}
       <SquadCentre
         tabs={centreTabs}
-        activeTab={centreTab}
-        onSelectTab={setCentreTab}
-        players={centrePlayers}
-        player={centrePlayer}
-        {centrePlayerId}
-        openId={centreOpenId}
-        onFocus={(id) => (centrePlayerId = id)}
-        onToggle={toggleCentreActions}
-        noticeFor={negotiationNotice}
-        onTransferStatus={applyTransferStatus}
-        onManageTeam={manageTeamFromCentre}
-        onNumber={openNumberScreen}
-        onNegotiation={openNegotiationScreen}
-        onRelease={openReleaseScreen}
-        totals={centreTotals}
-        competitions={centreCompetitions}
-        radar={centreRadar}
+        activeTab={squad.centreTab}
+        onSelectTab={squad.setCentreTab}
+        players={squad.centrePlayers}
+        player={squad.centrePlayer}
+        centrePlayerId={squad.centrePlayerId}
+        openId={squad.centreOpenId}
+        onFocus={(id) => (squad.centrePlayerId = id)}
+        onToggle={squad.toggleCentreActions}
+        noticeFor={squad.negotiationNotice}
+        onTransferStatus={squad.applyTransferStatus}
+        onManageTeam={squad.manageTeamFromCentre}
+        onNumber={squad.openNumberScreen}
+        onNegotiation={squad.openNegotiationScreen}
+        onRelease={squad.openReleaseScreen}
+        totals={squad.centreTotals}
+        competitions={squad.centreCompetitions}
+        squad.radar={squad.centreRadar}
         {attributePages}
-        attributePage={centreAttributePage}
-        attributeGroup={centreAttributeGroup}
-        onShiftAttributePage={shiftAttributePage}
-        {finance}
+        attributePage={squad.centreAttributePage}
+        attributeGroup={squad.centreAttributeGroup}
+        onShiftAttributePage={squad.shiftAttributePage}
+        finance={squad.finance}
       />
-    {:else if tab === 'squad' && (view === 'plan' || view === 'details') && focusedPlayer}
+    {:else if tab === 'squad' && (view === 'plan' || view === 'details') && squad.focusedPlayer}
       <PlanView
         {view}
         {planTabs}
-        {comparing}
-        {anchorPlayer}
-        {focusedPlayer}
+        comparing={squad.comparing}
+        anchorPlayer={squad.anchorPlayer}
+        focusedPlayer={squad.focusedPlayer}
         {lineup}
-        {radar}
-        {anchorRadar}
+        radar={squad.radar}
+        anchorRadar={squad.anchorRadar}
         {detailsPage}
         {detailPages}
-        {infoRows}
-        {seasonRows}
-        {detailGroups}
-        {anchorId}
-        {teamDisplay}
-        {teamDelta}
+        infoRows={squad.infoRows}
+        seasonRows={squad.seasonRows}
+        detailGroups={squad.detailGroups}
+        anchorId={squad.anchorId}
+        teamDisplay={squad.teamDisplay}
+        teamDelta={squad.teamDelta}
         {career}
-        {benchFocused}
+        benchFocused={squad.benchFocused}
         onCardFocus={(player, event) => {
-          focusPlayerId = player.id
-          benchFocused = false
-          revealName(event)
+          squad.focusPlayerId = player.id
+          squad.benchFocused = false
+          squad.revealName(event)
         }}
-        onCardEnter={revealName}
-        onCardActivate={activatePlayer}
+        onCardEnter={squad.revealName}
+        onCardActivate={squad.activatePlayer}
         onBenchFocus={(player) => {
-          benchFocused = true
-          focusPlayerId = player.id
+          squad.benchFocused = true
+          squad.focusPlayerId = player.id
         }}
-        onBenchActivate={activatePlayer}
-        onBenchLeave={() => (benchFocused = false)}
+        onBenchActivate={squad.activatePlayer}
+        onBenchLeave={() => (squad.benchFocused = false)}
       />
-    {:else if tab === 'squad' && view === 'number' && centrePlayer}
+    {:else if tab === 'squad' && view === 'number' && squad.centrePlayer}
       <NumberScreen
-        player={centrePlayer}
-        candidate={numberCandidate}
-        onConfirm={confirmNumber}
+        player={squad.centrePlayer}
+        candidate={squad.numberCandidate}
+        onConfirm={squad.confirmNumber}
       />
-    {:else if tab === 'squad' && view === 'release' && centrePlayer}
+    {:else if tab === 'squad' && view === 'release' && squad.centrePlayer}
       <ReleaseScreen
-        player={centrePlayer}
-        onConfirm={confirmRelease}
-        onCancel={closeReleaseScreen}
+        player={squad.centrePlayer}
+        onConfirm={squad.confirmRelease}
+        onCancel={squad.closeReleaseScreen}
       />
-    {:else if tab === 'squad' && view === 'amount' && centrePlayer && amountField}
+    {:else if tab === 'squad' && view === 'amount' && squad.centrePlayer && squad.amountField}
       <AmountKeypad
-        field={amountField}
-        groups={amountGroups}
-        index={amountIndex}
+        field={squad.amountField}
+        groups={squad.amountGroups}
+        index={squad.amountIndex}
         places={AMOUNT_PLACES}
-        onFinish={finishAmount}
+        onFinish={squad.finishAmount}
       />
-    {:else if tab === 'squad' && view === 'negotiation' && centrePlayer && negotiationDraft}
+    {:else if tab === 'squad' && view === 'negotiation' && squad.centrePlayer && squad.negotiationDraft}
       <NegotiationScreen
-        player={centrePlayer}
-        state={negotiationState}
-        terms={negotiationTerms}
-        draft={negotiationDraft}
-        onOpenAmount={openAmount}
-        onAdjustField={adjustNegotiationField}
-        onClose={closeNegotiationScreen}
-        onSign={signNegotiation}
-        onAcceptCounter={acceptCounterOffer}
-        onSubmit={submitNegotiation}
+        player={squad.centrePlayer}
+        state={squad.negotiationState}
+        terms={squad.negotiationTerms}
+        draft={squad.negotiationDraft}
+        onOpenAmount={squad.openAmount}
+        onAdjustField={squad.adjustNegotiationField}
+        onClose={squad.closeNegotiationScreen}
+        onSign={squad.signNegotiation}
+        onAcceptCounter={squad.acceptCounterOffer}
+        onSubmit={squad.submitNegotiation}
       />
     {/if}
   </main>
@@ -2845,7 +2340,7 @@
           ? 'Сохранение…'
           : playing
             ? 'Матч идёт…'
-            : swapping
+            : squad.swapping
               ? 'Обмен…'
               : `${career.club.name} · ${formatTimestamp(career.updated_at)}`}
   />
