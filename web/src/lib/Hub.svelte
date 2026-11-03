@@ -79,6 +79,7 @@
   } from './career/utils/transfers.js'
   import ContractTerms from './career/shared/ContractTerms.svelte'
   import RadarChart from './career/shared/RadarChart.svelte'
+  import StrengthBadge from './career/shared/StrengthBadge.svelte'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -2762,21 +2763,6 @@
 
   <main class="screen hub-screen">
 
-    {#snippet strengthBadge()}
-      <div class="team-strength">
-        <svg class="team-shield" viewBox="0 0 64 72" aria-hidden="true">
-          <path d="M32 2 60 11v25c0 16-12 27-28 34C16 63 4 52 4 36V11z"></path>
-        </svg>
-        <strong>{teamDisplay}</strong>
-        {#if comparing && teamDelta > 0.05}
-          <span class="team-delta up" aria-label="Сила состава вырастет">▲</span>
-        {/if}
-        {#if comparing && teamDelta < -0.05}
-          <span class="team-delta down" aria-label="Сила состава упадёт">▼</span>
-        {/if}
-      </div>
-    {/snippet}
-
     {#snippet centreRow(label, value)}
       <div class="centre-info-row">
         <span>{label}</span>
@@ -4368,7 +4354,7 @@
                 positionStyle={`left:${pitchX(slot.x, slot.y)}%; top:${pitchY(slot.y)}%`}
               />
             {/each}
-            {@render strengthBadge()}
+            <StrengthBadge display={teamDisplay} comparing={comparing} delta={teamDelta} />
           </div>
 
           <div class="squad-team-foot">
@@ -4968,7 +4954,7 @@
                   onclick={() => activatePlayer(slot.player)}
                 />
               {/each}
-              {@render strengthBadge()}
+              <StrengthBadge display={teamDisplay} comparing={comparing} delta={teamDelta} />
             </div>
 
           {/if}
