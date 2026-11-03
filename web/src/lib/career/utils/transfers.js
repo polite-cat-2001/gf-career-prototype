@@ -1,10 +1,28 @@
 import { positionLabel } from '../../format.js'
 import {
+  OFFER_KIND_LABELS,
+  OFFER_STATUS_LABELS,
   POSITION_BADGES,
   TRANSFER_GROUP_OPTIONS,
   TRANSFER_PAGE,
   TRANSFER_STATUS_OPTIONS,
 } from '../constants/transfers.js'
+
+export function offerStatusLabel(status) {
+  return OFFER_STATUS_LABELS[status] ?? status
+}
+
+export function offerKindLabel(kind) {
+  return OFFER_KIND_LABELS[kind] ?? kind
+}
+
+export function contractStatusLabel(status) {
+  if (status === 'pending') return 'переговоры'
+  if (status === 'counter') return 'контрпредложение'
+  if (status === 'accepted') return 'согласован'
+  if (status === 'signed') return 'подписан'
+  return null
+}
 
 export function transferFieldLabel(
   field,
