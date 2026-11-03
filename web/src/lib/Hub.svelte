@@ -82,6 +82,7 @@
   import StrengthBadge from './career/shared/StrengthBadge.svelte'
   import CentreInfoRow from './career/shared/CentreInfoRow.svelte'
   import CentreProfile from './career/shared/CentreProfile.svelte'
+  import SquadActions from './career/shared/SquadActions.svelte'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -2765,78 +2766,6 @@
 
   <main class="screen hub-screen">
 
-    {#snippet squadActions(player)}
-      <div
-        class="squad-actions"
-        data-actions={player.id}
-        aria-label="Действия с игроком"
-        transition:slide={{ duration: 180 }}
-      >
-        <div class="squad-actions-col">
-          <div class="squad-actions-head">
-            <i class="squad-actions-dot is-transfer"></i>
-            Трансфер
-          </div>
-          <button
-            class="squad-action"
-            data-nav
-            data-action="transfer"
-            onclick={() => applyTransferStatus('transfer')}
-          >
-            {player.transfer_status === 'transfer' ? 'Снять с трансфера' : 'На трансфер'}
-          </button>
-          <button
-            class="squad-action"
-            data-nav
-            data-action="loan"
-            onclick={() => applyTransferStatus('loan')}
-          >
-            {player.transfer_status === 'loan' ? 'Убрать из аренды' : 'Добавить в аренду'}
-          </button>
-          <button
-            class="squad-action"
-            data-nav
-            data-action="blocked"
-            onclick={() => applyTransferStatus('blocked')}
-          >
-            {player.transfer_status === 'blocked' ? 'Разблокировать' : 'Блокировать'}
-          </button>
-        </div>
-        <div class="squad-actions-col">
-          <div class="squad-actions-head">
-            <i class="squad-actions-dot is-squad"></i>
-            Состав
-          </div>
-          <button class="squad-action" data-nav data-action="plan" onclick={manageTeamFromCentre}>
-            Рук-во командой
-          </button>
-          <button class="squad-action" data-nav data-action="number" onclick={openNumberScreen}>
-            Смена номера
-          </button>
-        </div>
-        <div class="squad-actions-col">
-          <div class="squad-actions-head">
-            <i class="squad-actions-dot is-contract"></i>
-            Контракт
-          </div>
-          <button class="squad-action" data-nav data-action="renew" onclick={openNegotiationScreen}>
-            <span>Продление контракта</span>
-            {#if negotiationNotice(player)}
-              <span class="squad-action-notice" title="Готов ответ по контракту">!</span>
-            {/if}
-          </button>
-          <button
-            class="squad-action is-danger"
-            data-nav
-            data-action="release"
-            onclick={openReleaseScreen}
-          >
-            Отпустить игрока
-          </button>
-        </div>
-      </div>
-    {/snippet}
-
     {#snippet centreRoster(mode)}
       <section class="centre-list scroll-area" aria-label="Игроки состава">
         {#each centrePlayers as player, index (player.id)}
@@ -2900,7 +2829,7 @@
             </button>
 
             {#if centreOpenId === player.id}
-              {@render squadActions(player)}
+              <SquadActions player={player} notice={negotiationNotice(player)} onTransferStatus={applyTransferStatus} onManageTeam={manageTeamFromCentre} onNumber={openNumberScreen} onNegotiation={openNegotiationScreen} onRelease={openReleaseScreen} />
             {/if}
           </div>
         {/each}
@@ -4693,7 +4622,7 @@
                       </button>
 
                       {#if centreOpenId === player.id}
-                        {@render squadActions(player)}
+                        <SquadActions player={player} notice={negotiationNotice(player)} onTransferStatus={applyTransferStatus} onManageTeam={manageTeamFromCentre} onNumber={openNumberScreen} onNegotiation={openNegotiationScreen} onRelease={openReleaseScreen} />
                       {/if}
                     </div>
                   {/each}
