@@ -43,8 +43,6 @@
     TRANSFER_AGE,
     TRANSFER_CENTRE_TABS,
     TRANSFER_GROUP_OPTIONS,
-    TRANSFER_GROUP_TABS,
-    TRANSFER_PAGE,
     TRANSFER_POSITIONS,
     TRANSFER_STATUS_OPTIONS,
     transferHubCards,
@@ -73,6 +71,13 @@
     trackShift as computeTrackShift,
     trackWidth as computeTrackWidth,
   } from './career/utils/calendar.js'
+  import {
+    buildTransferParams,
+    transferFieldLabel,
+    transferFiltersActive as computeTransferFiltersActive,
+    transferPositionShort,
+    transferValueMeta,
+  } from './career/utils/transfers.js'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -343,9 +348,7 @@
   })
   let radar = $derived(focusedPlayer ? radarValues(focusedPlayer.stats) : [])
 
-  let transferFiltersActive = $derived(
-    Object.entries(transferFilters).filter(([, value]) => value !== '' && value !== null).length,
-  )
+  let transferFiltersActive = $derived(computeTransferFiltersActive(transferFilters))
   let transferCentre = $derived(
     career.transfers ?? {
       shortlist: [],
@@ -823,68 +826,6 @@
     }
   }
 
-  function transferFieldLabel(field) {
-    if (field === 'group') {
-      return (
-        TRANSFER_GROUP_OPTIONS.find((option) => option.value === transferFilters.group)?.label ??
-        'Любая'
-      )
-    }
-    if (field === 'position') {
-      return transferFilters.position ? positionLabel(transferFilters.position) : 'Любое'
-    }
-    if (field === 'citizenship') return transferFilters.citizenship || 'Любое'
-    if (field === 'country') {
-      return (
-        transferCountries.find((country) => country.id === transferFilters.country)?.name ??
-        'Любая'
-      )
-    }
-    if (field === 'league') {
-      return (
-        transferLeagues.find((league) => league.id === transferFilters.league)?.name ?? 'Любая'
-      )
-    }
-    if (field === 'club') {
-      return transferClubs.find((club) => club.id === transferFilters.club)?.name ?? 'Любой'
-    }
-    if (field === 'status') {
-      return (
-        TRANSFER_STATUS_OPTIONS.find((option) => option.value === transferFilters.status)?.label ??
-        'Любой'
-      )
-    }
-    return '—'
-  }
-
-  function transferPositionShort() {
-    if (!transferFilters.position) return 'Любое'
-    return POSITION_BADGES[transferFilters.position] ?? positionLabel(transferFilters.position)
-  }
-
-  function transferValueMeta(field) {
-    if (field === 'position') {
-      return { badge: transferFilters.position ? POSITION_BADGES[transferFilters.position] : null }
-    }
-    if (field === 'citizenship') {
-      const country = transferCountries.find((item) => item.name === transferFilters.citizenship)
-      return { logo: country?.flag ?? null }
-    }
-    if (field === 'country') {
-      const country = transferCountries.find((item) => item.id === transferFilters.country)
-      return { logo: country?.flag ?? null }
-    }
-    if (field === 'league') {
-      const league = transferLeagues.find((item) => item.id === transferFilters.league)
-      return { logo: league?.logo ?? null }
-    }
-    if (field === 'club') {
-      const club = transferClubs.find((item) => item.id === transferFilters.club)
-      return { logo: club?.logo ?? null }
-    }
-    return { logo: null, badge: null }
-  }
-
   function activeEditField() {
     return transferEditing === 'positionRole' ? transferRoleRow : transferEditing
   }
@@ -952,25 +893,6 @@
     return []
   }
 
-  function buildTransferParams(offset = 0) {
-    return {
-      name: transferFilters.name.trim() || undefined,
-      group: transferFilters.group || undefined,
-      position: transferFilters.position || undefined,
-      age_min: transferFilters.ageMin ?? undefined,
-      age_max: transferFilters.ageMax ?? undefined,
-      citizenship: transferFilters.citizenship || undefined,
-      country_id: transferFilters.country || undefined,
-      league_id: transferFilters.league || undefined,
-      club_id: transferFilters.club || undefined,
-      status: transferFilters.status || undefined,
-      sort: 'overall',
-      direction: 'desc',
-      limit: TRANSFER_PAGE,
-      offset,
-    }
-  }
-
   async function runTransferSearch(reset = true) {
     const token = ++transferSearchToken
     transferError = ''
@@ -983,7 +905,7 @@
     try {
       const data = await api.transferSearch(
         career.id,
-        buildTransferParams(reset ? 0 : transferResults.length),
+        buildTransferParams(transferFilters, reset ? 0 : transferResults.length),
       )
       if (token !== transferSearchToken) return
       transferResults = reset ? data.items : [...transferResults, ...data.items]
@@ -3449,7 +3371,12 @@
       {:else if transfersView === 'filters'}
         {#snippet tfTile(field, label)}
           {@const editing = transferEditing === field}
-          {@const meta = transferValueMeta(field)}
+          {@const meta = transferValueMeta(field, {
+          filters: transferFilters,
+          countries: transferCountries,
+          leagues: transferLeagues,
+          clubs: transferClubs,
+        })}
           <button
             type="button"
             class="tf-cell"
@@ -3477,7 +3404,12 @@
                 {#if meta.badge}
                   <span class="tf-badge">{meta.badge}</span>
                 {/if}
-                <strong>{transferFieldLabel(field)}</strong>
+                <strong>{transferFieldLabel(field, {
+            filters: transferFilters,
+            countries: transferCountries,
+            leagues: transferLeagues,
+            clubs: transferClubs,
+          })}</strong>
               </span>
               {#if editing}
                 <span
@@ -3542,7 +3474,12 @@
                     >
                   {/if}
                   <span class="tf-bar-main">
-                    <strong>{transferFieldLabel('group')}</strong>
+                    <strong>{transferFieldLabel('group', {
+            filters: transferFilters,
+            countries: transferCountries,
+            leagues: transferLeagues,
+            clubs: transferClubs,
+          })}</strong>
                   </span>
                   {#if transferEditing === 'positionRole'}
                     <span
@@ -3573,7 +3510,7 @@
                     >
                   {/if}
                   <span class="tf-bar-main">
-                    <strong>{transferPositionShort()}</strong>
+                    <strong>{transferPositionShort(transferFilters.position)}</strong>
                   </span>
                   {#if transferEditing === 'positionRole'}
                     <span
