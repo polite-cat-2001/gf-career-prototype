@@ -80,6 +80,7 @@
   import ContractTerms from './career/shared/ContractTerms.svelte'
   import RadarChart from './career/shared/RadarChart.svelte'
   import StrengthBadge from './career/shared/StrengthBadge.svelte'
+  import CentreInfoRow from './career/shared/CentreInfoRow.svelte'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -2763,14 +2764,6 @@
 
   <main class="screen hub-screen">
 
-    {#snippet centreRow(label, value)}
-      <div class="centre-info-row">
-        <span>{label}</span>
-        <strong>{value}</strong>
-      </div>
-    {/snippet}
-
-
     {#snippet centreProfile(eyebrow)}
       <div class="centre-profile">
         <span class="centre-photo">
@@ -3835,28 +3828,19 @@
 
             <section class="centre-block">
               <div class="centre-block-head">Условия сделки</div>
-              {@render centreRow(
-                (transferContractState?.kind ?? transferContractOffer?.kind) === 'loan'
+              <CentreInfoRow label={(transferContractState?.kind ?? transferContractOffer?.kind) === 'loan'
                   ? 'Плата за аренду'
-                  : 'Согласованный fee',
-                transferContractFee > 0
+                  : 'Согласованный fee'} value={transferContractFee > 0
                   ? formatValue(transferContractFee)
-                  : 'Без компенсации',
-              )}
-              {@render centreRow('Баланс после сделки', formatValue(transferContractBalanceAfter))}
-              {@render centreRow(
-                transferContractPlayer.club_id ? 'Текущая зарплата' : 'Зарплата по отчёту',
-                transferContractPlayer.weekly_wage != null
+                  : 'Без компенсации'} />
+              <CentreInfoRow label={'Баланс после сделки'} value={formatValue(transferContractBalanceAfter)} />
+              <CentreInfoRow label={transferContractPlayer.club_id ? 'Текущая зарплата' : 'Зарплата по отчёту'} value={transferContractPlayer.weekly_wage != null
                   ? formatValue(transferContractPlayer.weekly_wage)
-                  : '—',
-              )}
+                  : '—'} />
               {#if (transferContractState?.kind ?? transferContractOffer?.kind) === 'loan'}
-                {@render centreRow(
-                  'Доля зарплаты',
-                  `${transferContractState?.wage_share ?? transferContractOffer?.wage_share ?? 100}%`,
-                )}
+                <CentreInfoRow label={'Доля зарплаты'} value={`${transferContractState?.wage_share ?? transferContractOffer?.wage_share ?? 100}%`} />
               {/if}
-              {@render centreRow('Клуб', transferContractPlayer.club_name ?? 'Свободный агент')}
+              <CentreInfoRow label={'Клуб'} value={transferContractPlayer.club_name ?? 'Свободный агент'} />
               {#if !transferContractPlayer.club_id}
                 <p class="negotiation-note">
                   Приблизительная зарплата по отчёту скаута. Точные требования игрок
@@ -4452,64 +4436,43 @@
 
                 <section class="centre-block">
                   <div class="centre-block-head">Личные данные</div>
-                  {@render centreRow('Возраст', centrePlayer.age ?? '—')}
-                  {@render centreRow(
-                    'Гражданство',
-                    centrePlayer.citizenship.join(', ') || '—',
-                  )}
-                  {@render centreRow(
-                    'Рост',
-                    centrePlayer.height ? `${centrePlayer.height} см` : '—',
-                  )}
-                  {@render centreRow(
-                    'Вес',
-                    centrePlayer.weight ? `${centrePlayer.weight} кг` : '—',
-                  )}
-                  {@render centreRow('Рабочая нога', centrePlayer.foot || '—')}
-                  {@render centreRow('Номер', centrePlayer.shirt_number ?? '—')}
+                  <CentreInfoRow label={'Возраст'} value={centrePlayer.age ?? '—'} />
+                  <CentreInfoRow label={'Гражданство'} value={centrePlayer.citizenship.join(', ') || '—'} />
+                  <CentreInfoRow label={'Рост'} value={centrePlayer.height ? `${centrePlayer.height} см` : '—'} />
+                  <CentreInfoRow label={'Вес'} value={centrePlayer.weight ? `${centrePlayer.weight} кг` : '—'} />
+                  <CentreInfoRow label={'Рабочая нога'} value={centrePlayer.foot || '—'} />
+                  <CentreInfoRow label={'Номер'} value={centrePlayer.shirt_number ?? '—'} />
                 </section>
 
                 <section class="centre-block">
                   <div class="centre-block-head">Контракт</div>
-                  {@render centreRow('Амплуа', centrePlayer.squad_role_label ?? '—')}
-                  {@render centreRow(
-                    'Срок',
-                    `${centrePlayer.contract?.years ?? 1} ${plural(
+                  <CentreInfoRow label={'Амплуа'} value={centrePlayer.squad_role_label ?? '—'} />
+                  <CentreInfoRow label={'Срок'} value={`${centrePlayer.contract?.years ?? 1} ${plural(
                       centrePlayer.contract?.years ?? 1,
                       'год',
                       'года',
                       'лет',
-                    )}`,
-                  )}
-                  {@render centreRow(
-                    'Зарплата',
-                    `${formatValue(centrePlayer.contract?.weekly_wage ?? 0)} / нед.`,
-                  )}
-                  {@render centreRow(
-                    'Отступные',
-                    formatValue(centrePlayer.contract?.release_clause ?? 0),
-                  )}
+                    )}`} />
+                  <CentreInfoRow label={'Зарплата'} value={`${formatValue(centrePlayer.contract?.weekly_wage ?? 0)} / нед.`} />
+                  <CentreInfoRow label={'Отступные'} value={formatValue(centrePlayer.contract?.release_clause ?? 0)} />
                 </section>
 
                 <section class="centre-block">
                   <div class="centre-block-head">Доступность</div>
                   {#if centrePlayer.injury}
-                    {@render centreRow('Травма', centrePlayer.injury.type)}
-                    {@render centreRow('Возвращение', formatDate(centrePlayer.injury.until))}
+                    <CentreInfoRow label={'Травма'} value={centrePlayer.injury.type} />
+                    <CentreInfoRow label={'Возвращение'} value={formatDate(centrePlayer.injury.until)} />
                   {:else if centrePlayer.suspension}
-                    {@render centreRow(
-                      'Дисквалификация',
-                      `${centrePlayer.suspension.matches} ${plural(
+                    <CentreInfoRow label={'Дисквалификация'} value={`${centrePlayer.suspension.matches} ${plural(
                         centrePlayer.suspension.matches,
                         'матч',
                         'матча',
                         'матчей',
-                      )}`,
-                    )}
+                      )}`} />
                   {:else}
-                    {@render centreRow('Состояние', 'Готов к игре')}
+                    <CentreInfoRow label={'Состояние'} value={'Готов к игре'} />
                   {/if}
-                  {@render centreRow('Кондиция', `${centrePlayer.fatigue}%`)}
+                  <CentreInfoRow label={'Кондиция'} value={`${centrePlayer.fatigue}%`} />
                 </section>
               </aside>
             {/if}
@@ -4781,50 +4744,38 @@
 
                   <section class="centre-block">
                     <div class="centre-block-head">Финансы</div>
-                    {@render centreRow('Стоимость', formatValue(centrePlayer.market_value))}
-                    {@render centreRow(
-                      'Зарплата',
-                      `${formatValue(centrePlayer.contract?.weekly_wage ?? 0)} / нед.`,
-                    )}
-                    {@render centreRow(
-                      'Отступные',
-                      formatValue(centrePlayer.contract?.release_clause ?? 0),
-                    )}
+                    <CentreInfoRow label={'Стоимость'} value={formatValue(centrePlayer.market_value)} />
+                    <CentreInfoRow label={'Зарплата'} value={`${formatValue(centrePlayer.contract?.weekly_wage ?? 0)} / нед.`} />
+                    <CentreInfoRow label={'Отступные'} value={formatValue(centrePlayer.contract?.release_clause ?? 0)} />
                   </section>
 
                   <section class="centre-block">
                     <div class="centre-block-head">Контракт</div>
-                    {@render centreRow(
-                      'Срок',
-                      `${centrePlayer.contract?.years ?? 1} ${plural(
+                    <CentreInfoRow label={'Срок'} value={`${centrePlayer.contract?.years ?? 1} ${plural(
                         centrePlayer.contract?.years ?? 1,
                         'год',
                         'года',
                         'лет',
-                      )}`,
-                    )}
-                    {@render centreRow('Амплуа', centrePlayer.squad_role_label ?? '—')}
+                      )}`} />
+                    <CentreInfoRow label={'Амплуа'} value={centrePlayer.squad_role_label ?? '—'} />
                   </section>
 
                   <section class="centre-block">
                     <div class="centre-block-head">Статус</div>
                     {#if centrePlayer.injury}
-                      {@render centreRow('Травма', centrePlayer.injury.type)}
-                      {@render centreRow('Возвращение', formatDate(centrePlayer.injury.until))}
+                      <CentreInfoRow label={'Травма'} value={centrePlayer.injury.type} />
+                      <CentreInfoRow label={'Возвращение'} value={formatDate(centrePlayer.injury.until)} />
                     {:else if centrePlayer.suspension}
-                      {@render centreRow(
-                        'Дисквалификация',
-                        `${centrePlayer.suspension.matches} ${plural(
+                      <CentreInfoRow label={'Дисквалификация'} value={`${centrePlayer.suspension.matches} ${plural(
                           centrePlayer.suspension.matches,
                           'матч',
                           'матча',
                           'матчей',
-                        )}`,
-                      )}
+                        )}`} />
                     {:else}
-                      {@render centreRow('Доступность', 'Готов к игре')}
+                      <CentreInfoRow label={'Доступность'} value={'Готов к игре'} />
                     {/if}
-                    {@render centreRow('Кондиция', `${centrePlayer.fatigue}%`)}
+                    <CentreInfoRow label={'Кондиция'} value={`${centrePlayer.fatigue}%`} />
                   </section>
                 </aside>
               {/if}
@@ -5057,24 +5008,15 @@
           {@render centreProfile('Продление контракта')}
           <section class="centre-block">
             <div class="centre-block-head">Текущий контракт</div>
-            {@render centreRow('Амплуа', centrePlayer.squad_role_label ?? '—')}
-            {@render centreRow(
-              'Срок',
-              `${centrePlayer.contract?.years ?? 1} ${plural(
+            <CentreInfoRow label={'Амплуа'} value={centrePlayer.squad_role_label ?? '—'} />
+            <CentreInfoRow label={'Срок'} value={`${centrePlayer.contract?.years ?? 1} ${plural(
                 centrePlayer.contract?.years ?? 1,
                 'год',
                 'года',
                 'лет',
-              )}`,
-            )}
-            {@render centreRow(
-              'Зарплата',
-              `${formatValue(centrePlayer.contract?.weekly_wage ?? 0)} / нед.`,
-            )}
-            {@render centreRow(
-              'Отступные',
-              formatValue(centrePlayer.contract?.release_clause ?? 0),
-            )}
+              )}`} />
+            <CentreInfoRow label={'Зарплата'} value={`${formatValue(centrePlayer.contract?.weekly_wage ?? 0)} / нед.`} />
+            <CentreInfoRow label={'Отступные'} value={formatValue(centrePlayer.contract?.release_clause ?? 0)} />
           </section>
         </aside>
 
