@@ -1,7 +1,7 @@
 import { tick } from 'svelte'
 
 import { api } from '../../api.js'
-import { positionLabel } from '../../format.js'
+import { CONTRACT_ROLES, positionLabel } from '../../format.js'
 import {
   OFFER_KIND_LABELS,
   OFFER_STATUS_LABELS,

@@ -1,6 +1,6 @@
 import { tick } from 'svelte'
 
-import { tabs } from '../constants/hub.js'
+import { detailPages, tabs } from '../constants/hub.js'
 
 export function createNavigationState(ctx) {
   const {
