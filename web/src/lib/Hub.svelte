@@ -1,6 +1,5 @@
 <script>
   import { onMount, tick } from 'svelte'
-  import { slide } from 'svelte/transition'
   import {
     registerBack,
     registerCycle,
@@ -12,21 +11,11 @@
     registerTabs,
     registerView,
   } from './actions.js'
-  import { api } from './api.js'
-  import BenchDrawer from './BenchDrawer.svelte'
   import Controls from './Controls.svelte'
-  import Icon from './Icon.svelte'
-  import PlayerCard from './PlayerCard.svelte'
-  import Scouting from './Scouting.svelte'
   import Tabs from './Tabs.svelte'
-  import TransferHistory from './TransferHistory.svelte'
-  import TransferPlayers from './TransferPlayers.svelte'
-  import TransferOfferModal from './TransferOfferModal.svelte'
-  import IncomingOfferModal from './IncomingOfferModal.svelte'
-  import { focusElement, focusFirst, inputDevice } from './input.js'
+  import { focusElement, focusFirst } from './input.js'
   import {
     AMOUNT_PLACES,
-    INFO_LABELS,
     attributePages,
     centreTabs,
     detailPages,
@@ -34,59 +23,16 @@
     squadTiles,
     tabs,
   } from './career/constants/hub.js'
-  import {
-    OFFER_KIND_LABELS,
-    OFFER_STATUS_LABELS,
-    POSITION_BADGES,
-    TRANSFER_AGE,
-    TRANSFER_CENTRE_TABS,
-    TRANSFER_GROUP_OPTIONS,
-    TRANSFER_POSITIONS,
-    TRANSFER_STATUS_OPTIONS,
-    transferHubCards,
-  } from './career/constants/transfers.js'
-  import { OSK_LIMIT, OSK_ROWS, REPORT_PAGE_SIZE } from './career/constants/scouting.js'
-  import { pitchX, pitchY } from './career/utils/pitch.js'
-  import { addDay, daysBetween, nextSeasonLabel } from './career/utils/dates.js'
-  import {
-    average,
-    currentRole,
-    infoValues,
-    ratingAt,
-    starCount,
-    targetInfo,
-    teamAfterSwap,
-  } from './career/utils/squad.js'
+  import { transferHubCards } from './career/constants/transfers.js'
   import {
     ownRow as findOwnRow,
     tableRound as computeTableRound,
     tableRows as computeTableRows,
   } from './career/utils/table.js'
-  import {
-    trackDays as computeTrackDays,
-    trackIndex as computeTrackIndex,
-    trackShift as computeTrackShift,
-    trackWidth as computeTrackWidth,
-  } from './career/utils/calendar.js'
-  import {
-    buildTransferParams,
-    transferFieldLabel,
-    transferFiltersActive as computeTransferFiltersActive,
-    transferPositionShort,
-    transferValueMeta,
-  } from './career/utils/transfers.js'
   import { createMatchState } from './career/state/match.svelte.js'
   import { createSquadState } from './career/state/squad.svelte.js'
   import { createTransfersState } from './career/state/transfers.svelte.js'
   import { createNavigationState } from './career/state/navigation.svelte.js'
-  import ContractTerms from './career/shared/ContractTerms.svelte'
-  import RadarChart from './career/shared/RadarChart.svelte'
-  import StrengthBadge from './career/shared/StrengthBadge.svelte'
-  import CentreInfoRow from './career/shared/CentreInfoRow.svelte'
-  import CentreProfile from './career/shared/CentreProfile.svelte'
-  import SquadActions from './career/shared/SquadActions.svelte'
-  import CentreRoster from './career/shared/CentreRoster.svelte'
-  import PlayerBlock from './career/shared/PlayerBlock.svelte'
   import CentreTab from './career/centre/CentreTab.svelte'
   import SquadOverview from './career/squad/SquadOverview.svelte'
   import SquadCentre from './career/squad/SquadCentre.svelte'
@@ -99,32 +45,7 @@
   import SeasonReview from './career/match/SeasonReview.svelte'
   import MatchSimulationOverlay from './career/match/MatchSimulationOverlay.svelte'
   import MatchdayOverlay from './career/match/MatchdayOverlay.svelte'
-  import {
-    CONTRACT_ROLES,
-    attributeGroups,
-    compareTone,
-    competitionLabel,
-    contractRoleLabel,
-    formatDate,
-    formatTimestamp,
-    formatValue,
-    hideBrokenImage,
-    moraleFace,
-    ovrClass,
-    playerInitialName,
-    plural,
-    posTone,
-    positionLabel,
-    radarValues,
-    seasonLabel,
-    shortDate,
-    shortMonthLabel,
-    shortRole,
-    statTone,
-    statusLabel,
-    tierLabel,
-    weekStrip,
-  } from './format.js'
+  import { formatDate, formatTimestamp, hideBrokenImage, tierLabel } from './format.js'
 
   let {
     career,
