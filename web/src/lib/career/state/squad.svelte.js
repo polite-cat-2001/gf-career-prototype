@@ -568,6 +568,9 @@ export function createSquadState(ctx) {
     get centreActionBusy() {
       return centreActionBusy
     },
+    set centreActionBusy(value) {
+      centreActionBusy = value
+    },
     get negotiationDraft() {
       return negotiationDraft
     },
@@ -580,11 +583,20 @@ export function createSquadState(ctx) {
     get amountField() {
       return amountField
     },
+    set amountField(value) {
+      amountField = value
+    },
     get amountDigits() {
       return amountDigits
     },
+    set amountDigits(value) {
+      amountDigits = value
+    },
     get amountIndex() {
       return amountIndex
+    },
+    set amountIndex(value) {
+      amountIndex = value
     },
     get centreAttributePage() {
       return centreAttributePage
