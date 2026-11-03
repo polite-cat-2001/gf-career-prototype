@@ -305,7 +305,7 @@
   {/if}
 
   <ScoutingModal
-    hub.view={hub.view}
+    view={hub.view}
     candidates={hub.candidates}
     balance={hub.balance}
     hireCandidateId={hub.hireCandidate?.id}
