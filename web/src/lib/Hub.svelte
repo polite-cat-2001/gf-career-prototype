@@ -86,6 +86,7 @@
   import CentreRoster from './career/shared/CentreRoster.svelte'
   import PlayerBlock from './career/shared/PlayerBlock.svelte'
   import CentreTab from './career/centre/CentreTab.svelte'
+  import SquadOverview from './career/squad/SquadOverview.svelte'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -3905,71 +3906,17 @@
         </section>
       {/if}
     {:else if tab === 'squad' && view === 'overview'}
-      <div class="squad-overview">
-        <button class="squad-team" data-nav data-autofocus onclick={() => openPlan()}>
-          <div class="squad-team-head">
-            <img class="squad-team-crest" src={career.club.logo} alt="" onerror={hideBrokenImage} />
-            <div class="squad-team-title">
-              <span class="eyebrow">Состав клуба</span>
-              <strong>{career.club.name}: по умолч.</strong>
-              <span>{lineup.formation} · {career.club.league_name}</span>
-            </div>
-            <span class="widget-action">A · план игры</span>
-          </div>
-
-          <div class="pitch pitch-plan">
-            <span class="pitch-surface"></span>
-            <svg class="pitch-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-              <polygon points="13,2 87,2 98,98 2,98"></polygon>
-              <line x1="7" y1="50" x2="93" y2="50"></line>
-              <ellipse cx="50" cy="50" rx="12" ry="16"></ellipse>
-              <polygon points="33,2 67,2 70,18 30,18"></polygon>
-              <polygon points="25,98 75,98 70,80 30,80"></polygon>
-            </svg>
-            {#each lineup.slots as slot (slot.position + slot.player.id)}
-              <PlayerCard
-                player={slot.player}
-                role={slot.role}
-                preview
-                positionStyle={`left:${pitchX(slot.x, slot.y)}%; top:${pitchY(slot.y)}%`}
-              />
-            {/each}
-            <StrengthBadge display={teamDisplay} comparing={comparing} delta={teamDelta} />
-          </div>
-
-          <div class="squad-team-foot">
-            <span>{summary.squad_size} игроков · средний возраст {summary.average_age ?? '—'}</span>
-            <span>{formatValue(summary.total_market_value)}</span>
-          </div>
-        </button>
-
-        <div class="squad-tiles">
-          {#each squadTiles as tile (tile.id)}
-            {#if tile.selected}
-              <div class="squad-tile is-selected" aria-current="true">
-                <span class="squad-tile-label">{tile.label}</span>
-                <span class="squad-tile-icon">
-                  <img src={career.club.logo} alt="" onerror={hideBrokenImage} />
-                  <span class="squad-tile-check"><Icon name="check" size={14} /></span>
-                </span>
-                <span class="squad-tile-note">{career.club.name}</span>
-              </div>
-            {:else if tile.id === 'centre'}
-              <button class="squad-tile" data-nav onclick={openSquadCentre}>
-                <span class="squad-tile-label">{tile.label}</span>
-                <span class="squad-tile-icon"><Icon name={tile.icon} size={44} /></span>
-                <span class="squad-tile-note">{tile.note}</span>
-              </button>
-            {:else}
-              <div class="squad-tile is-disabled" aria-disabled="true">
-                <span class="squad-tile-label">{tile.label}</span>
-                <span class="squad-tile-icon"><Icon name={tile.icon} size={44} /></span>
-                <span class="squad-tile-note">{tile.note}</span>
-              </div>
-            {/if}
-          {/each}
-        </div>
-      </div>
+      <SquadOverview
+        {career}
+        {lineup}
+        {summary}
+        {squadTiles}
+        {teamDisplay}
+        {comparing}
+        {teamDelta}
+        onPlan={() => openPlan()}
+        onCentre={openSquadCentre}
+      />
     {:else if tab === 'squad' && view === 'centre'}
       <div class="centre">
         <nav class="centre-tabs" aria-label="Центр составов">
