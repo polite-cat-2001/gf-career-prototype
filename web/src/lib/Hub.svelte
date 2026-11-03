@@ -49,6 +49,7 @@
     TRANSFER_STATUS_OPTIONS,
     transferHubCards,
   } from './career/constants/transfers.js'
+  import { OSK_LIMIT, OSK_ROWS, REPORT_PAGE_SIZE } from './career/constants/scouting.js'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -94,9 +95,6 @@
   } = $props()
 
   const enabledTabs = tabs.filter((tab) => !tab.disabled).map((tab) => tab.id)
-
-  const OSK_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM']
-  const OSK_LIMIT = 24
 
   let tab = $state('centre')
   let view = $state('overview')
@@ -427,7 +425,6 @@
     ...(scouting?.reports ?? []),
     ...(scouting?.recommendations ?? []),
   ])
-  const REPORT_PAGE_SIZE = 6
   let reportPageCount = $derived(
     Math.max(1, Math.ceil(reportFeed.length / REPORT_PAGE_SIZE)),
   )
