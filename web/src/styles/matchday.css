@@ -1,0 +1,230 @@
+/* Matchday results and table */
+
+.matchday-page {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding-bottom: 10px;
+}
+
+.matchday-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.045)),
+    rgba(37, 65, 73, 0.72);
+  box-shadow:
+    0 26px 80px rgba(0, 0, 0, 0.34),
+    0 0 70px rgba(173, 214, 224, 0.08);
+  animation: result-rise 0.26s ease-out;
+}
+
+.matchday-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(108deg, rgba(28, 53, 62, 0.96), rgba(20, 40, 47, 0.9));
+}
+
+.matchday-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #c3d6da;
+}
+
+.matchday-head h2 {
+  margin: 4px 0 0;
+  font-family: var(--font-heading);
+  font-size: clamp(24px, 3vw, 42px);
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.matchday-step {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.matchday-results {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 16px 24px 20px;
+  overflow-y: auto;
+}
+
+.matchday-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  min-height: 42px;
+  padding: 7px 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.matchday-result.is-own {
+  border-color: rgba(140, 255, 158, 0.4);
+  background: rgba(91, 201, 122, 0.12);
+}
+
+.matchday-club {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.matchday-club span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.matchday-club img {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.matchday-club.is-away {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.matchday-score {
+  font-family: var(--font-heading);
+  font-size: 21px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.matchday-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 20px 16px;
+}
+
+.matchday-table {
+  width: 100%;
+  height: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.matchday-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 10px 7px;
+  background: #203c45;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.matchday-table tbody tr {
+  height: calc((100% - 31px) / var(--rows, 20));
+}
+
+.matchday-table tbody td {
+  padding: 2px 7px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  text-align: center;
+  color: #d7e4e6;
+}
+
+.matchday-table tbody tr.is-own td {
+  background: rgba(91, 201, 122, 0.14);
+  color: #fff;
+  font-weight: 700;
+}
+
+.matchday-table .is-pos {
+  width: 34px;
+}
+
+.matchday-table .is-delta {
+  width: 28px;
+}
+
+.matchday-table .is-club {
+  width: auto;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.matchday-table .is-club img {
+  width: 22px;
+  height: 22px;
+  margin-right: 9px;
+  vertical-align: middle;
+  object-fit: contain;
+}
+
+.matchday-table .is-points {
+  color: #fff;
+  font-weight: 700;
+}
+
+.position-delta {
+  display: inline-block;
+  width: 18px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.position-delta.up {
+  color: #8cff9e;
+}
+
+.position-delta.down {
+  color: #ff8a7a;
+}
+
+.position-delta.same {
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.matchday-table .is-club img {
+  display: inline-block;
+}
+.player-status-flag {
+  background: #b97a1f;
+}
+.head-season {
+  font-size: 10px;
+  color: #c3d6da;
+}
