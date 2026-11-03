@@ -54,6 +54,15 @@
   import { radarGrid, radarLabelPos, radarPoints } from './career/utils/radar.js'
   import { addDay, daysBetween, nextSeasonLabel } from './career/utils/dates.js'
   import {
+    average,
+    currentRole,
+    infoValues,
+    ratingAt,
+    starCount,
+    targetInfo,
+    teamAfterSwap,
+  } from './career/utils/squad.js'
+  import {
     CONTRACT_ROLES,
     attributeGroups,
     compareTone,
@@ -293,7 +302,9 @@
   let anchorRadar = $derived(anchorPlayer ? radarValues(anchorPlayer.stats) : [])
   let teamAverage = $derived(average(lineup.slots.map((slot) => slot.player.effective_overall ?? slot.player.overall)))
   let teamStrength = $derived(Math.round(teamAverage))
-  let projectedTeamAverage = $derived(teamAfterSwap())
+  let projectedTeamAverage = $derived(
+    teamAfterSwap(comparing, teamAverage, lineup, anchorPlayer, focusedPlayer),
+  )
   let teamDelta = $derived(comparing ? projectedTeamAverage - teamAverage : 0)
   let teamDisplay = $derived(Math.round(comparing ? projectedTeamAverage : teamAverage))
   let profileGroups = $derived(focusedPlayer ? attributeGroups(focusedPlayer.stats) : [])
@@ -2075,88 +2086,6 @@
     focusFirst()
   }
 
-  function average(values) {
-    if (!values.length) return 0
-    return values.reduce((total, value) => total + value, 0) / values.length
-  }
-
-  function slotFor(playerId) {
-    return lineup.slots.find((slot) => slot.player.id === playerId) ?? null
-  }
-
-  function currentRole(player) {
-    return slotFor(player.id)?.role ?? player.role
-  }
-
-  function teamAfterSwap() {
-    if (!comparing) return teamAverage
-    const starterIds = lineup.slots.map((slot) => slot.player.id)
-    const anchorSlot = starterIds.indexOf(anchorPlayer.id)
-    const focusedSlot = starterIds.indexOf(focusedPlayer.id)
-    if (anchorSlot !== -1 && focusedSlot !== -1) return teamAverage
-    if (anchorSlot === -1 && focusedSlot === -1) return teamAverage
-    const overalls = lineup.slots.map((slot) => slot.player.effective_overall ?? slot.player.overall)
-    if (anchorSlot !== -1) {
-      overalls[anchorSlot] = focusedPlayer.effective_overall ?? focusedPlayer.overall
-    }
-    if (focusedSlot !== -1) {
-      overalls[focusedSlot] = anchorPlayer.effective_overall ?? anchorPlayer.overall
-    }
-    return average(overalls)
-  }
-
-  function ratingAt(player, slotRole) {
-    if (player.role === slotRole) return Math.round(player.overall)
-    const families = {
-      GK: 'goalkeeper',
-      CB: 'defence',
-      LB: 'defence',
-      RB: 'defence',
-      DM: 'middle',
-      CM: 'middle',
-      AM: 'middle',
-      LM: 'wing',
-      RM: 'wing',
-      CF: 'attack',
-    }
-    const order = ['goalkeeper', 'defence', 'middle', 'wing', 'attack']
-    const from = order.indexOf(families[player.role])
-    const to = order.indexOf(families[slotRole])
-    const distance = from === -1 || to === -1 ? 3 : Math.abs(from - to)
-    const penalty = distance === 1 ? 2 : distance === 2 ? 4 : 6
-    return Math.max(1, Math.round(player.overall - penalty))
-  }
-
-  function targetInfo(player) {
-    if (!comparing || !player) return null
-    const counterpart = player.id === anchorPlayer?.id ? focusedPlayer : anchorPlayer
-    if (!counterpart) return null
-    const slot = slotFor(counterpart.id)
-    if (!slot) return null
-    const rating = ratingAt(player, slot.role)
-    return {
-      role: slot.role,
-      position: slot.position,
-      rating,
-      delta: rating - ratingAt(player, currentRole(player)),
-    }
-  }
-
-  function infoValues(player) {    return {
-      position: positionLabel(player.position),
-      age: player.age ?? '—',
-      height: player.height ? `${player.height} см` : '—',
-      weight: player.weight ? `${player.weight} кг` : '—',
-      foot: player.foot || '—',
-      weakFoot: player.weak_foot ?? '—',
-      skillMoves: player.skill_moves ?? '—',
-      shirtNumber: player.shirt_number ?? '—',
-      potential: player.pot ?? '—',
-      marketValue: formatValue(player.market_value),
-      citizenship: player.citizenship.join(', ') || '—',
-    }
-  }
-
   function revealName(event) {
     const wrapper = event.currentTarget.querySelector('.player-name-wrap')
     const name = wrapper?.querySelector('.player-name')
@@ -2845,12 +2774,6 @@
     )
   }
 
-  function starCount(value) {
-    const number = Math.round(Number(value))
-    if (!Number.isFinite(number)) return 0
-    return Math.max(0, Math.min(5, number))
-  }
-
   async function openPlan(playerId = null) {
     tab = 'squad'
     view = 'plan'
@@ -3148,8 +3071,8 @@
     {/snippet}
 
     {#snippet playerBlock(player, mirrored)}
-      {@const target = targetInfo(player)}
-      {@const role = currentRole(player)}
+      {@const target = targetInfo(player, comparing, anchorPlayer, focusedPlayer, lineup)}
+      {@const role = currentRole(lineup, player)}
       <div class="head-side" class:mirrored={mirrored}>
         <div class="head-photo-block">
           <span class="player-photo-large">
