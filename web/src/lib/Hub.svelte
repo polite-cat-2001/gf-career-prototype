@@ -180,12 +180,14 @@
     onaction,
     onswap,
     focusFirst,
+    focusElement,
   })
 
   const transfers = createTransfersState({
     getCareer: () => career,
     getFinance: () => squad.finance,
     getSquad: () => squad,
+    setTab: (value) => nav.setTab(value),
     onaction,
     focusFirst,
     focusElement,
@@ -335,7 +337,7 @@
           else if (card.id === 'network') transfers.openTransferNetwork('scouts')
           else if (card.id === 'history') transfers.openTransferHistory()
         }}
-        {transferFilters}
+        transferFilters={transfers.transferFilters}
         transferEditing={transfers.transferEditing}
         transferRoleRow={transfers.transferRoleRow}
         transferAgeRow={transfers.transferAgeRow}
@@ -345,7 +347,7 @@
         onOpenOsk={transfers.openOsk}
         onToggleFilterEdit={(field) =>
           transfers.transferEditing === field ? transfers.closeTransferEdit() : transfers.openTransferEdit(field)}
-        {onStepActive}
+        onStepActive={transfers.stepActive}
         onRoleStep={(row, delta) => {
           transfers.transferRoleRow = row
           transfers.stepActive(delta)
@@ -373,8 +375,8 @@
         openSentOfferModal={transfers.openSentOfferModal}
         openIncomingOfferModal={transfers.openIncomingOfferModal}
         acceptTransferCounter={transfers.acceptTransferCounter}
-        {transferOfferModal}
-        {incomingOfferModal}
+        offerModal={transfers.transferOfferModal}
+        incomingModal={transfers.incomingOfferModal}
         acceptSentOfferCounter={transfers.acceptSentOfferCounter}
         reofferSentOffer={transfers.reofferSentOffer}
         openTransferContractFromOffer={transfers.openTransferContractFromOffer}
@@ -462,7 +464,7 @@
         onRelease={squad.openReleaseScreen}
         totals={squad.centreTotals}
         competitions={squad.centreCompetitions}
-        squad.radar={squad.centreRadar}
+        radar={squad.centreRadar}
         {attributePages}
         attributePage={squad.centreAttributePage}
         attributeGroup={squad.centreAttributeGroup}

@@ -7,14 +7,16 @@ import {
   OFFER_STATUS_LABELS,
   POSITION_BADGES,
   TRANSFER_AGE,
+  TRANSFER_CENTRE_TABS,
   TRANSFER_GROUP_OPTIONS,
   TRANSFER_POSITIONS,
   TRANSFER_STATUS_OPTIONS,
 } from '../constants/transfers.js'
+import { OSK_LIMIT, OSK_ROWS, REPORT_PAGE_SIZE } from '../constants/scouting.js'
 import { buildTransferParams, transferFiltersActive as computeTransferFiltersActive } from '../utils/transfers.js'
 
 export function createTransfersState(ctx) {
-  const { getCareer, getFinance, getSquad, onaction, focusFirst, focusElement } = ctx
+  const { getCareer, getFinance, getSquad, setTab, onaction, focusFirst, focusElement } = ctx
   const squad = getSquad()
 
     let transfersView = $state('hub')
