@@ -63,6 +63,11 @@
     teamAfterSwap,
   } from './career/utils/squad.js'
   import {
+    ownRow as findOwnRow,
+    tableRound as computeTableRound,
+    tableRows as computeTableRows,
+  } from './career/utils/table.js'
+  import {
     CONTRACT_ROLES,
     attributeGroups,
     compareTone,
@@ -218,21 +223,9 @@
   let trackShift = $derived(trackDays.length ? (trackIndex / trackDays.length) * 100 : 0)
   let isMatchDay = $derived(Boolean(nextMatch && displayDate >= nextMatch.date))
   let daysToMatch = $derived(nextMatch ? daysBetween(displayDate, nextMatch.date) : 0)
-  let ownRow = $derived(
-    season?.standings.find((row) => row.club_id === career.club.id) ?? null,
-  )
-  let tableRows = $derived.by(() => {
-    const rows = season?.standings ?? []
-    if (!rows.length) return []
-    const visible = rows.slice(0, 5)
-    if (ownRow && !visible.includes(ownRow)) {
-      visible[4] = { ...ownRow, gapBefore: true }
-    }
-    return visible
-  })
-  let tableRound = $derived(
-    season ? (season.next ? Math.max(0, season.round - 1) : season.rounds_total) : 0,
-  )
+  let ownRow = $derived(findOwnRow(season?.standings, career.club.id))
+  let tableRows = $derived(computeTableRows(season?.standings, ownRow))
+  let tableRound = $derived(computeTableRound(season))
   let centreAction = $derived(
     advancing
       ? 'Сохраняем дату…'
