@@ -83,6 +83,7 @@
   import CentreInfoRow from './career/shared/CentreInfoRow.svelte'
   import CentreProfile from './career/shared/CentreProfile.svelte'
   import SquadActions from './career/shared/SquadActions.svelte'
+  import CentreRoster from './career/shared/CentreRoster.svelte'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -2766,76 +2767,6 @@
 
   <main class="screen hub-screen">
 
-    {#snippet centreRoster(mode)}
-      <section class="centre-list scroll-area" aria-label="Игроки состава">
-        {#each centrePlayers as player, index (player.id)}
-          <div class="centre-row-wrap" data-row={player.id}>
-            <button
-              class="centre-player-row"
-              class:is-stats={mode === 'stats'}
-              class:is-attributes={mode === 'attributes'}
-              class:is-open={centreOpenId === player.id}
-              data-nav
-              data-player={player.id}
-              data-current={player.id === centrePlayerId ? '' : undefined}
-              data-autofocus={index === 0 ? '' : undefined}
-              onfocus={() => (centrePlayerId = player.id)}
-              onclick={() => toggleCentreActions(player)}
-            >
-              <span class="centre-row-photo">
-                <img src={player.photo} alt="" onerror={hideBrokenImage} />
-                {#if player.injury}
-                  <span
-                    class="player-status-flag"
-                    class:is-injury={Boolean(player.injury)}
-                    title={statusLabel(player)}
-                  >
-                    +
-                  </span>
-                {/if}
-              </span>
-              <span class="centre-row-main">
-                <span class="centre-row-name-row">
-                  <span class="centre-row-name">{playerInitialName(player)}</span>
-                  {#if negotiationNotice(player)}
-                    <span class="squad-notice" title="Готов ответ по контракту">!</span>
-                  {/if}
-                </span>
-                <span class="centre-row-meta">
-                  <span class="pos-badge {posTone(player.role)}">{shortRole(player.role)}</span>
-                  <span>{player.squad_role_short}</span>
-                </span>
-              </span>
-              {#if mode === 'stats'}
-                <span class="centre-row-totals">
-                  {player.season_stats?.apps ?? 0} И · {player.season_stats?.goals ?? 0} Г ·
-                  {player.season_stats?.assists ?? 0} А · {player.season_stats?.minutes ?? 0} мин
-                </span>
-              {:else}
-                <strong class="centre-row-ovr {ovrClass(player.overall)}">
-                  {Math.round(player.overall)}
-                </strong>
-                {#if mode === 'status'}
-                  <span
-                    class="centre-row-face"
-                    title={player.expected_minutes > 0
-                      ? `Настрой ${player.morale}%`
-                      : 'Нет данных о настрое'}
-                  >
-                    {player.expected_minutes > 0 ? moraleFace(player.morale) : '—'}
-                  </span>
-                {/if}
-              {/if}
-            </button>
-
-            {#if centreOpenId === player.id}
-              <SquadActions player={player} notice={negotiationNotice(player)} onTransferStatus={applyTransferStatus} onManageTeam={manageTeamFromCentre} onNumber={openNumberScreen} onNegotiation={openNegotiationScreen} onRelease={openReleaseScreen} />
-            {/if}
-          </div>
-        {/each}
-      </section>
-    {/snippet}
-
     {#snippet playerBlock(player, mirrored)}
       {@const target = targetInfo(player, comparing, anchorPlayer, focusedPlayer, lineup)}
       {@const role = currentRole(lineup, player)}
@@ -4296,7 +4227,7 @@
 
         {#if centreTab === 'status'}
           <div class="centre-body">
-            {@render centreRoster('status')}
+            <CentreRoster mode={'status'} players={centrePlayers} centrePlayerId={centrePlayerId} openId={centreOpenId} onFocus={(id) => (centrePlayerId = id)} onToggle={toggleCentreActions} noticeFor={negotiationNotice} onTransferStatus={applyTransferStatus} onManageTeam={manageTeamFromCentre} onNumber={openNumberScreen} onNegotiation={openNegotiationScreen} onRelease={openReleaseScreen} />
 
             {#if centrePlayer}
               <aside class="centre-panel scroll-area" aria-label="Карточка игрока">
@@ -4384,7 +4315,7 @@
           </div>
         {:else if centreTab === 'stats'}
           <div class="centre-body">
-            {@render centreRoster('stats')}
+            <CentreRoster mode={'stats'} players={centrePlayers} centrePlayerId={centrePlayerId} openId={centreOpenId} onFocus={(id) => (centrePlayerId = id)} onToggle={toggleCentreActions} noticeFor={negotiationNotice} onTransferStatus={applyTransferStatus} onManageTeam={manageTeamFromCentre} onNumber={openNumberScreen} onNegotiation={openNegotiationScreen} onRelease={openReleaseScreen} />
 
             {#if centrePlayer}
               <aside class="centre-panel scroll-area" aria-label="Статистика игрока">
@@ -4438,7 +4369,7 @@
           </div>
         {:else if centreTab === 'attributes'}
           <div class="centre-body">
-            {@render centreRoster('attributes')}
+            <CentreRoster mode={'attributes'} players={centrePlayers} centrePlayerId={centrePlayerId} openId={centreOpenId} onFocus={(id) => (centrePlayerId = id)} onToggle={toggleCentreActions} noticeFor={negotiationNotice} onTransferStatus={applyTransferStatus} onManageTeam={manageTeamFromCentre} onNumber={openNumberScreen} onNegotiation={openNegotiationScreen} onRelease={openReleaseScreen} />
 
             {#if centrePlayer}
               <aside class="centre-panel scroll-area" aria-label="Характеристики игрока">
