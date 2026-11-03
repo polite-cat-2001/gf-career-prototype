@@ -84,6 +84,7 @@
   import CentreProfile from './career/shared/CentreProfile.svelte'
   import SquadActions from './career/shared/SquadActions.svelte'
   import CentreRoster from './career/shared/CentreRoster.svelte'
+  import PlayerBlock from './career/shared/PlayerBlock.svelte'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -2767,61 +2768,6 @@
 
   <main class="screen hub-screen">
 
-    {#snippet playerBlock(player, mirrored)}
-      {@const target = targetInfo(player, comparing, anchorPlayer, focusedPlayer, lineup)}
-      {@const role = currentRole(lineup, player)}
-      <div class="head-side" class:mirrored={mirrored}>
-        <div class="head-photo-block">
-          <span class="player-photo-large">
-            <img src={player.photo} alt="" onerror={hideBrokenImage} />
-            {#if player.injury}
-              <span
-                class="player-status-flag"
-                class:is-injury={Boolean(player.injury)}
-                title={statusLabel(player)}
-              >
-                +
-              </span>
-            {/if}
-          </span>
-          <span class="photo-fatigue" title={`Кондиция ${player.fatigue}%`}>
-            <span class="fatigue-bar" class:is-low={player.fatigue < 50}>
-              <i style={`width:${player.fatigue}%`}></i>
-            </span>
-          </span>
-        </div>
-        <div class="head-info" class:right={mirrored}>
-          <div class="head-name-row">
-            {#if player.shirt_number}
-              <span class="head-number">{player.shirt_number}</span>
-            {/if}
-            <strong class="head-name">{playerInitialName(player)}</strong>
-          </div>
-          <div class="head-rating-row">
-            <span class="pos-badge {posTone(role)}">{shortRole(role)}</span>
-            <strong class="head-ovr {ovrClass(ratingAt(player, role))}">{ratingAt(player, role)}</strong>
-            <span class="head-shift">›</span>
-            {#if target}
-              <span class="pos-badge {posTone(target.role)}">{shortRole(target.role)}</span>
-              <strong class="head-ovr {ovrClass(target.rating)}">{target.rating}</strong>
-              {#if target.delta > 0}
-                <span class="rating-delta up">▲</span>
-              {:else if target.delta < 0}
-                <span class="rating-delta down">▼</span>
-              {/if}
-            {:else}
-              <span class="rating-dash">–</span>
-            {/if}
-          </div>
-          <div class="head-season">
-            <span>{player.season_stats?.apps ?? 0} М</span>
-            <span>{player.season_stats?.goals ?? 0} Г</span>
-            <span>{player.season_stats?.assists ?? 0} А</span>
-            <span>{player.season_stats?.minutes ?? 0} мин</span>
-          </div>
-        </div>
-      </div>
-    {/snippet}
 
     {#if saveError}
       <div class="notice error hub-notice">{saveError}</div>
@@ -4630,7 +4576,7 @@
 
           {#if comparing}
             <div class="player-head compare-head">
-              {@render playerBlock(anchorPlayer, false)}
+              <PlayerBlock player={anchorPlayer} mirrored={false} comparing={comparing} anchorPlayer={anchorPlayer} focusedPlayer={focusedPlayer} lineup={lineup} />
               {#if radar.length && focusedPlayer.role !== 'GK'}
                 <RadarChart
               values={anchorRadar.length ? anchorRadar : radar}
@@ -4639,11 +4585,11 @@
               {:else}
                 <span class="radar-empty">Вратарский профиль не входит в канон</span>
               {/if}
-              {@render playerBlock(focusedPlayer, true)}
+              <PlayerBlock player={focusedPlayer} mirrored={true} comparing={comparing} anchorPlayer={anchorPlayer} focusedPlayer={focusedPlayer} lineup={lineup} />
             </div>
           {:else}
             <div class="player-head">
-              {@render playerBlock(focusedPlayer, false)}
+              <PlayerBlock player={focusedPlayer} mirrored={false} comparing={comparing} anchorPlayer={anchorPlayer} focusedPlayer={focusedPlayer} lineup={lineup} />
               {#if radar.length && focusedPlayer.role !== 'GK'}
                 <RadarChart values={radar} />
               {:else}
