@@ -81,6 +81,7 @@
   import RadarChart from './career/shared/RadarChart.svelte'
   import StrengthBadge from './career/shared/StrengthBadge.svelte'
   import CentreInfoRow from './career/shared/CentreInfoRow.svelte'
+  import CentreProfile from './career/shared/CentreProfile.svelte'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -2764,31 +2765,6 @@
 
   <main class="screen hub-screen">
 
-    {#snippet centreProfile(eyebrow)}
-      <div class="centre-profile">
-        <span class="centre-photo">
-          <img src={centrePlayer.photo} alt="" onerror={hideBrokenImage} />
-          {#if centrePlayer.injury}
-            <span
-              class="player-status-flag"
-              class:is-injury={Boolean(centrePlayer.injury)}
-              title={statusLabel(centrePlayer)}
-            >
-              +
-            </span>
-          {/if}
-        </span>
-        <div class="centre-profile-info">
-          <span class="eyebrow">{eyebrow}</span>
-          <strong class="centre-name">{playerInitialName(centrePlayer)}</strong>
-          <span class="centre-sub">
-            {positionLabel(centrePlayer.position)} · {shortRole(centrePlayer.role)} ·
-            {Math.round(centrePlayer.overall)} OVR
-          </span>
-        </div>
-      </div>
-    {/snippet}
-
     {#snippet squadActions(player)}
       <div
         class="squad-actions"
@@ -4395,7 +4371,7 @@
 
             {#if centrePlayer}
               <aside class="centre-panel scroll-area" aria-label="Карточка игрока">
-                {@render centreProfile('Статус игрока')}
+                <CentreProfile player={centrePlayer} eyebrow={'Статус игрока'} />
 
                 <div class="centre-morale-block">
                   <div class="centre-morale-head">
@@ -4483,7 +4459,7 @@
 
             {#if centrePlayer}
               <aside class="centre-panel scroll-area" aria-label="Статистика игрока">
-                {@render centreProfile('Статистика игрока')}
+                <CentreProfile player={centrePlayer} eyebrow={'Статистика игрока'} />
 
                 <section class="centre-block">
                   <div class="centre-block-head">Итого в сезоне</div>
@@ -4537,7 +4513,7 @@
 
             {#if centrePlayer}
               <aside class="centre-panel scroll-area" aria-label="Характеристики игрока">
-                {@render centreProfile('Характеристики игрока')}
+                <CentreProfile player={centrePlayer} eyebrow={'Характеристики игрока'} />
 
                 <div class="attribute-layout">
                   <div class="attribute-radar">
@@ -4726,7 +4702,7 @@
 
               {#if centrePlayer}
                 <aside class="centre-panel finance-panel scroll-area" aria-label="Финансы игрока">
-                  {@render centreProfile('Финансы игрока')}
+                  <CentreProfile player={centrePlayer} eyebrow={'Финансы игрока'} />
 
                   <div class="finance-player-meta">
                     <span class="pos-badge {posTone(centrePlayer.role)}">
@@ -5005,7 +4981,7 @@
     {:else if tab === 'squad' && view === 'negotiation' && centrePlayer && negotiationDraft}
       <div class="negotiation">
         <aside class="negotiation-player scroll-area">
-          {@render centreProfile('Продление контракта')}
+          <CentreProfile player={centrePlayer} eyebrow={'Продление контракта'} />
           <section class="centre-block">
             <div class="centre-block-head">Текущий контракт</div>
             <CentreInfoRow label={'Амплуа'} value={centrePlayer.squad_role_label ?? '—'} />
