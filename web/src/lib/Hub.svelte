@@ -75,6 +75,7 @@
     transferPositionShort,
     transferValueMeta,
   } from './career/utils/transfers.js'
+  import { createMatchState } from './career/state/match.svelte.js'
   import ContractTerms from './career/shared/ContractTerms.svelte'
   import RadarChart from './career/shared/RadarChart.svelte'
   import StrengthBadge from './career/shared/StrengthBadge.svelte'
@@ -158,25 +159,6 @@
   let anchorId = $state(null)
   let swapping = $state(false)
   let benchFocused = $state(false)
-  let matchdayOpen = $state(false)
-  let matchdayStep = $state('results')
-  let matchdaySnapshot = $state(null)
-  let seasonReview = $state(false)
-  let reviewStep = $state(0)
-  let simulating = $state(false)
-  let advancing = $state(false)
-  let simDate = $state(null)
-  let simStart = $state(null)
-  let simTimer = null
-  let matchSimOpen = $state(false)
-  let matchSimPhase = $state('setup')
-  let matchSimSetup = $state(null)
-  let matchSimResult = $state(null)
-  let matchSimMinute = $state(0)
-  let matchSimLoading = $state(false)
-  let matchSimError = $state('')
-  let matchSimTimer = null
-
   let transfersView = $state('hub')
   let networkMode = $state('scouts')
   let networkEntryId = $state(null)
@@ -238,30 +220,34 @@
   let season = $derived(career.season)
   let review = $derived(season?.review ?? null)
   let nextMatch = $derived(season?.next ?? null)
-  let matchdayData = $derived(matchdaySnapshot ?? season?.last_matchday ?? null)
-  let displayDate = $derived(simulating && simDate ? simDate : career.date)
-  let days = $derived(weekStrip(displayDate, 7))
-  let trackDays = $derived(computeTrackDays(simulating, simStart, days))
-  let trackIndex = $derived(
-    computeTrackIndex(simulating, simStart, trackDays, displayDate),
-  )
-  let trackWidth = $derived(computeTrackWidth(trackDays))
-  let trackShift = $derived(computeTrackShift(trackDays, trackIndex))
-  let isMatchDay = $derived(Boolean(nextMatch && displayDate >= nextMatch.date))
-  let daysToMatch = $derived(nextMatch ? daysBetween(displayDate, nextMatch.date) : 0)
   let ownRow = $derived(findOwnRow(season?.standings, career.club.id))
   let tableRows = $derived(computeTableRows(season?.standings, ownRow))
   let tableRound = $derived(computeTableRound(season))
+  const match = createMatchState({
+    getCareer: () => career,
+    getNextMatch: () => nextMatch,
+    getSeason: () => season,
+    getReview: () => review,
+    getPlaying: () => playing,
+    getSaveError: () => saveError,
+    onpreview,
+    onsimulate,
+    onplay,
+    onadvance,
+    onnextseason,
+    focusFirst,
+  })
+
   let centreAction = $derived(
-    advancing
+    match.advancing
       ? 'Сохраняем дату…'
-      : simulating
+      : match.simulating
         ? 'Остановить'
         : playing
           ? 'Матч идёт…'
           : !nextMatch
             ? 'Перейти в следующий сезон'
-            : isMatchDay
+            : match.isMatchDay
               ? 'Играть матч'
               : 'Перемотать',
   )
@@ -470,8 +456,8 @@
   let hints = $derived.by(() => {
     const start = { gamepad: ['Start'], keyboard: ['S'], label: 'Сохранить' }
     const sections = { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Разделы' }
-    if (matchdayOpen) {
-      return matchdayStep === 'results'
+    if (match.matchdayOpen) {
+      return match.matchdayStep === 'results'
         ? [
             { gamepad: ['A'], keyboard: ['Enter'], label: 'Таблица' },
             { gamepad: ['B'], keyboard: ['Esc'], label: 'В хаб' },
@@ -481,43 +467,43 @@
             { gamepad: ['B'], keyboard: ['Esc'], label: 'К результатам' },
           ]
     }
-    if (matchSimOpen) {
-      if (matchSimPhase === 'live') {
+    if (match.matchSimOpen) {
+      if (match.matchSimPhase === 'live') {
         return [
           {
             gamepad: ['Y'],
             keyboard: ['R'],
-            label: matchSimLoading ? 'Симуляция…' : 'Пропустить',
+            label: match.matchSimLoading ? 'Симуляция…' : 'Пропустить',
           },
         ]
       }
-      if (matchSimPhase === 'done') {
+      if (match.matchSimPhase === 'done') {
         return [{ gamepad: ['A'], keyboard: ['Enter'], label: 'Далее' }]
       }
       return [
         {
           gamepad: ['A'],
           keyboard: ['Enter'],
-          label: matchSimLoading ? 'Загрузка…' : 'Начать симуляцию',
+          label: match.matchSimLoading ? 'Загрузка…' : 'Начать симуляцию',
         },
         { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
       ]
     }
-    if (seasonReview) {
+    if (match.seasonReview) {
       return [
         {
           gamepad: ['A'],
           keyboard: ['Enter'],
-          label: reviewStep === 0 ? 'Далее' : 'Начать новый сезон',
+          label: match.reviewStep === 0 ? 'Далее' : 'Начать новый сезон',
         },
         {
           gamepad: ['B'],
           keyboard: ['Esc'],
-          label: reviewStep === 1 ? 'К таблице' : 'Закрыть',
+          label: match.reviewStep === 1 ? 'К таблице' : 'Закрыть',
         },
       ]
     }
-    if (simulating || advancing) {
+    if (match.simulating || match.advancing) {
       return [{ gamepad: ['A'], keyboard: ['Enter'], label: centreAction }]
     }
     if (tab === 'transfers') {
@@ -792,7 +778,7 @@
       list.push({
         gamepad: ['A'],
         keyboard: ['Enter'],
-        label: isMatchDay ? 'Выбрать' : centreAction,
+        label: match.isMatchDay ? 'Выбрать' : centreAction,
       })
       list.push({ gamepad: ['B'], keyboard: ['Esc'], label: 'В меню' })
     } else {
@@ -824,8 +810,7 @@
       stopView()
       stopStep()
       stopReset()
-      if (simTimer) clearInterval(simTimer)
-      if (matchSimTimer) clearInterval(matchSimTimer)
+      match.dispose()
       if (oskTimer) clearTimeout(oskTimer)
     }
   })
@@ -833,11 +818,11 @@
   function handleSave() {
     if (
       !saving &&
-      !seasonReview &&
-      !simulating &&
-      !advancing &&
-      !matchSimOpen &&
-      !matchdayOpen
+      !match.seasonReview &&
+      !match.simulating &&
+      !match.advancing &&
+      !match.matchSimOpen &&
+      !match.matchdayOpen
     ) {
       onsave()
     }
@@ -1804,224 +1789,6 @@
     closeOsk()
   }
 
-  async function openMatchSimulation() {
-    if (playing || advancing || matchSimOpen || !isMatchDay || !nextMatch) return
-    matchSimError = ''
-    matchSimLoading = true
-    const setup = await onpreview()
-    matchSimLoading = false
-    if (!setup) {
-      matchSimError = saveError || 'Не удалось открыть симуляцию'
-      return
-    }
-    matchSimSetup = setup
-    matchSimResult = null
-    matchSimPhase = 'setup'
-    matchSimMinute = 0
-    matchSimOpen = true
-    await tick()
-    focusFirst()
-  }
-
-  async function launchMatchSimulation() {
-    if (!matchSimOpen || matchSimPhase !== 'setup' || matchSimLoading) return
-    matchSimError = ''
-    matchSimLoading = true
-    const result = await onsimulate()
-    matchSimLoading = false
-    if (!result) {
-      matchSimError = saveError || 'Не удалось запустить симуляцию'
-      return
-    }
-    matchSimResult = result
-    matchSimPhase = 'live'
-    matchSimMinute = 0
-    if (matchSimTimer) clearInterval(matchSimTimer)
-    matchSimTimer = setInterval(tickMatchSimulation, 1000)
-    await tick()
-    focusFirst()
-  }
-
-  function tickMatchSimulation() {
-    if (matchSimPhase !== 'live') return
-    if (matchSimMinute >= 90) {
-      finishMatchSimulation()
-      return
-    }
-    matchSimMinute += 1
-    if (matchSimMinute >= 90) finishMatchSimulation()
-  }
-
-  function finishMatchSimulation() {
-    if (matchSimTimer) {
-      clearInterval(matchSimTimer)
-      matchSimTimer = null
-    }
-    if (matchSimPhase === 'live') {
-      matchSimMinute = 90
-      matchSimPhase = 'done'
-    }
-  }
-
-  async function closeMatchSimulation() {
-    if (matchSimLoading) return
-    if (matchSimTimer) {
-      clearInterval(matchSimTimer)
-      matchSimTimer = null
-    }
-    matchSimOpen = false
-    matchSimPhase = 'setup'
-    matchSimSetup = null
-    matchSimResult = null
-    matchSimMinute = 0
-    matchSimError = ''
-    await tick()
-    focusFirst()
-  }
-
-  function activateMatchSimulation() {
-    if (matchSimLoading) return
-    if (matchSimPhase === 'setup') {
-      launchMatchSimulation()
-      return
-    }
-    if (matchSimPhase === 'live') {
-      finishMatchSimulation()
-      return
-    }
-    openMatchday()
-  }
-
-  async function playMatch() {
-    if (playing || !isMatchDay) return
-    const updated = await onplay()
-    if (!updated) return
-    openMatchday(updated.season.last_matchday)
-  }
-
-  function openMatchday(data = null) {
-    const nextData = data ?? matchdayData
-    if (!nextData) {
-      closeMatchSimulation()
-      return
-    }
-    matchdaySnapshot = nextData
-    matchSimOpen = false
-    matchSimPhase = 'setup'
-    matchSimSetup = null
-    matchSimResult = null
-    matchSimMinute = 0
-    matchSimError = ''
-    matchdayStep = 'results'
-    matchdayOpen = true
-    tick().then(() => document.activeElement?.blur())
-  }
-
-  async function closeMatchday() {
-    matchdayOpen = false
-    matchdayStep = 'results'
-    matchdaySnapshot = null
-    await tick()
-    focusFirst()
-  }
-
-  function advanceMatchday() {
-    if (matchdayStep === 'results') {
-      matchdayStep = 'table'
-      return
-    }
-    closeMatchday()
-  }
-
-  function startSimulation() {
-    if (!nextMatch || isMatchDay || advancing) return
-    simDate = career.date
-    simStart = career.date
-    simulating = true
-    if (simTimer) clearInterval(simTimer)
-    simTimer = setInterval(tickSimulation, 1000)
-  }
-
-  function tickSimulation() {
-    if (!simulating || !nextMatch) return
-    const next = addDay(simDate)
-    if (next >= nextMatch.date) {
-      simDate = nextMatch.date
-      stopSimulation()
-      return
-    }
-    simDate = next
-  }
-
-  async function stopSimulation() {
-    if (advancing) return
-    if (simTimer) {
-      clearInterval(simTimer)
-      simTimer = null
-    }
-    const target = simDate ?? career.date
-    advancing = true
-    await onadvance(target)
-    advancing = false
-    simulating = false
-    simDate = null
-    simStart = null
-    await tick()
-    focusFirst()
-  }
-
-  async function handleNextWidget() {
-    if (advancing) return
-    if (simulating) {
-      stopSimulation()
-      return
-    }
-    if (!nextMatch) {
-      openSeasonReview()
-      return
-    }
-    if (isMatchDay) {
-      await playMatch()
-      return
-    }
-    startSimulation()
-  }
-
-  function openSeasonReview() {
-    if (!season?.complete || advancing) return
-    reviewStep = 0
-    seasonReview = true
-    tick().then(focusFirst)
-  }
-
-  function closeSeasonReview() {
-    seasonReview = false
-    reviewStep = 0
-    tick().then(focusFirst)
-  }
-
-  async function advanceSeasonReview() {
-    if (review?.next && reviewStep === 0) {
-      reviewStep = 1
-      await tick()
-      focusFirst()
-      return
-    }
-    await startNewSeason()
-  }
-
-  async function startNewSeason() {
-    if (advancing) return
-    advancing = true
-    const updated = await onnextseason()
-    advancing = false
-    if (!updated) return
-    seasonReview = false
-    reviewStep = 0
-    await tick()
-    focusFirst()
-  }
-
   function revealName(event) {
     const wrapper = event.currentTarget.querySelector('.player-name-wrap')
     const name = wrapper?.querySelector('.player-name')
@@ -2082,30 +1849,30 @@
       closeReleaseScreen()
       return
     }
-    if (matchdayOpen) {
-      if (matchdayStep === 'table') {
-        matchdayStep = 'results'
+    if (match.matchdayOpen) {
+      if (match.matchdayStep === 'table') {
+        match.matchdayStep = 'results'
       } else {
-        closeMatchday()
+        match.closeMatchday()
       }
       return
     }
-    if (matchSimOpen) {
-      if (matchSimLoading || matchSimPhase !== 'setup') return
-      closeMatchSimulation()
+    if (match.matchSimOpen) {
+      if (match.matchSimLoading || match.matchSimPhase !== 'setup') return
+      match.closeMatchSimulation()
       return
     }
-    if (simulating) {
-      stopSimulation()
+    if (match.simulating) {
+      match.stopSimulation()
       return
     }
-    if (advancing) return
-    if (seasonReview) {
-      if (reviewStep === 1) {
-        reviewStep = 0
+    if (match.advancing) return
+    if (match.seasonReview) {
+      if (match.reviewStep === 1) {
+        match.reviewStep = 0
         tick().then(focusFirst)
       } else {
-        closeSeasonReview()
+        match.closeSeasonReview()
       }
       return
     }
@@ -2172,19 +1939,19 @@
       confirmNumber()
       return true
     }
-    if (matchdayOpen) {
-      advanceMatchday()
+    if (match.matchdayOpen) {
+      match.advanceMatchday()
       return true
     }
-    if (!matchSimOpen) return false
-    activateMatchSimulation()
+    if (!match.matchSimOpen) return false
+    match.activateMatchSimulation()
     return true
   }
 
   function handleDetails() {
-    if (matchdayOpen) return
-    if (matchSimOpen) {
-      if (matchSimPhase === 'live') finishMatchSimulation()
+    if (match.matchdayOpen) return
+    if (match.matchSimOpen) {
+      if (match.matchSimPhase === 'live') match.finishMatchSimulation()
       return
     }
     if (tab === 'squad' && view === 'centre') return
@@ -2192,7 +1959,7 @@
   }
 
   function toggleDetails() {
-    if (matchdayOpen || seasonReview) return
+    if (match.matchdayOpen || match.seasonReview) return
     if (tab !== 'squad' || !focusedPlayer) return
     if (view === 'centre') return
     if (view === 'details') {
@@ -2221,7 +1988,7 @@
   }
 
   async function setTab(next) {
-    if (simulating || advancing || matchSimOpen || matchdayOpen) return
+    if (match.simulating || match.advancing || match.matchSimOpen || match.matchdayOpen) return
     if (!enabledTabs.includes(next)) return
     tab = next
     view = 'overview'
@@ -2273,7 +2040,7 @@
     }
     if (tab === 'squad' && ['negotiation', 'amount', 'number', 'release'].includes(view)) return
     if (transferEditing || oskOpen) return
-    if (simulating || advancing || seasonReview || matchSimOpen || matchdayOpen) return
+    if (match.simulating || match.advancing || match.seasonReview || match.matchSimOpen || match.matchdayOpen) return
     if (tab === 'squad' && view === 'centre') {
       switchCentreTab(direction)
       return
@@ -2751,7 +2518,7 @@
 
 </script>
 
-<div class="app" class:is-simulating={matchSimOpen || matchdayOpen}>
+<div class="app" class:is-simulating={match.matchSimOpen || match.matchdayOpen}>
   <header class="topbar hub-topbar">
     <div class="brand">
       <div class="brand-mark">GF</div>
@@ -2790,20 +2557,20 @@
         {career}
         {season}
         {nextMatch}
-        {displayDate}
-        {trackDays}
-        {trackWidth}
-        {trackShift}
-        {isMatchDay}
-        {simulating}
-        {advancing}
+        displayDate={match.displayDate}
+        trackDays={match.trackDays}
+        trackWidth={match.trackWidth}
+        trackShift={match.trackShift}
+        isMatchDay={match.isMatchDay}
+        simulating={match.simulating}
+        advancing={match.advancing}
         {ownRow}
         {tableRows}
         {tableRound}
-        inert={seasonReview || matchSimOpen || matchdayOpen}
-        onPlay={playMatch}
-        onOpenSimulation={openMatchSimulation}
-        onNext={handleNextWidget}
+        inert={match.seasonReview || match.matchSimOpen || match.matchdayOpen}
+        onPlay={match.playMatch}
+        onOpenSimulation={match.openMatchSimulation}
+        onNext={match.handleNextWidget}
       />
     {:else if tab === 'transfers'}
       <TransfersTab
@@ -3036,42 +2803,42 @@
   </main>
 
 
-  {#if seasonReview && review}
+  {#if match.seasonReview && review}
     <SeasonReview
       {review}
       {season}
-      {reviewStep}
+      reviewStep={match.reviewStep}
       {ownRow}
       {career}
-      onAdvance={advanceSeasonReview}
-      onStartNewSeason={startNewSeason}
+      onAdvance={match.advanceSeasonReview}
+      onStartNewSeason={match.startNewSeason}
     />
   {/if}
 
-  {#if matchSimOpen && matchSimSetup}
+  {#if match.matchSimOpen && match.matchSimSetup}
     <MatchSimulationOverlay
-      setup={matchSimSetup}
-      phase={matchSimPhase}
-      minute={matchSimMinute}
-      result={matchSimResult}
-      loading={matchSimLoading}
-      error={matchSimError || saveError}
+      setup={match.matchSimSetup}
+      phase={match.matchSimPhase}
+      minute={match.matchSimMinute}
+      result={match.matchSimResult}
+      loading={match.matchSimLoading}
+      error={match.matchSimError || saveError}
     />
   {/if}
 
-  {#if matchdayOpen && matchdayData}
-    <MatchdayOverlay data={matchdayData} step={matchdayStep} clubId={career.club.id} />
+  {#if match.matchdayOpen && match.matchdayData}
+    <MatchdayOverlay data={match.matchdayData} step={match.matchdayStep} clubId={career.club.id} />
   {/if}
 
   <Controls
     {hints}
     showDefaults={false}
-    note={matchdayOpen
-      ? matchdayStep === 'results'
+    note={match.matchdayOpen
+      ? match.matchdayStep === 'results'
         ? 'Результаты дня'
         : 'Таблица после тура'
-      : matchSimOpen
-        ? matchSimPhase === 'live'
+      : match.matchSimOpen
+        ? match.matchSimPhase === 'live'
           ? 'Симуляция · 1 минута в секунду'
           : 'Симуляция матча'
         : saving
