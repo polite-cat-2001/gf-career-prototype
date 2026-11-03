@@ -52,6 +52,7 @@
   import { OSK_LIMIT, OSK_ROWS, REPORT_PAGE_SIZE } from './career/constants/scouting.js'
   import { pitchX, pitchY } from './career/utils/pitch.js'
   import { radarGrid, radarLabelPos, radarPoints } from './career/utils/radar.js'
+  import { addDay, daysBetween, nextSeasonLabel } from './career/utils/dates.js'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -1983,25 +1984,6 @@
       return
     }
     closeMatchday()
-  }
-
-  function daysBetween(from, to) {
-    const start = new Date(`${from}T00:00:00Z`)
-    const end = new Date(`${to}T00:00:00Z`)
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0
-    return Math.max(0, Math.round((end - start) / 86_400_000))
-  }
-
-  function nextSeasonLabel() {
-    const year = Number(season.season_start.slice(0, 4)) + 1
-    if (Number.isNaN(year)) return ''
-    return `${year}/${String((year + 1) % 100).padStart(2, '0')}`
-  }
-
-  function addDay(value) {
-    const parsed = new Date(`${value}T00:00:00Z`)
-    parsed.setUTCDate(parsed.getUTCDate() + 1)
-    return parsed.toISOString().slice(0, 10)
   }
 
   function startSimulation() {
@@ -5451,7 +5433,7 @@
                 {plural(ownRow.points, 'очко', 'очка', 'очков')}
               </span>
             {:else if reviewStep === 1}
-              <span class="review-place">{nextSeasonLabel()}</span>
+              <span class="review-place">{nextSeasonLabel(season.season_start)}</span>
             {/if}
           </div>
         </div>
