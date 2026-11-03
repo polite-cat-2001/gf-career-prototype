@@ -93,6 +93,7 @@
   import ReleaseScreen from './career/squad/ReleaseScreen.svelte'
   import AmountKeypad from './career/squad/AmountKeypad.svelte'
   import NegotiationScreen from './career/squad/NegotiationScreen.svelte'
+  import TransfersTab from './career/transfers/TransfersTab.svelte'
   import {
     CONTRACT_ROLES,
     attributeGroups,
@@ -2804,1113 +2805,127 @@
         onNext={handleNextWidget}
       />
     {:else if tab === 'transfers'}
-      {#if transfersView === 'hub'}
-        <div class="tf-hub">
-          <div
-            class="tf-reports"
-            role="button"
-            tabindex="0"
-            aria-label="Отчёты скаутов — открыть"
-            data-nav
-            data-autofocus
-            onclick={() => openReportsCenter()}
-          >
-            <div class="tf-reports-head">
-              <strong>Отчёты скаутов</strong>
-              <div class="tf-reports-count">
-                <span><b>{scouting?.counts?.new ?? 0}</b> Новое</span>
-                <span><b>{scouting?.counts?.updates ?? 0}</b> Обновления</span>
-              </div>
-            </div>
-            <div class="tf-report-feed">
-              {#each reportPageEntries as entry, index (entry.player.id)}
-                <div class="tf-report-tile">
-                  <span class="tf-report-photo">
-                    <img src={entry.player.photo} alt="" onerror={hideBrokenImage} />
-                  </span>
-                  <span class="tf-report-main">
-                    <strong>{entry.player.name}</strong>
-                    <span class="tf-report-club">
-                      {entry.player.club_name ?? 'Свободный агент'}
-                    </span>
-                    <span class="tf-report-meta">
-                      {entry.scout_name} · {shortDate(entry.date)}
-                    </span>
-                  </span>
-                  <span class="tf-report-ovr">
-                    <b>{Math.round(entry.player.overall ?? 0)}</b>
-                    <small>ОБЩ.</small>
-                  </span>
-                  {#if !entry.acknowledged}
-                    <i class="tf-report-new" title="Новый"></i>
-                  {/if}
-                </div>
-              {/each}
-              {#if reportPageEntries.length < 6}
-                {#each Array(6 - reportPageEntries.length) as _, index (index)}
-                  <div class="tf-report-tile is-empty">
-                    <Icon name="users" size={22} />
-                    <span>—</span>
-                  </div>
-                {/each}
-              {/if}
-            </div>
-            <div class="tf-reports-foot">
-              <p>
-                {reportFeed.length
-                  ? `${reportPage + 1} / ${reportPageCount}`
-                  : 'Скаутских отчётов пока нет. Назначьте скаута в поиске игроков.'}
-              </p>
-              {#if reportPageCount > 1}
-                <div class="tf-report-pager">
-                  <button
-                    class="tf-report-arrow"
-                    type="button"
-                    tabindex="-1"
-                    aria-label="Предыдущая страница"
-                    onclick={(event) => {
-                      event.stopPropagation()
-                      shiftReport('left')
-                    }}>‹</button
-                  >
-                  <button
-                    class="tf-report-arrow"
-                    type="button"
-                    tabindex="-1"
-                    aria-label="Следующая страница"
-                    onclick={(event) => {
-                      event.stopPropagation()
-                      shiftReport('right')
-                    }}>›</button
-                  >
-                </div>
-              {/if}
-            </div>
-          </div>
-          {#each transferHubCards as card (card.id)}
-            <button
-              class="tf-hub-card tf-card-{card.id}"
-              class:is-disabled={!card.enabled}
-              data-nav
-              data-autofocus={card.enabled ? '' : undefined}
-              disabled={!card.enabled}
-              onclick={() => {
-                if (card.id === 'search') openTransferFilters()
-                else if (card.id === 'centre') openTransferCentre()
-                else if (card.id === 'network') openTransferNetwork('scouts')
-                else if (card.id === 'history') openTransferHistory()
-              }}
-            >
-              <div class="tf-hub-card-head">
-                <span class="eyebrow">{card.enabled ? 'Открыто' : 'Скоро'}</span>
-                {#if card.soon}<span class="soon-tag">{card.soon}</span>{/if}
-              </div>
-              <strong class="tf-hub-card-title">{card.label}</strong>
-              <span class="tf-hub-card-note">{card.note}</span>
-              <span class="tf-hub-card-icon">
-                <Icon name={card.icon} size={card.enabled ? 68 : 38} />
-              </span>
-            </button>
-          {/each}
-        </div>
-      {:else if transfersView === 'filters'}
-        {#snippet tfTile(field, label)}
-          {@const editing = transferEditing === field}
-          {@const meta = transferValueMeta(field, {
-          filters: transferFilters,
-          countries: transferCountries,
-          leagues: transferLeagues,
-          clubs: transferClubs,
-        })}
-          <button
-            type="button"
-            class="tf-cell"
-            class:is-editing={editing}
-            data-nav
-            data-filter={field}
-            data-edit={editing ? 'true' : undefined}
-            onclick={() => (editing ? closeTransferEdit() : openTransferEdit(field))}
-          >
-            <span class="tf-label">{label}</span>
-            <div class="tf-value-bar">
-              {#if editing}
-                <span
-                  class="tf-arrow"
-                  onclick={(event) => {
-                    event.stopPropagation()
-                    stepActive(-1)
-                  }}>‹</span
-                >
-              {/if}
-              <span class="tf-bar-main">
-                {#if meta.logo}
-                  <img src={meta.logo} alt="" onerror={hideBrokenImage} />
-                {/if}
-                {#if meta.badge}
-                  <span class="tf-badge">{meta.badge}</span>
-                {/if}
-                <strong>{transferFieldLabel(field, {
-            filters: transferFilters,
-            countries: transferCountries,
-            leagues: transferLeagues,
-            clubs: transferClubs,
-          })}</strong>
-              </span>
-              {#if editing}
-                <span
-                  class="tf-arrow"
-                  onclick={(event) => {
-                    event.stopPropagation()
-                    stepActive(1)
-                  }}>›</span
-                >
-              {/if}
-            </div>
-          </button>
-        {/snippet}
-        <div class="tf-filters" inert={oskOpen ? true : undefined}>
-          <div class="tf-filters-head">
-            <span class="tf-crumbs">Трансферы <i>›</i> Поиск игроков</span>
-            <span class="tf-crumbs-note">
-              {transferEditing ? 'A или B — выйти из плитки' : 'A — изменить · Y — начать поиск'}
-            </span>
-          </div>
-          <div class="tf-filter-grid">
-            <button
-              type="button"
-              class="tf-cell tf-name"
-              data-nav
-              data-filter="name"
-              onclick={openOsk}
-            >
-              <span class="tf-label">Имя игрока</span>
-              <span class="tf-name-art"><Icon name="users" size={64} /></span>
-              <span class="tf-value">{transferFilters.name || 'Люб.'}</span>
-            </button>
-
-            <button
-              type="button"
-              class="tf-cell tf-role"
-              class:is-editing={transferEditing === 'positionRole'}
-              data-nav
-              data-filter="positionRole"
-              data-edit={transferEditing === 'positionRole' ? 'true' : undefined}
-              onclick={() =>
-                transferEditing === 'positionRole'
-                  ? closeTransferEdit()
-                  : openTransferEdit('positionRole')}
-            >
-              <span class="tf-label">Позиция и амплуа</span>
-              <div class="tf-age-rows">
-                <div
-                  class="tf-role-row"
-                class:is-active={transferEditing === 'positionRole' && transferRoleRow === 'group'}
-              >
-                <span>Позиция</span>
-                <span class="tf-range-control">
-                  {#if transferEditing === 'positionRole'}
-                    <span
-                      class="tf-arrow"
-                      onclick={(event) => {
-                        event.stopPropagation()
-                        transferRoleRow = 'group'
-                        stepActive(-1)
-                      }}>‹</span
-                    >
-                  {/if}
-                  <span class="tf-bar-main">
-                    <strong>{transferFieldLabel('group', {
-            filters: transferFilters,
-            countries: transferCountries,
-            leagues: transferLeagues,
-            clubs: transferClubs,
-          })}</strong>
-                  </span>
-                  {#if transferEditing === 'positionRole'}
-                    <span
-                      class="tf-arrow"
-                      onclick={(event) => {
-                        event.stopPropagation()
-                        transferRoleRow = 'group'
-                        stepActive(1)
-                      }}>›</span
-                    >
-                  {/if}
-                </span>
-              </div>
-              <div
-                class="tf-role-row"
-                class:is-active={transferEditing === 'positionRole' && transferRoleRow === 'position'}
-              >
-                <span>Амплуа</span>
-                <span class="tf-range-control">
-                  {#if transferEditing === 'positionRole'}
-                    <span
-                      class="tf-arrow"
-                      onclick={(event) => {
-                        event.stopPropagation()
-                        transferRoleRow = 'position'
-                        stepActive(-1)
-                      }}>‹</span
-                    >
-                  {/if}
-                  <span class="tf-bar-main">
-                    <strong>{transferPositionShort(transferFilters.position)}</strong>
-                  </span>
-                  {#if transferEditing === 'positionRole'}
-                    <span
-                      class="tf-arrow"
-                      onclick={(event) => {
-                        event.stopPropagation()
-                        transferRoleRow = 'position'
-                        stepActive(1)
-                      }}>›</span
-                    >
-                  {/if}
-                </span>
-                </div>
-              </div>
-            </button>
-
-            {@render tfTile('citizenship', 'Гражданство')}
-            {@render tfTile('league', 'Лига')}
-
-            <button
-              type="button"
-              class="tf-cell tf-age"
-              class:is-editing={transferEditing === 'age'}
-              data-nav
-              data-filter="age"
-              data-edit={transferEditing === 'age' ? 'true' : undefined}
-              onclick={() =>
-                transferEditing === 'age' ? closeTransferEdit() : openTransferEdit('age')}
-            >
-              <span class="tf-label">Лет</span>
-              <div class="tf-age-rows">
-                <div
-                  class="tf-range-row"
-                  class:is-active={transferEditing === 'age' && transferAgeRow === 'ageMin'}
-                >
-                  <span>МИН.</span>
-                  <span class="tf-range-control">
-                    {#if transferEditing === 'age'}
-                      <span
-                        class="tf-arrow"
-                        onclick={(event) => {
-                          event.stopPropagation()
-                          transferAgeRow = 'ageMin'
-                          stepTransferRange('ageMin', -1)
-                        }}>‹</span
-                      >
-                    {/if}
-                    <strong>{transferFilters.ageMin ?? 'Люб.'}</strong>
-                    {#if transferEditing === 'age'}
-                      <span
-                        class="tf-arrow"
-                        onclick={(event) => {
-                          event.stopPropagation()
-                          transferAgeRow = 'ageMin'
-                          stepTransferRange('ageMin', 1)
-                        }}>›</span
-                      >
-                    {/if}
-                  </span>
-                </div>
-                <div
-                  class="tf-range-row"
-                  class:is-active={transferEditing === 'age' && transferAgeRow === 'ageMax'}
-                >
-                  <span>МАКС.</span>
-                  <span class="tf-range-control">
-                    {#if transferEditing === 'age'}
-                      <span
-                        class="tf-arrow"
-                        onclick={(event) => {
-                          event.stopPropagation()
-                          transferAgeRow = 'ageMax'
-                          stepTransferRange('ageMax', -1)
-                        }}>‹</span
-                      >
-                    {/if}
-                    <strong>{transferFilters.ageMax ?? 'Люб.'}</strong>
-                    {#if transferEditing === 'age'}
-                      <span
-                        class="tf-arrow"
-                        onclick={(event) => {
-                          event.stopPropagation()
-                          transferAgeRow = 'ageMax'
-                          stepTransferRange('ageMax', 1)
-                        }}>›</span
-                      >
-                    {/if}
-                  </span>
-                </div>
-              </div>
-            </button>
-
-            {@render tfTile('status', 'Трансферный статус')}
-            {@render tfTile('country', 'Страна')}
-            {@render tfTile('club', 'Клуб')}
-          </div>
-        </div>
-      {:else if transfersView === 'network'}
-        <Scouting
-          career={career}
-          mode={networkMode}
-          initialEntryId={networkEntryId}
-          backToHub={networkBackToHub}
-          bind:hints={networkHints}
-          onclose={closeTransferNetwork}
-          onaction={onaction}
-          onoffer={openTransferOffer}
-          onnegotiate={openTransferContractFromPlayer}
-        />
-      {:else if transfersView === 'history'}
-        <TransferHistory
-          career={career}
-          bind:hints={historyHints}
-          onclose={closeTransferHistory}
-        />
-      {:else if transfersView === 'centre'}
-        <div
-          class="tf-centre"
-          inert={transferOfferModalId || incomingOfferModalId ? true : undefined}
-        >
-          <header class="tf-filters-head">
-            <span class="tf-crumbs">Трансферы <i>›</i> Центр трансферов</span>
-            <span class="tf-crumbs-note">L1 / R1 — вкладки · Y — вид</span>
-          </header>
-          <nav class="centre-tabs tf-centre-tabs" aria-label="Центр трансферов">
-            {#each TRANSFER_CENTRE_TABS as item (item.id)}
-              <button
-                class="centre-tab"
-                class:active={transferCentreTab === item.id}
-                data-nav
-                data-centre-tab={item.id}
-                onclick={() => setTransferCentreTab(item.id)}
-              >
-                {item.label}
-                {#if item.id === 'received' && receivedUnread}
-                  <span class="centre-tab-badge">{receivedUnread}</span>
-                {/if}
-              </button>
-            {/each}
-          </nav>
-          {#if transferCentreIsSent}
-            {#if sentOffers.length}
-              <div class="tf-offers scroll-area">
-                {#each sentOffers as offer (offer.offer_id)}
-                  <article class="tf-offer-card is-{offer.status}">
-                    <div class="tf-offer-card-row">
-                      <button
-                        class="tf-offer-card-main is-clickable"
-                        data-nav
-                        data-offer-card={offer.offer_id}
-                        onclick={() => openSentOfferModal(offer)}
-                      >
-                        <span class="tf-offer-card-photo">
-                          <img src={offer.photo} alt="" onerror={hideBrokenImage} />
-                        </span>
-                        <div class="tf-offer-card-info">
-                          <span class="tf-offer-card-name">{offer.name}</span>
-                          <span class="tf-offer-card-meta">
-                            {offerKindLabel(offer.kind)} · {formatValue(offer.amount)}
-                            {#if offer.kind === 'loan'}
-                              · зарплата {offer.wage_share}%
-                            {/if}
-                          </span>
-                          <span class="tf-offer-card-status">
-                            {offerStatusLabel(offer.status)}
-                            {#if offer.due && offer.status === 'pending'}
-                              · ответ до {formatDate(offer.due)}
-                            {/if}
-                            {#if offer.status === 'refused' && offer.retry_after}
-                              · повтор после {formatDate(offer.retry_after)}
-                            {/if}
-                            {#if contractStatusLabel(offer.contract_status)}
-                              · контракт: {contractStatusLabel(offer.contract_status)}
-                            {/if}
-                          </span>
-                          <span class="tf-offer-card-message">{offer.message}</span>
-                          {#if offer.counter}
-                            <span class="tf-offer-card-counter">
-                              Новые условия: {formatValue(offer.counter.amount)}
-                              {#if offer.kind === 'loan'}
-                                · зарплата {offer.counter.wage_share}%
-                              {/if}
-                            </span>
-                          {/if}
-                        </div>
-                        {#if offer.club_logo}
-                          <img
-                            class="tf-offer-card-crest"
-                            src={offer.club_logo}
-                            alt=""
-                            onerror={hideBrokenImage}
-                          />
-                        {/if}
-                      </button>
-                      {#if offer.can_accept_counter}
-                        <div class="tf-offer-card-actions">
-                          <button
-                            class="tf-offer-action is-primary"
-                            data-nav
-                            onclick={() => acceptTransferCounter(offer)}
-                          >
-                            Принять контрпредложение
-                          </button>
-                        </div>
-                      {/if}
-                    </div>
-                  </article>
-                {/each}
-              </div>
-            {:else}
-              <div class="tf-empty-state">
-                <strong>{transferCentreTitle}</strong>
-                <p>{transferCentreEmpty}</p>
-              </div>
-            {/if}
-          {:else if transferCentreTab === 'received'}
-            {#if receivedOffers.length}
-              <div class="tf-offers scroll-area">
-                {#each receivedOffers as offer (offer.offer_id)}
-                  <article
-                    class="tf-offer-card is-{offer.status}"
-                    class:is-unread={offer.unread}
-                  >
-                    <button
-                      class="tf-offer-card-main is-clickable"
-                      data-nav
-                      data-incoming-card={offer.offer_id}
-                      onclick={() => openIncomingOfferModal(offer)}
-                    >
-                      <span class="tf-offer-card-photo">
-                        <img src={offer.photo} alt="" onerror={hideBrokenImage} />
-                      </span>
-                      <div class="tf-offer-card-info">
-                        <span class="tf-offer-card-name">{offer.name}</span>
-                        <span class="tf-offer-card-meta">
-                          {offer.club_name} · {offerKindLabel(offer.kind)} ·
-                          {formatValue(offer.amount)}
-                          {#if offer.kind === 'loan'}
-                            · зарплата {offer.wage_share}%
-                          {/if}
-                        </span>
-                        <span class="tf-offer-card-status">
-                          {offerStatusLabel(offer.status)}
-                          {#if offer.status === 'pending' && offer.expires_at}
-                            · до {formatDate(offer.expires_at)}
-                          {/if}
-                          {#if offer.status === 'counter' && offer.due}
-                            · ответ до {formatDate(offer.due)}
-                          {/if}
-                          {#if offer.executed_at}
-                            · переход завершён
-                          {:else if offer.execute_on && offer.status === 'accepted'}
-                            · переход {formatDate(offer.execute_on)}
-                          {/if}
-                        </span>
-                        <span class="tf-offer-card-message">{offer.message}</span>
-                        {#if offer.counter}
-                          <span class="tf-offer-card-counter">
-                            Контрпредложение: {formatValue(offer.counter.amount)}
-                          </span>
-                        {/if}
-                      </div>
-                      {#if offer.club_logo}
-                        <img
-                          class="tf-offer-card-crest"
-                          src={offer.club_logo}
-                          alt=""
-                          onerror={hideBrokenImage}
-                        />
-                      {/if}
-                    </button>
-                  </article>
-                {/each}
-              </div>
-            {:else}
-              <div class="tf-empty-state">
-                <strong>{transferCentreTitle}</strong>
-                <p>{transferCentreEmpty}</p>
-              </div>
-            {/if}
-          {:else}
-            <TransferPlayers
-              players={transferCentrePlayers}
-              title={transferCentreTitle}
-              emptyText={transferCentreEmpty}
-              date={career.date}
-              bind:view={transferCentreView}
-              bind:selectedId={transferCentreSelectedId}
-              bind:actionsOpen={transferCentreActionsOpen}
-              scouts={scoutPickerScouts}
-              reportForPlayer={reportForPlayer}
-              onaction={onaction}
-              onassign={openScoutPicker}
-              onoffer={openTransferOffer}
-              onnegotiate={openTransferContractFromPlayer}
-            />
-          {/if}
-        </div>
-        {#if transferOfferModal}
-          <TransferOfferModal
-            offer={transferOfferModal}
-            onaccept={() => acceptSentOfferCounter(transferOfferModal)}
-            onreoffer={() => reofferSentOffer(transferOfferModal)}
-            onnegotiate={() => openTransferContractFromOffer(transferOfferModal)}
-          />
-        {/if}
-        {#if incomingOfferModal}
-          <IncomingOfferModal
-            offer={incomingOfferModal}
-            onaccept={() => submitIncomingOffer(incomingOfferModal, 'incoming_accept')}
-            onrefuse={() => submitIncomingOffer(incomingOfferModal, 'incoming_refuse')}
-            oncounter={() => startIncomingCounter(incomingOfferModal)}
-          />
-        {/if}
-      {:else if transfersView === 'contractAmount' && transferContractPlayer}
-        <div class="amount-screen">
-          <span class="eyebrow">
-            {amountField === 'weekly_wage' ? 'Зарплата в неделю' : 'Отступные'}
-          </span>
-          <button
-            class="amount-value"
-            data-nav
-            data-amount
-            data-cycle="amount"
-            data-autofocus
-            aria-label="Сумма"
-            onclick={finishTransferContractAmount}
-          >
-            {#each amountGroups as group, groupIndex (groupIndex)}
-              <span class="amount-group">
-                {#each group.digits as digit, digitIndex (digitIndex)}
-                  <span
-                    class="amount-digit"
-                    class:is-selected={group.start + digitIndex === amountIndex}
-                  >
-                    {digit}
-                  </span>
-                {/each}
-              </span>
-            {/each}
-          </button>
-          <span class="amount-place">Разряд: {AMOUNT_PLACES[amountIndex]}</span>
-        </div>
-      {:else if transfersView === 'contract' && transferContractPlayer}
-        <div class="negotiation tf-contract">
-          <aside class="negotiation-player scroll-area">
-            <div class="centre-profile">
-              <span class="centre-photo">
-                <img
-                  src={transferContractPlayer.photo}
-                  alt=""
-                  onerror={hideBrokenImage}
-                />
-              </span>
-              <div class="centre-profile-info">
-                <span class="eyebrow">
-                  {(transferContractState?.kind ?? transferContractOffer?.kind) === 'loan'
-                    ? 'Аренда'
-                    : transferContractOffer || transferContractPlayer.club_id
-                      ? 'Трансфер'
-                      : 'Свободный агент'}
-                </span>
-                <strong class="centre-name">{transferContractPlayer.name}</strong>
-                <span class="centre-sub">
-                  {positionLabel(transferContractPlayer.position)} ·
-                  {shortRole(transferContractPlayer.role)} ·
-                  {transferContractPlayer.overall
-                    ? `${Math.round(transferContractPlayer.overall)} OVR`
-                    : '—'}
-                </span>
-              </div>
-            </div>
-
-            <section class="centre-block">
-              <div class="centre-block-head">Условия сделки</div>
-              <CentreInfoRow label={(transferContractState?.kind ?? transferContractOffer?.kind) === 'loan'
-                  ? 'Плата за аренду'
-                  : 'Согласованный fee'} value={transferContractFee > 0
-                  ? formatValue(transferContractFee)
-                  : 'Без компенсации'} />
-              <CentreInfoRow label={'Баланс после сделки'} value={formatValue(transferContractBalanceAfter)} />
-              <CentreInfoRow label={transferContractPlayer.club_id ? 'Текущая зарплата' : 'Зарплата по отчёту'} value={transferContractPlayer.weekly_wage != null
-                  ? formatValue(transferContractPlayer.weekly_wage)
-                  : '—'} />
-              {#if (transferContractState?.kind ?? transferContractOffer?.kind) === 'loan'}
-                <CentreInfoRow label={'Доля зарплаты'} value={`${transferContractState?.wage_share ?? transferContractOffer?.wage_share ?? 100}%`} />
-              {/if}
-              <CentreInfoRow label={'Клуб'} value={transferContractPlayer.club_name ?? 'Свободный агент'} />
-              {#if !transferContractPlayer.club_id}
-                <p class="negotiation-note">
-                  Приблизительная зарплата по отчёту скаута. Точные требования игрок
-                  раскроет в контрпредложении.
-                </p>
-              {/if}
-            </section>
-          </aside>
-
-          <section class="negotiation-form scroll-area">
-            {#if transferContractState?.status === 'pending'}
-              <div class="negotiation-head">
-                <span class="eyebrow">Ожидание ответа</span>
-                <strong class="negotiation-title">Игрок думает</strong>
-              </div>
-              <p class="negotiation-note">
-                {transferContractState.message}
-                {#if transferContractState.due}
-                  Ответ до {formatDate(transferContractState.due)}
-                {/if}
-              </p>
-              {#if transferContractState.offer}
-<ContractTerms terms={transferContractState.offer} />
-              {/if}
-            {:else if transferContractState?.status === 'accepted'}
-              <div class="negotiation-head">
-                <span class="eyebrow">Согласовано</span>
-                <strong class="negotiation-title">Условия приняты</strong>
-              </div>
-              <p class="negotiation-note">{transferContractState.message}</p>
-              {#if transferContractTerms}
-<ContractTerms terms={transferContractTerms} />
-              {/if}
-              <p class="negotiation-note">
-                Переход вступит в силу сразу, если трансферное окно открыто, иначе — при его
-                открытии.
-              </p>
-            {:else}
-              <div class="negotiation-head">
-                <span class="eyebrow">Личный контракт</span>
-                <strong class="negotiation-title">Условия</strong>
-              </div>
-
-              {#if transferContractDraft}
-                <div class="negotiation-fields">
-                  <button
-                    class="neg-field"
-                    data-nav
-                    data-cycle="contract"
-                    data-field="weekly_wage"
-                    data-autofocus
-                    onclick={() => openTransferContractAmount('weekly_wage')}
-                  >
-                    <span class="neg-field-label">Зарплата в неделю</span>
-                    <strong class="neg-field-value">
-                      {formatValue(transferContractDraft.weekly_wage)}
-                    </strong>
-                    <span class="neg-field-hint">← → шаг · A точная сумма</span>
-                  </button>
-                  <button
-                    class="neg-field"
-                    data-nav
-                    data-cycle="contract"
-                    data-field="years"
-                    onclick={() => adjustTransferContractField('years', 1)}
-                  >
-                    <span class="neg-field-label">Срок</span>
-                    <strong class="neg-field-value">
-                      {transferContractDraft.years}
-                      {plural(transferContractDraft.years, 'год', 'года', 'лет')}
-                    </strong>
-                    <span class="neg-field-hint">← → изменить срок</span>
-                  </button>
-                  <button
-                    class="neg-field"
-                    data-nav
-                    data-cycle="contract"
-                    data-field="squad_role"
-                    onclick={() => adjustTransferContractField('squad_role', 1)}
-                  >
-                    <span class="neg-field-label">Амплуа</span>
-                    <strong class="neg-field-value">
-                      {contractRoleLabel(transferContractDraft.squad_role)}
-                    </strong>
-                    <span class="neg-field-hint">← → выбрать амплуа</span>
-                  </button>
-                  <button
-                    class="neg-field"
-                    data-nav
-                    data-cycle="contract"
-                    data-field="release_clause"
-                    onclick={() => openTransferContractAmount('release_clause')}
-                  >
-                    <span class="neg-field-label">Отступные</span>
-                    <strong class="neg-field-value">
-                      {formatValue(transferContractDraft.release_clause)}
-                    </strong>
-                    <span class="neg-field-hint">← → шаг · A точная сумма</span>
-                  </button>
-                </div>
-
-                {#if transferContractState?.counter}
-                  <div class="neg-reply">
-                    <span class="eyebrow">Контрпредложение игрока</span>
-                    <p class="negotiation-note">{transferContractState.message}</p>
-<ContractTerms terms={transferContractState.counter} />
-                  </div>
-                {:else if transferContractState?.status === 'refused'}
-                  <div class="neg-reply is-refused">
-                    <span class="eyebrow">Отказ</span>
-                    <p class="negotiation-note">{transferContractState.message}</p>
-                  </div>
-                {/if}
-              {:else}
-                <p class="negotiation-note">Условия контракта недоступны.</p>
-              {/if}
-            {/if}
-
-            <div class="negotiation-actions">
-              {#if transferContractState?.status === 'pending'}
-                <button
-                  class="shelf-action is-primary"
-                  data-nav
-                  data-autofocus
-                  onclick={closeTransferContract}
-                >
-                  Вернуться
-                </button>
-              {:else if transferContractState?.status === 'accepted'}
-                {#if transferContractState.affordable === false}
-                  <p class="negotiation-note is-warning">
-                    Недостаточно средств, чтобы завершить переход.
-                  </p>
-                {/if}
-                <button
-                  class="shelf-action is-primary"
-                  data-nav
-                  data-autofocus
-                  disabled={transferContractState.affordable === false || centreActionBusy}
-                  onclick={signTransferContract}
-                >
-                  {centreActionBusy ? 'Подписываем…' : 'Подписать'}
-                </button>
-              {:else}
-                {#if transferContractState?.counter}
-                  {#if transferContractState.affordable === false}
-                    <p class="negotiation-note is-warning">
-                      Недостаточно средств, чтобы принять условия игрока.
-                    </p>
-                  {/if}
-                  <button
-                    class="shelf-action"
-                    data-nav
-                    disabled={
-                      transferContractState.affordable === false || centreActionBusy
-                    }
-                    onclick={acceptTransferContractCounter}
-                  >
-                    Принять условия игрока
-                  </button>
-                {/if}
-                <button
-                  class="shelf-action is-primary"
-                  data-nav
-                  onclick={submitTransferContract}
-                  disabled={centreActionBusy}
-                >
-                  {transferContractState?.status === 'refused'
-                    ? 'Предложить снова'
-                    : 'Предложить условия'}
-                </button>
-              {/if}
-            </div>
-          </section>
-        </div>
-      {:else if transfersView === 'incomingCounter' && incomingCounterOffer}
-        <div class="amount-screen">
-          <span class="eyebrow">
-            Контрпредложение · {incomingCounterPlayer?.name ?? ''}
-          </span>
-          <button
-            class="amount-value"
-            data-nav
-            data-amount
-            data-cycle="amount"
-            data-autofocus
-            aria-label="Сумма контрпредложения"
-            onclick={finishIncomingCounterAmount}
-          >
-            {#each amountGroups as group, groupIndex (groupIndex)}
-              <span class="amount-group">
-                {#each group.digits as digit, digitIndex (digitIndex)}
-                  <span
-                    class="amount-digit"
-                    class:is-selected={group.start + digitIndex === amountIndex}
-                  >
-                    {digit}
-                  </span>
-                {/each}
-              </span>
-            {/each}
-          </button>
-          <span class="amount-place">Разряд: {AMOUNT_PLACES[amountIndex]}</span>
-          <span class="amount-hint">
-            Предложение клуба: {formatValue(incomingCounterOffer.amount)}
-          </span>
-        </div>
-      {:else if transfersView === 'offerAmount' && transferOffer}
-        <div class="amount-screen">
-          <span class="eyebrow">
-            {amountField === 'loan_fee' ? 'Плата за аренду' : 'Сумма предложения'}
-          </span>
-          <button
-            class="amount-value"
-            data-nav
-            data-amount
-            data-cycle="amount"
-            data-autofocus
-            aria-label="Сумма"
-            onclick={finishOfferAmount}
-          >
-            {#each amountGroups as group, groupIndex (groupIndex)}
-              <span class="amount-group">
-                {#each group.digits as digit, digitIndex (digitIndex)}
-                  <span
-                    class="amount-digit"
-                    class:is-selected={group.start + digitIndex === amountIndex}
-                  >
-                    {digit}
-                  </span>
-                {/each}
-              </span>
-            {/each}
-          </button>
-          <span class="amount-place">Разряд: {AMOUNT_PLACES[amountIndex]}</span>
-        </div>
-      {:else if transfersView === 'offer' && transferOffer && transferOfferPlayer}
-        <div class="tf-offer">
-          <header class="tf-filters-head">
-            <span class="tf-crumbs">
-              Трансферы <i>›</i> Предложение клубу
-            </span>
-            <span class="tf-crumbs-note">
-              {offerKindLabel(transferOffer.kind)}
-            </span>
-          </header>
-          <div class="tf-offer-body">
-            <aside class="tf-offer-player">
-              <span class="tf-offer-photo">
-                <img
-                  src={transferOfferPlayer.photo}
-                  alt=""
-                  onerror={hideBrokenImage}
-                />
-              </span>
-              <strong class="tf-offer-name">{transferOfferPlayer.name}</strong>
-              <div class="tf-offer-facts">
-                <span>ЛЕТ <b>{transferOfferPlayer.age ?? '—'}</b></span>
-                <span>АМПЛУА <b>{shortRole(transferOfferPlayer.role)}</b></span>
-                <span>РОСТ <b>{transferOfferPlayer.height ?? '—'} см</b></span>
-              </div>
-              <div class="tf-offer-club">
-                {#if transferOfferPlayer.club_logo}
-                  <img
-                    src={transferOfferPlayer.club_logo}
-                    alt=""
-                    onerror={hideBrokenImage}
-                  />
-                {/if}
-                <span>{transferOfferPlayer.club_name ?? 'Свободный агент'}</span>
-              </div>
-              <div class="tf-offer-balance">
-                <span>Баланс клуба</span>
-                <strong>{formatValue(finance.balance)}</strong>
-              </div>
-              <div class="tf-offer-clause">
-                <span>Отступные</span>
-                <strong>{formatValue(transferOfferPlayer.release_clause ?? 0)}</strong>
-              </div>
-            </aside>
-
-            <section class="tf-offer-form scroll-area">
-              <div class="negotiation-fields">
-                {#if transferOffer.kind === 'loan'}
-                  <button
-                    class="neg-field"
-                    data-nav
-                    data-cycle="offer"
-                    data-field="loan_fee"
-                    data-autofocus
-                    onclick={() => openOfferAmount('loan_fee')}
-                  >
-                    <span class="neg-field-label">Плата за аренду</span>
-                    <strong class="neg-field-value">
-                      {formatValue(transferOffer.loan_fee)}
-                    </strong>
-                    <span class="neg-field-hint">← → шаг · A точная сумма</span>
-                  </button>
-                  <button
-                    class="neg-field"
-                    data-nav
-                    data-cycle="offer"
-                    data-field="wage_share"
-                    onclick={() => adjustOfferField('wage_share', 1)}
-                  >
-                    <span class="neg-field-label">Доля зарплаты</span>
-                    <strong class="neg-field-value">{transferOffer.wage_share}%</strong>
-                    <span class="neg-field-hint">← → шаг 5%</span>
-                  </button>
-                {:else}
-                  <button
-                    class="neg-field"
-                    data-nav
-                    data-cycle="offer"
-                    data-field="amount"
-                    data-autofocus
-                    onclick={() => openOfferAmount('amount')}
-                  >
-                    <span class="neg-field-label">
-                      {transferOffer.buyout ? 'Выкуп по отступным' : 'Сумма предложения'}
-                    </span>
-                    <strong class="neg-field-value">
-                      {formatValue(
-                        transferOffer.buyout
-                          ? transferOfferPlayer.release_clause
-                          : transferOffer.amount,
-                      )}
-                    </strong>
-                    <span class="neg-field-hint">
-                      {transferOffer.buyout
-                        ? 'Отступные нельзя изменить'
-                        : '← → шаг · A точная сумма'}
-                    </span>
-                  </button>
-                  {#if Number(transferOfferPlayer.release_clause) > 0}
-                    <button
-                      class="neg-field"
-                      data-nav
-                      data-cycle="offer"
-                      data-field="buyout"
-                      onclick={toggleOfferBuyout}
-                    >
-                      <span class="neg-field-label">Выкуп по отступным</span>
-                      <strong class="neg-field-value">
-                        {transferOffer.buyout ? 'Включён' : 'Выключен'}
-                      </strong>
-                      <span class="neg-field-hint">A или ← → переключить</span>
-                    </button>
-                  {/if}
-                {/if}
-              </div>
-
-              <button
-                class="shelf-action is-primary tf-offer-send"
-                class:is-disabled={centreActionBusy}
-                data-nav
-                onclick={submitTransferOffer}
-                disabled={centreActionBusy}
-              >
-                {centreActionBusy ? 'Отправляем…' : 'Отправить предложение'}
-              </button>
-              <p class="tf-offer-note">
-                Ответ клуба придёт через 2–4 дня и появится в «Отправленных
-                предложениях».
-              </p>
-            </section>
-          </div>
-        </div>
-      {:else}
-        <TransferPlayers
-          players={transferResults}
-          total={transferTotal}
-          title="Результаты поиска"
-          loading={transferLoading}
-          error={transferError}
-          hasMore={transferHasMore}
-          date={career.date}
-          bind:view={transferResultView}
-          bind:selectedId={transferSearchSelectedId}
-          bind:actionsOpen={transferSearchActionsOpen}
-          scouts={scoutPickerScouts}
-          reportForPlayer={reportForPlayer}
-          onloadmore={loadMoreTransfers}
-          onaction={onaction}
-          onassign={openScoutPicker}
-          onoffer={openTransferOffer}
-          onnegotiate={openTransferContractFromPlayer}
-        />
-
-        {#if scoutPickerOpen && scoutPickerPlayer}
-          <div class="sc-modal-layer">
-            <div
-              class="sc-modal sc-confirm is-picker"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Поручить скауту"
-            >
-              <p class="sc-confirm-text">
-                Кому поручить следить за {scoutPickerPlayer.name}?
-              </p>
-              {#each scoutPickerScouts as scout, index (scout.id)}
-                <button
-                  class="sc-confirm-row sc-picker-row"
-                  class:is-disabled={Boolean(scout.report)}
-                  data-nav
-                  data-autofocus={index === 0 && !scout.report ? '' : undefined}
-                  onclick={() => assignScout(scout)}
-                >
-                  <span class="sc-picker-flag">
-                    {#if scout.flag}
-                      <img src={scout.flag} alt="" onerror={hideBrokenImage} />
-                    {/if}
-                  </span>
-                  <span class="sc-picker-main">
-                    <strong>{scout.name}</strong>
-                    <small>
-                      {scout.report
-                        ? `Занят: следит за ${scout.report.player_name}`
-                        : `Опыт ${scout.experience} · Решение ${scout.judgement}`}
-                    </small>
-                  </span>
-                  <span class="sc-picker-stars">
-                    {#each [0, 1, 2, 3, 4] as star (star)}
-                      <i class:on={star < scout.judgement}>★</i>
-                    {/each}
-                  </span>
-                </button>
-              {/each}
-              <button class="sc-confirm-row" data-nav onclick={closeScoutPicker}>
-                <span>Отмена</span>
-              </button>
-            </div>
-          </div>
-        {/if}
-      {/if}
-
-      {#if oskOpen}
-        <div class="osk-scrim" onclick={closeOsk} role="presentation"></div>
-        <section class="osk" data-osk aria-label="Поиск игрока">
-          <header class="osk-head">
-            <span class="eyebrow">Поиск игрока</span>
-            <div class="osk-display">{oskText || '—'}</div>
-          </header>
-          <div class="osk-keys">
-            {#each OSK_ROWS as row, rowIndex (row)}
-              <div class="osk-row">
-                {#each [...row] as key (key)}
-                  <button
-                    class="osk-key"
-                    data-nav
-                    data-autofocus={rowIndex === 0 && key === 'Q' ? '' : undefined}
-                    onclick={() => oskPress(key)}
-                  >
-                    {key}
-                  </button>
-                {/each}
-              </div>
-            {/each}
-          </div>
-          <div class="osk-actions">
-            <button class="osk-action" data-nav onclick={() => oskPress(' ')}>Пробел</button>
-            <button class="osk-action" data-nav onclick={oskBackspace}>Удалить</button>
-            <button class="osk-action" data-nav onclick={oskClear}>Очистить</button>
-            <button class="osk-action is-primary" data-nav onclick={applyOsk}>Готово</button>
-          </div>
-        </section>
-      {/if}
+      <TransfersTab
+        {career}
+        view={transfersView}
+        {networkMode}
+        {networkEntryId}
+        {networkBackToHub}
+        bind:networkHints
+        bind:historyHints
+        onCloseNetwork={closeTransferNetwork}
+        onCloseHistory={closeTransferHistory}
+        {onaction}
+        {scouting}
+        {reportPageEntries}
+        {reportPage}
+        {reportPageCount}
+        feedCount={reportFeed.length}
+        {transferHubCards}
+        onOpenReports={() => openReportsCenter()}
+        onShiftReport={shiftReport}
+        onOpenHubCard={(card) => {
+          if (card.id === 'search') openTransferFilters()
+          else if (card.id === 'centre') openTransferCentre()
+          else if (card.id === 'network') openTransferNetwork('scouts')
+          else if (card.id === 'history') openTransferHistory()
+        }}
+        {transferFilters}
+        {transferEditing}
+        {transferRoleRow}
+        {transferAgeRow}
+        {transferCountries}
+        {transferLeagues}
+        {transferClubs}
+        onOpenOsk={openOsk}
+        onToggleFilterEdit={(field) =>
+          transferEditing === field ? closeTransferEdit() : openTransferEdit(field)}
+        {onStepActive}
+        onRoleStep={(row, delta) => {
+          transferRoleRow = row
+          stepActive(delta)
+        }}
+        onRangeStep={(field, delta) => {
+          transferAgeRow = field
+          stepTransferRange(field, delta)
+        }}
+        {transferCentreTab}
+        onSelectCentreTab={setTransferCentreTab}
+        {receivedUnread}
+        {sentOffers}
+        {receivedOffers}
+        {transferCentreTitle}
+        {transferCentreEmpty}
+        {transferCentrePlayers}
+        bind:transferCentreView
+        bind:transferCentreSelectedId
+        bind:transferCentreActionsOpen
+        {scoutPickerScouts}
+        {reportForPlayer}
+        {openScoutPicker}
+        {openTransferOffer}
+        {openTransferContractFromPlayer}
+        {openSentOfferModal}
+        {openIncomingOfferModal}
+        {acceptTransferCounter}
+        {transferOfferModal}
+        {incomingOfferModal}
+        {acceptSentOfferCounter}
+        {reofferSentOffer}
+        {openTransferContractFromOffer}
+        {submitIncomingOffer}
+        {startIncomingCounter}
+        {amountField}
+        {amountGroups}
+        {amountIndex}
+        {finishTransferContractAmount}
+        {finishOfferAmount}
+        {finishIncomingCounterAmount}
+        {transferContractPlayer}
+        {transferContractState}
+        {transferContractTerms}
+        {transferContractDraft}
+        {transferContractOffer}
+        {transferContractFee}
+        {transferContractBalanceAfter}
+        {centreActionBusy}
+        {openTransferContractAmount}
+        {adjustTransferContractField}
+        {closeTransferContract}
+        {signTransferContract}
+        {acceptTransferContractCounter}
+        {submitTransferContract}
+        {incomingCounterOffer}
+        {incomingCounterPlayer}
+        {transferOffer}
+        {transferOfferPlayer}
+        {finance}
+        {adjustOfferField}
+        {toggleOfferBuyout}
+        {openOfferAmount}
+        {submitTransferOffer}
+        {transferResults}
+        {transferTotal}
+        {transferLoading}
+        {transferError}
+        {transferHasMore}
+        bind:transferResultView
+        bind:transferSearchSelectedId
+        bind:transferSearchActionsOpen
+        {loadMoreTransfers}
+        {scoutPickerOpen}
+        {scoutPickerPlayer}
+        {closeScoutPicker}
+        {assignScout}
+        {oskOpen}
+        {oskText}
+        {oskPress}
+        {oskBackspace}
+        {oskClear}
+        {applyOsk}
+        {closeOsk}
+        places={AMOUNT_PLACES}
+      />
     {:else if tab === 'squad' && view === 'overview'}
       <SquadOverview
         {career}
