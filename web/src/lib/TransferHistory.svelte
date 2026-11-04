@@ -99,11 +99,6 @@
 </script>
 
 <div class="tf-history">
-  <header class="tf-filters-head">
-    <span class="tf-crumbs">Трансферы <i>›</i> История</span>
-    <span class="tf-crumbs-note">Сортировка по рейтингу на момент перехода</span>
-  </header>
-
   <nav class="centre-tabs tf-history-tabs" aria-label="Фильтр истории">
     {#each FILTERS as item (item.id)}
       <button
@@ -118,6 +113,15 @@
       </button>
     {/each}
   </nav>
+
+  <div class="tf-history-head" aria-hidden="true">
+    <span></span>
+    <span>Игрок</span>
+    <span>Клубы</span>
+    <span class="is-end">Сумма</span>
+    <span class="is-center">ОБЩ.</span>
+    <span class="is-end">Дата / статус</span>
+  </div>
 
   <div class="tf-history-list scroll-area">
     {#each rows as entry (entry.id)}

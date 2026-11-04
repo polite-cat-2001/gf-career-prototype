@@ -44,7 +44,7 @@
   <section class="negotiation-form scroll-area">
     {#if state?.status === 'pending'}
       <div class="negotiation-head">
-        <span class="eyebrow">Ожидание ответа</span>
+        <span class="squad-kicker">Ожидание ответа</span>
         <strong class="negotiation-title">Игрок думает</strong>
       </div>
       <p class="negotiation-note">
@@ -56,14 +56,14 @@
       <ContractTerms terms={state.offer} />
     {:else if state?.status === 'accepted'}
       <div class="negotiation-head">
-        <span class="eyebrow">Согласовано</span>
+        <span class="squad-kicker">Согласовано</span>
         <strong class="negotiation-title">Условия приняты</strong>
       </div>
       <p class="negotiation-note">{state.message}</p>
       <ContractTerms terms={terms} />
     {:else}
       <div class="negotiation-head">
-        <span class="eyebrow">Новый контракт</span>
+        <span class="squad-kicker">Новый контракт</span>
         <strong class="negotiation-title">Условия</strong>
       </div>
 
@@ -120,13 +120,13 @@
 
       {#if state?.counter}
         <div class="neg-reply">
-          <span class="eyebrow">Контрпредложение игрока</span>
+          <span class="squad-kicker">Контрпредложение игрока</span>
           <p class="negotiation-note">{state.message}</p>
           <ContractTerms terms={state.counter} />
         </div>
       {:else if state?.status === 'refused'}
         <div class="neg-reply is-refused">
-          <span class="eyebrow">Отказ</span>
+          <span class="squad-kicker">Отказ</span>
           <p class="negotiation-note">{state.message}</p>
         </div>
       {/if}

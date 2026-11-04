@@ -23,7 +23,7 @@
 <div class="sc-body sc-map-screen">
   <section class="sc-map-panel">
     <div class="sc-map-head">
-      <strong>{view === 'region' ? 'Выбор региона' : region?.name}</strong>
+      <strong>{view === 'region' ? 'Карта регионов' : region?.name}</strong>
       <span>
         {view === 'region'
           ? 'Страны региона появятся на следующем шаге'
@@ -55,9 +55,14 @@
         </span>
         {#each region.countries as item, index (item.id)}
           {@const pos = countryPosition(index)}
+          {@const top = parseFloat(pos.top)}
+          {@const left = parseFloat(pos.left)}
           <button
             class="sc-map-node is-country"
             class:is-selected={country?.id === item.id}
+            class:is-bottom={top > 66}
+            class:is-left={left < 22}
+            class:is-right={left > 78}
             style={`left:${pos.left};top:${pos.top}`}
             data-nav
             data-autofocus={country?.id === item.id ? '' : undefined}

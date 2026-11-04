@@ -23,7 +23,7 @@
       </svg>
     </button>
     <div class="number-copy">
-      <span class="eyebrow">Смена игрового номера</span>
+      <span class="squad-kicker">Смена игрового номера</span>
       <strong class="number-name">{playerInitialName(player)}</strong>
       <span class="number-note">Свободные номера 1–99 · занятые пропускаются</span>
       <span class="number-note">Текущий номер: {player.shirt_number ?? '—'}</span>

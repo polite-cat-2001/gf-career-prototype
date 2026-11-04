@@ -1,15 +1,10 @@
 <script>
-  import {
-    hideBrokenImage,
-    playerInitialName,
-    posTone,
-    shortRole,
-    statusLabel,
-  } from './format.js'
+  import { hideBrokenImage, posTone, shortRole, statusLabel } from './format.js'
 
   let {
     player,
     role,
+    line = 'MID',
     interactive = false,
     preview = false,
     selected = false,
@@ -29,6 +24,7 @@
   data-nav={interactive ? '' : undefined}
   data-player={interactive ? player.id : undefined}
   data-role={interactive ? role : undefined}
+  data-line={line}
   role={interactive ? undefined : 'presentation'}
   type={interactive ? 'button' : undefined}
   style={positionStyle}
@@ -53,7 +49,7 @@
     <span class="player-ovr">{Math.round(player.overall)}</span>
   </span>
   <span class="player-name-wrap">
-    <span class="player-name">{playerInitialName(player)}</span>
+    <span class="player-name">{player.last_name || player.name}</span>
   </span>
   <span
     class="fatigue-bar"

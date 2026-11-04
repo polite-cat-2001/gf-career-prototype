@@ -4,7 +4,7 @@
   let { values, secondary = null } = $props()
 </script>
 
-<svg class="radar" viewBox="0 0 144 144" aria-hidden="true">
+<svg class="radar" viewBox="-10 -10 164 164" aria-hidden="true">
   <polygon class="radar-grid" points={radarGrid(values)}></polygon>
   <polygon class="radar-grid inner" points={radarGrid(values, 22)}></polygon>
   {#if secondary?.length}

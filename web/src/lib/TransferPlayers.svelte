@@ -163,11 +163,6 @@
     return 'В клубе'
   }
 
-  function footLabel(value) {
-    if (value === 'left') return 'Левая'
-    if (value === 'right') return 'Правая'
-    return value || '—'
-  }
 </script>
 
 <div class="tf-results">
@@ -206,7 +201,7 @@
             {#if stateLabels(player).length}
               <span class="tf-result-state">
                 {#each stateLabels(player) as label (label)}
-                  <span>{label}</span>
+                  <span title={label}>{label}</span>
                 {/each}
               </span>
             {/if}
@@ -297,12 +292,6 @@
             </ul>
           </div>
         </div>
-        <div class="transfer-fog-chips is-open">
-          <span>ОБЩ. <b>{Math.round(selected.overall ?? 0)}</b></span>
-          <span>ЗАРПЛАТА <b>{formatValue(selected.weekly_wage ?? 0)}</b></span>
-          <span>НОГА <b>{footLabel(selected.foot)}</b></span>
-          <span>ЦЕНА <b>{formatValue(selected.market_value ?? 0)}</b></span>
-        </div>
       {:else if reportForPlayer(selected.id)}
         {@const activeReport = reportForPlayer(selected.id)}
         <div class="tf-detail-report">
@@ -329,11 +318,6 @@
             </ul>
           </div>
         </div>
-        <div class="transfer-fog-chips">
-          {#each ['OVR', 'Статы', 'Зарплата', 'Нога', 'Стоимость'] as hidden (hidden)}
-            <span>??? {hidden}</span>
-          {/each}
-        </div>
       {:else}
         <div class="tf-detail-report">
           <div class="tf-report-col">
@@ -354,11 +338,6 @@
               {/each}
             </ul>
           </div>
-        </div>
-        <div class="transfer-fog-chips">
-          {#each ['OVR', 'Статы', 'Зарплата', 'Нога', 'Стоимость'] as hidden (hidden)}
-            <span>??? {hidden}</span>
-          {/each}
         </div>
       {/if}
     {:else}

@@ -1,6 +1,8 @@
 ﻿<script>
+  import { onMount } from 'svelte'
   import Icon from './Icon.svelte'
   import { inputDevice } from './input.js'
+  import { trapModalFocus } from './ui/modalFocus.js'
   import {
     attributeGroups,
     formatDate,
@@ -28,6 +30,9 @@
   } = $props()
 
   let photoFailed = $state(false)
+  let modalLayer = $state(null)
+
+  onMount(() => trapModalFocus(modalLayer))
 
   let knownStats = $derived(
     revealed && player?.stats
@@ -71,10 +76,10 @@
   }
 </script>
 
-<div class="sc-modal-layer">
-  <div class="tf-actions sc-actions" role="dialog" aria-modal="true" aria-label="Действия игрока">
-    <header class="tf-actions-head">
-      <span class="tf-actions-photo" class:is-empty={!player.photo || photoFailed}>
+<div class="gf-modal-layer" bind:this={modalLayer}>
+  <div class="gf-modal gf-modal--player" role="dialog" aria-modal="true" aria-label="Действия игрока">
+    <header class="gf-modal__head">
+      <span class="gf-modal__photo" class:is-empty={!player.photo || photoFailed}>
         {#if !player.photo || photoFailed}
           <span class="sc-entry-photo-fallback">
             <Icon name="users" size={40} />
@@ -87,17 +92,17 @@
           />
         {/if}
       </span>
-      <div class="tf-actions-title">
-        <span class="eyebrow">Действия игрока</span>
-        <strong class="tf-actions-name">{player.name}</strong>
-        <div class="tf-actions-facts">
+      <div class="gf-modal__title">
+        <span class="gf-modal__eyebrow">Действия игрока</span>
+        <strong class="gf-modal__name">{player.name}</strong>
+        <div class="gf-modal__facts">
           <span>ЛЕТ <b>{player.age ?? '—'}</b></span>
           <span>АМПЛУА <b>{shortRole(player.role)}</b></span>
           <span>РОСТ <b>{player.height ? `${player.height} см` : '—'}</b></span>
           <span>НОГА <b>{revealed ? footLabel(player.foot) : '?'}</b></span>
         </div>
       </div>
-      <span class="tf-actions-club">
+      <span class="gf-modal__club">
         {#if player.club_logo}
           <img src={player.club_logo} alt="" />
         {/if}
@@ -105,159 +110,162 @@
       </span>
     </header>
 
-    <div class="tf-actions-grid">
-      <div class="tf-action-metrics">
-        <div class="tf-action-metric" class:is-visible={revealed}>
-          <span>ОБЩ.</span>
-          <b>{revealed ? Math.round(player.overall ?? 0) : '?'}</b>
+    <div class="gf-modal__body">
+      <div class="gf-modal__split">
+        <div class="gf-metrics">
+          <div class="gf-metric" class:is-visible={revealed}>
+            <span>ОБЩ.</span>
+            <b>{revealed ? Math.round(player.overall ?? 0) : '?'}</b>
+          </div>
+          <div class="gf-metric" class:is-visible={revealed}>
+            <span>ЦЕНА</span>
+            <b>{revealed ? formatValue(player.market_value ?? 0) : '?'}</b>
+          </div>
+          <div class="gf-metric" class:is-visible={revealed}>
+            <span>ЗАРПЛАТА</span>
+            <b>{revealed ? formatValue(player.weekly_wage ?? 0) : '?'}</b>
+          </div>
+          <div class="gf-metric is-visible">
+            <span>ОТСТУПНЫЕ</span>
+            <b>{formatValue(player.release_clause ?? 0)}</b>
+          </div>
         </div>
-        <div class="tf-action-metric" class:is-visible={revealed}>
-          <span>ЦЕНА</span>
-          <b>{revealed ? formatValue(player.market_value ?? 0) : '?'}</b>
-        </div>
-        <div class="tf-action-metric" class:is-visible={revealed}>
-          <span>ЗАРПЛАТА</span>
-          <b>{revealed ? formatValue(player.weekly_wage ?? 0) : '?'}</b>
-        </div>
-        <div class="tf-action-metric is-visible">
-          <span>ОТСТУПНЫЕ</span>
-          <b>{formatValue(player.release_clause ?? 0)}</b>
-        </div>
-      </div>
-      <div class="tf-action-report">
-        <span class="tf-action-report-head">
-          {revealed ? 'Сводка' : 'Предварительный отчёт'}
-        </span>
-        <ul>
-          {#if revealed}
-            {#each knownStats as row (row.key)}
-              <li>
-                <span>{row.label}</span>
-                <b class={statTone(row.value)}>{row.value}</b>
-              </li>
-            {/each}
-          {:else}
-            {#each ['Разгон', 'Скорость рывков', 'Ловкость', 'Баланс', 'Дриблинг', 'Владение'] as stat (stat)}
-              <li><span>{stat}</span><b>???</b></li>
-            {/each}
-          {/if}
-        </ul>
-      </div>
-    </div>
-
-    <div class="tf-action-status">
-      <div class="tf-action-status-row">
-        <i class="tf-status-dot"></i>
-        <span>{statusLabel(player.status)}</span>
-      </div>
-      {#if note}
-        <div class="tf-action-status-row"><span>{note}</span></div>
-      {/if}
-      {#if expiring}
-        <div class="tf-action-status-row is-warn">
-          <i class="tf-status-bang">!</i>
-          <span>
-            Контракт истекает через {contractMonths}
-            {plural(contractMonths, 'месяц', 'месяца', 'месяцев')}
+        <div class="gf-report">
+          <span class="gf-report__head">
+            {revealed ? 'Сводка' : 'Предварительный отчёт'}
           </span>
+          <ul>
+            {#if revealed}
+              {#each knownStats as row (row.key)}
+                <li>
+                  <span>{row.label}</span>
+                  <b class={statTone(row.value)}>{row.value}</b>
+                </li>
+              {/each}
+            {:else}
+              {#each ['Разгон', 'Скорость рывков', 'Ловкость', 'Баланс', 'Дриблинг', 'Владение'] as stat (stat)}
+                <li><span>{stat}</span><b>???</b></li>
+              {/each}
+            {/if}
+          </ul>
         </div>
-      {/if}
-    </div>
+      </div>
 
-    <div class="tf-action-list">
-      {#if !revealed && !player.scouted}
-        {#if activeReport}
-          <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
+      <div class="gf-status-lines">
+        <div class="gf-status-line">
+          <i class="gf-status-dot"></i>
+          <span>{statusLabel(player.status)}</span>
+        </div>
+        {#if note}
+          <div class="gf-status-line"><span>{note}</span></div>
+        {/if}
+        {#if expiring}
+          <div class="gf-status-line is-warn">
+            <i class="gf-status-bang">!</i>
             <span>
-              Отчёт уже готовится · осталось {activeReport.days_left}
-              {plural(activeReport.days_left, 'день', 'дня', 'дней')}
+              Контракт истекает через {contractMonths}
+              {plural(contractMonths, 'месяц', 'месяца', 'месяцев')}
             </span>
-            <span class="tf-action-ticket">Скаут</span>
-          </div>
-        {:else if canAssign}
-          <button
-            class="tf-action"
-            data-nav
-            data-autofocus
-            data-scout-action="assign"
-            onclick={onassign}
-          >
-            <span>Поручить скауту</span>
-            <span class="tf-action-key">A</span>
-          </button>
-        {:else}
-          <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
-            <span>Сначала наймите скаута</span>
-            <span class="tf-action-ticket">Сеть</span>
           </div>
         {/if}
-      {/if}
+      </div>
 
-      <button
-        class="tf-action"
-        class:is-disabled={!onshortlist}
-        data-nav
-        onclick={onshortlist}
-        disabled={!onshortlist}
-      >
-        <span>{shortlisted ? 'Убрать из шортлиста' : 'Добавить в шортлист'}</span>
-        <span class="tf-action-key">A</span>
-      </button>
-      {#if canNegotiate && ondiscuss}
-        <button class="tf-action" data-nav onclick={ondiscuss}>
-          <span>Переговоры по контракту</span>
-          <span class="tf-action-key">A</span>
-        </button>
-      {:else if transferSigned}
-        <p class="tf-action-note">
-          Переход завершён{#if transferJoinOn} · присоединится {formatDate(transferJoinOn)}{/if}
-        </p>
-      {:else}
-        {#if ontransfer}
-          <button class="tf-action" data-nav onclick={ontransfer}>
-            <span>Сделать предложение трансфера</span>
-            <span class="tf-action-key">A</span>
-          </button>
-        {:else}
-          <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
-            <span>Сделать предложение трансфера</span>
-            <span class="tf-action-ticket">Недоступно</span>
-          </div>
+      <div class="gf-modal__actions">
+        {#if !revealed && !player.scouted}
+          {#if activeReport}
+            <div class="gf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
+              <span class="gf-action__label">
+                Отчёт уже готовится · осталось {activeReport.days_left}
+                {plural(activeReport.days_left, 'день', 'дня', 'дней')}
+              </span>
+              <span class="gf-action__ticket">Скаут</span>
+            </div>
+          {:else if canAssign}
+            <button
+              class="gf-action tf-action"
+              data-nav
+              data-autofocus
+              data-scout-action="assign"
+              onclick={onassign}
+            >
+              <span class="gf-action__label">Поручить скауту</span>
+              <span class="gf-action__key">A</span>
+            </button>
+          {:else}
+            <div class="gf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
+              <span class="gf-action__label">Сначала наймите скаута</span>
+              <span class="gf-action__ticket">Сеть</span>
+            </div>
+          {/if}
         {/if}
-        {#if onloan}
-          <button class="tf-action" data-nav onclick={onloan}>
-            <span>Сделать предложение аренды</span>
-            <span class="tf-action-key">A</span>
-          </button>
-        {:else}
-          <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
-            <span>Сделать предложение аренды</span>
-            <span class="tf-action-ticket">Недоступно</span>
-          </div>
-        {/if}
-        {#if canDiscuss && ondiscuss}
-          <button class="tf-action" data-nav onclick={ondiscuss}>
-            <span>Обсудить переход</span>
-            <span class="tf-action-key">A</span>
-          </button>
-        {:else}
-          <div class="tf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
-            <span>Обсудить переход</span>
-            <span class="tf-action-ticket">#17</span>
-          </div>
-        {/if}
-      {/if}
 
-      {#if removeLabel}
-        <div class="tf-actions-sep" aria-hidden="true"></div>
-        <button class="tf-action is-danger" data-nav data-autofocus onclick={onremove}>
-          <span>{removeLabel}</span>
-          <span class="tf-action-key">X</span>
+        <button
+          class="gf-action"
+          class:is-disabled={!onshortlist}
+          data-nav
+          onclick={onshortlist}
+          disabled={!onshortlist}
+        >
+          <span class="gf-action__label">
+            {shortlisted ? 'Убрать из шортлиста' : 'Добавить в шортлист'}
+          </span>
+          <span class="gf-action__key">A</span>
         </button>
-      {/if}
+        {#if canNegotiate && ondiscuss}
+          <button class="gf-action" data-nav onclick={ondiscuss}>
+            <span class="gf-action__label">Переговоры по контракту</span>
+            <span class="gf-action__key">A</span>
+          </button>
+        {:else if transferSigned}
+          <p class="gf-action-note">
+            Переход завершён{#if transferJoinOn} · присоединится {formatDate(transferJoinOn)}{/if}
+          </p>
+        {:else}
+          {#if ontransfer}
+            <button class="gf-action" data-nav onclick={ontransfer}>
+              <span class="gf-action__label">Сделать предложение трансфера</span>
+              <span class="gf-action__key">A</span>
+            </button>
+          {:else}
+            <div class="gf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
+              <span class="gf-action__label">Сделать предложение трансфера</span>
+              <span class="gf-action__ticket">Недоступно</span>
+            </div>
+          {/if}
+          {#if onloan}
+            <button class="gf-action" data-nav onclick={onloan}>
+              <span class="gf-action__label">Сделать предложение аренды</span>
+              <span class="gf-action__key">A</span>
+            </button>
+          {:else}
+            <div class="gf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
+              <span class="gf-action__label">Сделать предложение аренды</span>
+              <span class="gf-action__ticket">Недоступно</span>
+            </div>
+          {/if}
+          {#if canDiscuss && ondiscuss}
+            <button class="gf-action" data-nav onclick={ondiscuss}>
+              <span class="gf-action__label">Обсудить переход</span>
+              <span class="gf-action__key">A</span>
+            </button>
+          {:else}
+            <div class="gf-action is-disabled" data-nav role="button" tabindex="0" aria-disabled="true">
+              <span class="gf-action__label">Обсудить переход</span>
+              <span class="gf-action__ticket">#17</span>
+            </div>
+          {/if}
+        {/if}
+
+        {#if removeLabel}
+          <button class="gf-action is-danger" data-nav data-autofocus onclick={onremove}>
+            <span class="gf-action__label">{removeLabel}</span>
+            <span class="gf-action__key">X</span>
+          </button>
+        {/if}
+      </div>
     </div>
 
-    <footer class="tf-actions-foot">
+    <footer class="gf-modal__foot">
       {#if $inputDevice === 'gamepad'}
         <span><kbd>A</kbd> Выбор</span>
         <span><kbd>B</kbd> Назад</span>

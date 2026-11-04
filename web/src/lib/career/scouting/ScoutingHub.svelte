@@ -11,6 +11,7 @@
   import { api } from '../../api.js'
   import Icon from '../../Icon.svelte'
   import PlayerActionsModal from '../../PlayerActionsModal.svelte'
+  import TabBar from '../../ui/TabBar.svelte'
   import { focusFirst } from '../../input.js'
   import { createScoutingState } from '../state/scouting.svelte.js'
   import { ROLE_FILTERS } from '../constants/scouting.js'
@@ -45,6 +46,11 @@
     onnegotiate = null,
     hints = $bindable([]),
   } = $props()
+
+  const networkTabs = [
+    { id: 'scouts', label: 'Скауты' },
+    { id: 'tasks', label: 'Задачи' },
+  ]
 
   const hub = createScoutingState({
     getCareer: () => career,
@@ -96,41 +102,30 @@
 
 <div class="sc-screen">
   <header class="sc-head">
-    <div class="sc-crumbs">Трансферы <i>›</i> Всемирная трансферная сеть</div>
     {#if hub.view === 'scouts' || hub.view === 'tasks'}
-      <div class="sc-tabs" role="tablist">
-        <button
-          class="sc-tab"
-          class:is-active={hub.networkTab === 'scouts'}
-          data-nav
-          onclick={() => {
-            hub.networkTab = 'scouts'
-            hub.go('scouts')
-          }}
-        >
-          Скауты
-        </button>
-        <button
-          class="sc-tab"
-          class:is-active={hub.networkTab === 'tasks'}
-          data-nav
-          onclick={() => {
-            hub.networkTab = 'tasks'
-            hub.go('tasks')
-          }}
-        >
-          Задачи
-        </button>
-      </div>
-    {:else if hub.view === 'reports'}
-      <div class="sc-title-line">
-        <strong class="sc-title">Отчёт скаута</strong>
-        <span class="sc-sub">
-          {hub.busy ? 'Сохранение…' : `${career.club.name} · ${formatDate(career.date)}`}
-        </span>
-      </div>
+      <TabBar
+        tabs={networkTabs}
+        active={hub.networkTab}
+        onselect={(id) => {
+          hub.networkTab = id
+          hub.go(id)
+        }}
+      />
     {:else}
-      <div class="sc-title-line">
+      <div class="sc-headline">
+        <strong class="sc-title">
+          {hub.view === 'reports'
+            ? 'Отчёт скаута'
+            : hub.view === 'task'
+              ? 'Задача скаута'
+              : hub.view === 'hire'
+                ? 'Нанять скаута'
+                : hub.view === 'region'
+                  ? 'Выбор региона'
+                  : hub.view === 'country'
+                    ? 'Выбор страны'
+                    : 'Сеть поиска'}
+        </strong>
         <span class="sc-sub">
           {hub.busy ? 'Сохранение…' : `${career.club.name} · ${formatDate(career.date)}`}
         </span>

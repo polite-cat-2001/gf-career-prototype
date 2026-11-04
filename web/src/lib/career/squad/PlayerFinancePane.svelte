@@ -115,7 +115,7 @@
     </section>
 
     {#if player}
-      <aside class="centre-panel finance-panel scroll-area" aria-label="Финансы игрока">
+      <aside class="centre-panel finance-panel is-fit" aria-label="Финансы игрока">
         <CentreProfile {player} eyebrow={'Финансы игрока'} />
 
         <div class="finance-player-meta">

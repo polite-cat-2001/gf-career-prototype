@@ -24,7 +24,7 @@
     {/if}
   </span>
   <div class="centre-profile-info">
-    <span class="eyebrow">{eyebrow}</span>
+    <span class="centre-kicker">{eyebrow}</span>
     <strong class="centre-name">{playerInitialName(player)}</strong>
     <span class="centre-sub">
       {positionLabel(player.position)} · {shortRole(player.role)} ·

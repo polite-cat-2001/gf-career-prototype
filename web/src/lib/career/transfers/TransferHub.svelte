@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   import Icon from '../../Icon.svelte'
   import { hideBrokenImage, shortDate } from '../../format.js'
   import TransferHubCard from './TransferHubCard.svelte'
@@ -26,43 +26,48 @@
     data-autofocus
     onclick={onOpenReports}
   >
-    <div class="tf-reports-head">
-      <strong>Отчёты скаутов</strong>
+    <header class="tf-reports-head">
+      <div class="tf-reports-heading">
+        <span class="tf-reports-kicker">Скаутинг</span>
+        <strong class="tf-reports-title">Отчёты скаутов</strong>
+      </div>
       <div class="tf-reports-count">
         <span><b>{scouting?.counts?.new ?? 0}</b> Новое</span>
         <span><b>{scouting?.counts?.updates ?? 0}</b> Обновления</span>
       </div>
-    </div>
-    <div class="tf-report-feed">
+    </header>
+
+    <div class="tf-scout-feed">
       {#each reportPageEntries as entry, index (entry.player.id)}
-        <div class="tf-report-tile">
-          <span class="tf-report-photo">
+        <div class="tf-scout-item">
+          <span class="tf-scout-photo">
             <img src={entry.player.photo} alt="" onerror={hideBrokenImage} />
           </span>
-          <span class="tf-report-main">
+          <span class="tf-scout-main">
             <strong>{entry.player.name}</strong>
-            <span class="tf-report-club">{entry.player.club_name ?? 'Свободный агент'}</span>
-            <span class="tf-report-meta">{entry.scout_name} · {shortDate(entry.date)}</span>
+            <span class="tf-scout-club">{entry.player.club_name ?? 'Свободный агент'}</span>
+            <span class="tf-scout-meta">{entry.scout_name} · {shortDate(entry.date)}</span>
           </span>
-          <span class="tf-report-ovr">
+          <span class="tf-scout-ovr">
             <b>{Math.round(entry.player.overall ?? 0)}</b>
             <small>ОБЩ.</small>
           </span>
           {#if !entry.acknowledged}
-            <i class="tf-report-new" title="Новый"></i>
+            <i class="tf-scout-new" title="Новый"></i>
           {/if}
         </div>
       {/each}
       {#if reportPageEntries.length < 6}
         {#each Array(6 - reportPageEntries.length) as _, index (index)}
-          <div class="tf-report-tile is-empty">
-            <Icon name="users" size={22} />
-            <span>—</span>
+          <div class="tf-scout-item is-empty">
+            <Icon name="users" size={28} />
+            <span>Свободный слот</span>
           </div>
         {/each}
       {/if}
     </div>
-    <div class="tf-reports-foot">
+
+    <footer class="tf-reports-foot">
       <p>
         {#if feedCount}
           {reportPage + 1} / {reportPageCount}
@@ -71,9 +76,9 @@
         {/if}
       </p>
       {#if reportPageCount > 1}
-        <div class="tf-report-pager">
+        <div class="tf-scout-pager">
           <button
-            class="tf-report-arrow"
+            class="tf-scout-arrow"
             type="button"
             tabindex="-1"
             aria-label="Предыдущая страница"
@@ -83,7 +88,7 @@
             }}>‹</button
           >
           <button
-            class="tf-report-arrow"
+            class="tf-scout-arrow"
             type="button"
             tabindex="-1"
             aria-label="Следующая страница"
@@ -94,8 +99,9 @@
           >
         </div>
       {/if}
-    </div>
+    </footer>
   </div>
+
   {#each cards as card (card.id)}
     <TransferHubCard {card} onOpen={() => onOpenCard(card)} />
   {/each}

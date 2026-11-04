@@ -40,10 +40,6 @@
 </script>
 
 <div class="tf-centre" {inert}>
-  <header class="tf-filters-head">
-    <span class="tf-crumbs">Трансферы <i>›</i> Центр трансферов</span>
-    <span class="tf-crumbs-note">L1 / R1 — вкладки · Y — вид</span>
-  </header>
   <nav class="centre-tabs tf-centre-tabs" aria-label="Центр трансферов">
     {#each TRANSFER_CENTRE_TABS as item (item.id)}
       <button

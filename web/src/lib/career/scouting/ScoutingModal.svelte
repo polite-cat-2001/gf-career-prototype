@@ -1,5 +1,6 @@
 <script>
   import { formatValue, hideBrokenImage } from '../../format.js'
+  import { trapModalFocus } from '../../ui/modalFocus.js'
 
   let {
     view,
@@ -12,10 +13,14 @@
     onConfirm,
     onCancelConfirm,
   } = $props()
+
+  function trapFocus(node) {
+    return { destroy: trapModalFocus(node) }
+  }
 </script>
 
 {#if view === 'hire'}
-  <div class="sc-modal-layer">
+  <div class="sc-modal-layer" use:trapFocus>
     <div class="sc-modal sc-hire" role="dialog" aria-modal="true" aria-label="Нанять скаута">
       <header class="sc-modal-head">
         <strong>Нанять скаута</strong>
@@ -74,7 +79,7 @@
 {/if}
 
 {#if confirm}
-  <div class="sc-modal-layer">
+  <div class="sc-modal-layer" use:trapFocus>
     <div class="sc-modal sc-confirm" role="dialog" aria-modal="true">
       <p class="sc-confirm-text">{confirm.title}</p>
       <button

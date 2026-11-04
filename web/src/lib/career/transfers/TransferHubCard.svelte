@@ -12,13 +12,13 @@
   disabled={!card.enabled}
   onclick={onOpen}
 >
-  <div class="tf-hub-card-head">
-    <span class="eyebrow">{card.enabled ? 'Открыто' : 'Скоро'}</span>
-    {#if card.soon}<span class="soon-tag">{card.soon}</span>{/if}
-  </div>
+  <span class="tf-hub-card-head">
+    <span class="tf-hub-card-status">{card.enabled ? 'Открыто' : 'Скоро'}</span>
+    {#if card.soon}<span class="tf-hub-card-soon">{card.soon}</span>{/if}
+  </span>
   <strong class="tf-hub-card-title">{card.label}</strong>
   <span class="tf-hub-card-note">{card.note}</span>
   <span class="tf-hub-card-icon">
-    <Icon name={card.icon} size={card.enabled ? 68 : 38} />
+    <Icon name={card.icon} size={card.enabled ? 72 : 40} />
   </span>
 </button>

@@ -1,7 +1,7 @@
 <script>
   import PlayerCard from '../../PlayerCard.svelte'
   import StrengthBadge from '../shared/StrengthBadge.svelte'
-  import { pitchX, pitchY } from '../utils/pitch.js'
+  import { pitchSpot } from '../utils/pitch.js'
 
   let {
     lineup,
@@ -25,12 +25,14 @@
     <polygon points="25,98 75,98 70,80 30,80"></polygon>
   </svg>
   {#each lineup.slots as slot (slot.position + slot.player.id)}
+    {@const spot = pitchSpot(slot)}
     <PlayerCard
       player={slot.player}
       role={slot.role}
+      line={spot.line}
       interactive
       selected={anchorId === slot.player.id}
-      positionStyle={`left:${pitchX(slot.x, slot.y)}%; top:${pitchY(slot.y)}%`}
+      positionStyle={`left:${spot.left}%; top:${spot.top}`}
       onfocus={(event) => onCardFocus(slot.player, event)}
       onmouseenter={onCardEnter}
       onclick={() => onCardActivate(slot.player)}

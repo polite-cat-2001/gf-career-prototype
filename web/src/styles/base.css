@@ -270,47 +270,6 @@ img {
   color: var(--text);
 }
 
-/* Controls */
-
-.control-bar {
-  position: relative;
-  z-index: 1;
-  flex: 0 0 auto;
-  min-height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  border-top: 1px solid var(--line-soft);
-  padding: 9px 2px 14px;
-}
-
-.control-hints {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.control-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.control-hint span {
-  white-space: nowrap;
-}
-
-.control-note {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--dim);
-  text-align: right;
-}
-
 kbd {
   display: inline-flex;
   align-items: center;

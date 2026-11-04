@@ -2,7 +2,7 @@
   import PlayerCard from '../../PlayerCard.svelte'
   import { formatValue, hideBrokenImage } from '../../format.js'
   import StrengthBadge from '../shared/StrengthBadge.svelte'
-  import { pitchX, pitchY } from '../utils/pitch.js'
+  import { pitchSpot } from '../utils/pitch.js'
   import SquadTile from './SquadTile.svelte'
 
   let {
@@ -23,11 +23,11 @@
     <div class="squad-team-head">
       <img class="squad-team-crest" src={career.club.logo} alt="" onerror={hideBrokenImage} />
       <div class="squad-team-title">
-        <span class="eyebrow">Состав клуба</span>
+        <span class="squad-kicker">Состав клуба</span>
         <strong>{career.club.name}: по умолч.</strong>
         <span>{lineup.formation} · {career.club.league_name}</span>
       </div>
-      <span class="widget-action">A · план игры</span>
+      <span class="squad-team-action">A · план игры</span>
     </div>
 
     <div class="pitch pitch-plan">
@@ -40,11 +40,13 @@
         <polygon points="25,98 75,98 70,80 30,80"></polygon>
       </svg>
       {#each lineup.slots as slot (slot.position + slot.player.id)}
+        {@const spot = pitchSpot(slot)}
         <PlayerCard
           player={slot.player}
           role={slot.role}
+          line={spot.line}
           preview
-          positionStyle={`left:${pitchX(slot.x, slot.y)}%; top:${pitchY(slot.y)}%`}
+          positionStyle={`left:${spot.left}%; top:${spot.top}`}
         />
       {/each}
       <StrengthBadge display={teamDisplay} {comparing} delta={teamDelta} />

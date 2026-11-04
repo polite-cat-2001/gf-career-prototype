@@ -6,7 +6,7 @@
   let { player } = $props()
 </script>
 
-<aside class="centre-panel scroll-area" aria-label="Карточка игрока">
+<aside class="centre-panel is-fit" aria-label="Карточка игрока">
   <CentreProfile {player} eyebrow={'Статус игрока'} />
 
   <div class="centre-morale-block">

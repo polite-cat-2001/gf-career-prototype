@@ -1,5 +1,5 @@
 <script>
-  import Icon from '../../Icon.svelte'
+  import Glyph from '../../ui/Glyph.svelte'
   import {
     competitionLabel,
     hideBrokenImage,
@@ -27,42 +27,79 @@
   } = $props()
 </script>
 
+{#snippet dayStrip()}
+  <div
+    class="home-days__track is-sliding"
+    style={`width:${trackWidth}%; --cells:${trackDays.length}; --shift:${trackShift}%`}
+  >
+    {#each trackDays as day (day.key)}
+      <div
+        class="home-day"
+        class:is-today={day.key === displayDate}
+        class:is-match={nextMatch && day.key === nextMatch.date}
+      >
+        <span class="home-day__week">{day.weekday}</span>
+        <span class="home-day__num">{day.day}</span>
+        {#if nextMatch && day.key === nextMatch.date}
+          <img
+            class="home-day__crest"
+            src={nextMatch.opponent.logo}
+            alt=""
+            onerror={hideBrokenImage}
+          />
+        {/if}
+      </div>
+    {/each}
+  </div>
+{/snippet}
+
 {#if isMatchDay && nextMatch && !simulating && !advancing}
-  <div class="match-actions" style="grid-area: next">
-    <button class="match-action" data-nav data-autofocus onclick={onPlay}>
-      <div class="match-action-head">
-        <div>
-          <span class="eyebrow">Матч</span>
-          <strong class="match-action-title">Играть</strong>
+  <div class="home-actions">
+    <button
+      type="button"
+      class="gf-tile home-tile home-action"
+      data-nav
+      data-autofocus
+      onclick={onPlay}
+    >
+      <div class="home-action__head">
+        <div class="home-action__text">
+          <span class="home-eyebrow">Матч</span>
+          <span class="gf-tile__title">Играть</span>
         </div>
         <img
-          class="match-action-crest"
+          class="home-action__crest"
           src={nextMatch.opponent.logo}
           alt=""
           onerror={hideBrokenImage}
         />
       </div>
-      <span class="match-action-meta">
+      <span class="home-action__meta">
         Тур {nextMatch.round} · {shortDate(nextMatch.date)} · {nextMatch.home ? 'Дома' : 'В гостях'}
       </span>
-      <div class="match-action-foot">
+      <div class="home-action__foot">
         <span>vs {nextMatch.opponent.name}</span>
         <span>{career.club.league_name}</span>
       </div>
     </button>
 
-    <button class="match-action" data-nav onclick={onOpenSimulation}>
-      <div class="match-action-head">
-        <div>
-          <span class="eyebrow">Матч</span>
-          <strong class="match-action-title">Симуляция</strong>
+    <button
+      type="button"
+      class="gf-tile home-tile home-action"
+      data-nav
+      onclick={onOpenSimulation}
+    >
+      <div class="home-action__head">
+        <div class="home-action__text">
+          <span class="home-eyebrow">Матч</span>
+          <span class="gf-tile__title">Симуляция</span>
         </div>
-        <Icon name="clock" size={34} />
+        <span class="gf-tile__glyph home-action__glyph"><Glyph name="monitor" size={56} /></span>
       </div>
-      <span class="match-action-meta">
+      <span class="home-action__meta">
         Тур {nextMatch.round} · {shortDate(nextMatch.date)} · {nextMatch.home ? 'Дома' : 'В гостях'}
       </span>
-      <div class="match-action-foot">
+      <div class="home-action__foot">
         <span>vs {nextMatch.opponent.name}</span>
         <span>{career.club.league_name}</span>
       </div>
@@ -70,71 +107,58 @@
   </div>
 {:else}
   <button
-    class="widget widget-next"
-    class:is-simulating={simulating}
-    style="grid-area: next"
+    type="button"
+    class="gf-tile gf-tile--hero home-tile home-next"
     data-nav
     data-autofocus
     onclick={onNext}
   >
-    <div class="widget-head calendar-head">
-      <strong class="widget-title calendar-title" class:is-season={season.complete}>
-        {simulating ? 'Остановить' : season.complete ? 'Перейти в следующий сезон' : 'Далее'}
-      </strong>
-      <span class="calendar-month">{shortMonthLabel(displayDate)}</span>
+    <div class="home-head">
+      <div class="home-head__main">
+        <span class="home-eyebrow">
+          {simulating ? 'Симуляция' : season.complete ? 'Сезон' : 'Календарь'}
+        </span>
+        <span class="gf-tile__title">
+          {simulating ? 'Остановить' : season.complete ? 'Перейти в следующий сезон' : 'Далее'}
+        </span>
+      </div>
+      <span class="home-head__month">{shortMonthLabel(displayDate)}</span>
     </div>
 
-    <div class="day-window">
-      <div
-        class="day-track"
-        class:is-sliding={simulating}
-        style={`width:${trackWidth}%; --cells:${trackDays.length}; --shift:${trackShift}%`}
-      >
-        {#each trackDays as day (day.key)}
-          <div
-            class="day"
-            class:today={day.key === displayDate}
-            class:is-match={nextMatch && day.key === nextMatch.date}
-          >
-            <span class="day-week">{day.weekday}</span>
-            <span class="day-num">{day.day}</span>
-            {#if nextMatch && day.key === nextMatch.date}
-              <img
-                class="day-crest"
-                src={nextMatch.opponent.logo}
-                alt=""
-                onerror={hideBrokenImage}
-              />
-            {/if}
-          </div>
-        {/each}
-      </div>
-    </div>
+    {#if nextMatch}
+      {#if simulating}
+        <div class="home-days">{@render dayStrip()}</div>
+      {:else}
+        {#key displayDate}
+          <div class="home-days is-advancing">{@render dayStrip()}</div>
+        {/key}
+      {/if}
+    {/if}
 
     {#if nextMatch}
       {@const homeTeam = nextMatch.home ? career.club : nextMatch.opponent}
       {@const awayTeam = nextMatch.home ? nextMatch.opponent : career.club}
-      <div class="next-fixture">
-        <div class="fixture-side">
-          <img class="fixture-crest" src={homeTeam.logo} alt="" onerror={hideBrokenImage} />
-          <span class="fixture-name">{homeTeam.name}</span>
+      <div class="home-fixture">
+        <div class="home-fixture__side">
+          <img class="home-fixture__crest" src={homeTeam.logo} alt="" onerror={hideBrokenImage} />
+          <span class="home-fixture__name">{homeTeam.name}</span>
         </div>
-        <span class="fixture-vs">VS</span>
-        <div class="fixture-side is-away">
-          <span class="fixture-name">{awayTeam.name}</span>
-          <img class="fixture-crest" src={awayTeam.logo} alt="" onerror={hideBrokenImage} />
+        <span class="home-fixture__vs">VS</span>
+        <div class="home-fixture__side is-away">
+          <span class="home-fixture__name">{awayTeam.name}</span>
+          <img class="home-fixture__crest" src={awayTeam.logo} alt="" onerror={hideBrokenImage} />
         </div>
       </div>
-      <div class="calendar-foot">
-        <span class="next-meta">
+      <div class="home-foot">
+        <span class="home-foot__meta">
           {seasonLabel(displayDate)} · {competitionLabel(career.club.league_name)} · Тур
           {nextMatch.round} · {nextMatch.home ? 'Дома' : 'В гостях'}
         </span>
         {#if season.form.length}
-          <div class="form-pills">
+          <div class="home-form">
             {#each season.form as item (item.fixture_id)}
               <span
-                class="form-pill"
+                class="home-form__pill"
                 class:is-win={item.outcome === 'W'}
                 class:is-draw={item.outcome === 'D'}
                 class:is-loss={item.outcome === 'L'}
@@ -147,17 +171,17 @@
         {/if}
       </div>
     {:else}
-      <div class="season-final">
-        <span class="season-final-title">Сезон завершён</span>
+      <div class="home-season">
+        <span class="home-season__title">Сезон завершён</span>
         {#if ownRow}
-          <span>
+          <span class="home-season__meta">
             {ownRow.position}-е место · {ownRow.points}
             {plural(ownRow.points, 'очко', 'очка', 'очков')} · {ownRow.played}
             {plural(ownRow.played, 'матч', 'матча', 'матчей')}
           </span>
         {/if}
       </div>
-      <div class="widget-action-bar season-cta">
+      <div class="home-cta">
         <span>Перейти в следующий сезон</span>
         <span>A</span>
       </div>

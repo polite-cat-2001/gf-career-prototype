@@ -11,8 +11,9 @@
     registerTabs,
     registerView,
   } from './actions.js'
-  import Controls from './Controls.svelte'
-  import Tabs from './Tabs.svelte'
+  import AppShell from './ui/AppShell.svelte'
+  import Breadcrumb from './ui/Breadcrumb.svelte'
+  import TabBar from './ui/TabBar.svelte'
   import { focusElement, focusFirst } from './input.js'
   import {
     AMOUNT_PLACES,
@@ -176,41 +177,81 @@
       )?.report ?? null
     )
   }
+
+  const transferViewLabels = {
+    filters: 'Фильтры',
+    results: 'Результаты',
+    centre: 'Центр трансферов',
+    network: 'Сеть поиска',
+    history: 'История',
+    offer: 'Предложение',
+    offerAmount: 'Предложение',
+    contract: 'Контракт',
+    contractAmount: 'Контракт',
+    incomingCounter: 'Встречное предложение',
+  }
+
+  let subview = $derived(
+    (nav.tab === 'squad' && nav.view === 'centre') ||
+      (nav.tab === 'transfers' && transfers.transfersView !== 'hub'),
+  )
+  let crumbs = $derived(
+    nav.tab === 'squad'
+      ? ['Карьера', 'Состав', 'Центр составов']
+      : ['Карьера', 'Трансферы', transferViewLabels[transfers.transfersView] ?? 'Трансферы'],
+  )
+  let legendNote = $derived(
+    match.matchdayOpen
+      ? match.matchdayStep === 'results'
+        ? 'Результаты дня'
+        : 'Таблица после тура'
+      : match.matchSimOpen
+        ? match.matchSimPhase === 'live'
+          ? 'Симуляция · 1 минута в секунду'
+          : 'Симуляция матча'
+        : saving
+          ? 'Сохранение…'
+          : playing
+            ? 'Матч идёт…'
+            : squad.swapping
+              ? 'Обмен…'
+              : `${career.club.name} · ${formatTimestamp(career.updated_at)}`,
+  )
 </script>
 
-<div class="app" class:is-simulating={match.matchSimOpen || match.matchdayOpen}>
-  <header class="topbar hub-topbar">
-    <div class="brand">
-      <div class="brand-mark">GF</div>
-      <div>
-        <div class="brand-title">Карьера</div>
-        <div class="brand-sub">{career.manager.name}</div>
+<div class="app gf-career" class:is-simulating={match.matchSimOpen || match.matchdayOpen}>
+  <AppShell fill hints={nav.hints} note={legendNote}>
+    {#snippet header()}
+      <div class="hub-head">
+        {#if subview}
+          <Breadcrumb items={crumbs} />
+        {:else}
+          <TabBar {tabs} active={nav.tab} onselect={nav.setTab} />
+        {/if}
+        <div class="hub-club">
+          <img
+            class="hub-club__crest"
+            src={career.club.logo}
+            alt=""
+            onerror={hideBrokenImage}
+          />
+          <div class="hub-club__text">
+            <span class="hub-club__name">{career.club.name}</span>
+            <span class="hub-club__meta">{formatDate(career.date)} · {tierLabel(career.club)}</span>
+          </div>
+        </div>
       </div>
-    </div>
+    {/snippet}
 
-    {#if (nav.tab === 'squad' && nav.view === 'centre') || (nav.tab === 'transfers' && transfers.transfersView !== 'hub')}
-      <div></div>
-    {:else}
-      <Tabs {tabs} active={nav.tab} onselect={nav.setTab} />
-    {/if}
+    <div class="hub-body">
+      {#if saveError}
+        <p class="gf-notice is-error">{saveError}</p>
+      {:else if saveNotice}
+        <p class="gf-notice">{saveNotice}</p>
+      {/if}
 
-    <div class="hub-club-strip">
-      <img class="strip-crest" src={career.club.logo} alt="" onerror={hideBrokenImage} />
-      <div>
-        <div class="strip-club">{career.club.name}</div>
-        <div class="strip-meta">{formatDate(career.date)} · {tierLabel(career.club)}</div>
-      </div>
-    </div>
-  </header>
-
-  <main class="screen hub-screen">
-
-
-    {#if saveError}
-      <div class="notice error hub-notice">{saveError}</div>
-    {:else if saveNotice}
-      <div class="notice hub-notice">{saveNotice}</div>
-    {/if}
+      {#key nav.tab}
+        <div class="hub-main">
 
     {#if nav.tab === 'centre'}
       <CentreTab
@@ -460,8 +501,10 @@
         onSubmit={squad.submitNegotiation}
       />
     {/if}
-  </main>
-
+        </div>
+      {/key}
+    </div>
+  </AppShell>
 
   {#if match.seasonReview && review}
     <SeasonReview
@@ -489,24 +532,4 @@
   {#if match.matchdayOpen && match.matchdayData}
     <MatchdayOverlay data={match.matchdayData} step={match.matchdayStep} clubId={career.club.id} />
   {/if}
-
-  <Controls
-    hints={nav.hints}
-    showDefaults={false}
-    note={match.matchdayOpen
-      ? match.matchdayStep === 'results'
-        ? 'Результаты дня'
-        : 'Таблица после тура'
-      : match.matchSimOpen
-        ? match.matchSimPhase === 'live'
-          ? 'Симуляция · 1 минута в секунду'
-          : 'Симуляция матча'
-        : saving
-          ? 'Сохранение…'
-          : playing
-            ? 'Матч идёт…'
-            : squad.swapping
-              ? 'Обмен…'
-              : `${career.club.name} · ${formatTimestamp(career.updated_at)}`}
-  />
 </div>

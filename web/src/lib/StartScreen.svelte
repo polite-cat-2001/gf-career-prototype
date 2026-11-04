@@ -1,8 +1,10 @@
 <script>
   import { onMount, tick } from 'svelte'
-  import Controls from './Controls.svelte'
+  import AppShell from './ui/AppShell.svelte'
+  import Breadcrumb from './ui/Breadcrumb.svelte'
+  import Tile from './ui/Tile.svelte'
   import { focusFirst } from './input.js'
-  import { formatDate, formatTimestamp, hideBrokenImage } from './format.js'
+  import { formatTimestamp, hideBrokenImage } from './format.js'
 
   let {
     latest = null,
@@ -13,6 +15,15 @@
     onnew,
     onload,
   } = $props()
+
+  const hints = [
+    { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Навигация' },
+    { gamepad: ['A'], keyboard: ['Enter'], label: 'Выбрать' },
+  ]
+
+  let status = $derived(
+    error ? 'ошибка API' : loading ? 'загрузка сохранений…' : 'canon.db · реальные данные',
+  )
 
   onMount(() => {
     tick().then(focusFirst)
@@ -29,93 +40,58 @@
   }
 </script>
 
-<div class="app">
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark">GF</div>
-      <div>
-        <div class="brand-title">Career Mode</div>
-        <div class="brand-sub">Прототип карьеры менеджера</div>
-      </div>
-    </div>
-    <div class="topbar-meta">
-      <span class="pill"><strong>canon.db</strong> реальные данные</span>
-      {#if latest}
-        <span class="pill"><strong>{formatTimestamp(latest.updated_at)}</strong> последний сейв</span>
-      {/if}
-    </div>
-  </header>
+<AppShell {status} statusError={Boolean(error)} {hints}>
+  {#snippet header()}
+    <Breadcrumb items={['GameplayFootball', 'Карьера']} />
+  {/snippet}
 
-  <main class="screen start-screen">
-    <div class="start-heading">
-      <span class="eyebrow">GameplayFootball</span>
-      <h1>Карьера менеджера</h1>
-      <p>Выберите, с чего продолжить. Управление — геймпад или клавиатура.</p>
-    </div>
+  {#if error}
+    <p class="gf-notice is-error">{error}</p>
+  {/if}
 
-    {#if error}
-      <div class="notice error">{error}</div>
-    {/if}
-
-    <div class="start-grid">
-      <button
-        class="start-card"
-        data-nav
-        disabled={!latest || loading}
-        onclick={oncontinue}
-      >
-        <span class="start-card-head">
-          <span class="start-card-title">Продолжить</span>
-          <span class="start-card-action">
-            {#if latest}Последний сейв{:else}Нет сохранений{/if}
-          </span>
-        </span>
-
+  <section class="gf-grid" aria-label="Карьера">
+    <Tile
+      hero
+      autofocus
+      disabled={!latest || loading}
+      title="Продолжить"
+      sub={latest
+        ? `${latest.club_name} · ${latest.manager_name}`
+        : 'Сначала создайте новую карьеру'}
+      meta={latest ? `Последний сейв · ${formatTimestamp(latest.updated_at)}` : 'Нет сохранений'}
+      glyph={latest ? '' : 'trophy'}
+      glyphSize={152}
+      style="--push-x: -6px; --push-y: -6px"
+      onclick={oncontinue}
+    >
+      {#snippet art()}
         {#if latest}
-          <span class="start-card-body">
-            <img class="club-crest" src={latest.club_logo} alt="" onerror={hideBrokenImage} />
-            <span class="start-card-name">{latest.club_name}</span>
-            <span class="start-card-sub">{latest.manager_name}</span>
-            <span class="start-card-meta">{latest.league_name} · {formatDate(latest.date)}</span>
-          </span>
-        {:else}
-          <span class="start-card-empty">
-            <span class="empty-icon">—</span>
-            <span>Сначала создайте новую карьеру</span>
-          </span>
+          <img src={latest.club_logo} alt="" onerror={hideBrokenImage} />
         {/if}
-      </button>
+      {/snippet}
+    </Tile>
 
-      <button class="start-card" data-nav onclick={onnew}>
-        <span class="start-card-head">
-          <span class="start-card-title">Новая игра</span>
-          <span class="start-card-action">Создать</span>
-        </span>
-        <span class="start-card-body">
-          <span class="big-plus">+</span>
-          <span class="start-card-sub">Страна, лига, клуб и менеджер</span>
-          <span class="start-card-meta">Случайный seed · автосохранение</span>
-        </span>
-      </button>
+    <Tile
+      wide
+      title="Новая игра"
+      sub="Страна, лига, клуб и менеджер"
+      tags={['Случайный seed', 'Автосохранение']}
+      glyph="shirt"
+      glyphSize={120}
+      style="--push-x: 6px; --push-y: -6px"
+      onclick={onnew}
+    />
 
-      <button
-        class="start-card"
-        data-nav
-        disabled={savesCount === 0}
-        onclick={onload}
-      >
-        <span class="start-card-head">
-          <span class="start-card-title">Загрузить</span>
-          <span class="start-card-action">{savesCount} {careerWord(savesCount)}</span>
-        </span>
-        <span class="start-card-body">
-          <span class="menu-lines" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span class="start-card-sub">Список существующих карьер</span>
-          <span class="start-card-meta">Выбор → загрузка сейва</span>
-        </span>
-      </button>
-    </div>
-  </main>
-
-  <Controls hints={[]} note="Сервер — единственный источник истины" />
-</div>
+    <Tile
+      wide
+      disabled={savesCount === 0}
+      title="Загрузить"
+      sub={savesCount === 0 ? 'Сохранений пока нет' : `${savesCount} ${careerWord(savesCount)}`}
+      meta="Список карьер"
+      glyph="layers"
+      glyphSize={120}
+      style="--push-x: 6px; --push-y: 6px"
+      onclick={onload}
+    />
+  </section>
+</AppShell>

@@ -69,38 +69,45 @@
 {#if data}
   <div class="sim-page">
     <div class="sim-stage">
-      <section class="sim-main">
-        <header class="sim-header">
-          <span class="sim-competition">{data.competition} · Тур {data.round}</span>
+      <section class="sim-main" aria-label="Матч">
+        <div class="sim-board">
+          <div class="sim-board__top">
+            <span class="sim-competition">{data.competition} · Тур {data.round}</span>
+            <span class="sim-date">{formatDate(data.date)}</span>
+          </div>
+
           <div class="sim-scoreline">
             <div class="sim-club is-home">
               <img src={data.home_team.logo} alt="" onerror={hideBrokenImage} />
-              <div>
+              <div class="sim-club__text">
                 <strong>{data.home_team.name}</strong>
-                {#if data.home}<span>Ваша команда</span>{/if}
+                {#if data.home}<span class="sim-club__tag">Ваша команда</span>{/if}
               </div>
             </div>
+
             <div class="sim-centre">
-              <strong class="sim-score">{scoreLabel}</strong>
+              {#key scoreLabel}
+                <strong class="sim-score">{scoreLabel}</strong>
+              {/key}
               <span class="sim-minute">{minuteLabel}</span>
             </div>
+
             <div class="sim-club is-away">
-              <div>
+              <div class="sim-club__text">
                 <strong>{data.away_team.name}</strong>
-                {#if !data.home}<span>Ваша команда</span>{/if}
+                {#if !data.home}<span class="sim-club__tag">Ваша команда</span>{/if}
               </div>
               <img src={data.away_team.logo} alt="" onerror={hideBrokenImage} />
             </div>
           </div>
-          <span class="sim-date">{formatDate(data.date)}</span>
-        </header>
+        </div>
 
         <div class="sim-lineups">
           {#each [['home', data.home_team, data.home_lineup], ['away', data.away_team, data.away_lineup]] as [side, team, lineup] (side)}
-            <div class="sim-team-list" class:is-away={side === 'away'}>
+            <div class="sim-team" class:is-away={side === 'away'}>
               <div class="sim-list-head">
-                <span>{team.name}</span>
-                <strong>{lineup.formation}</strong>
+                <span class="sim-list-team">{team.name}</span>
+                <strong class="sim-list-formation">{lineup.formation}</strong>
               </div>
               <div class="sim-players">
                 {#each lineup.slots as slot (slot.player.id)}
@@ -108,7 +115,7 @@
                     {#if side === 'away'}
                       <span class="sim-marks">
                         {#each marksFor(slot.player.id, side) as mark (mark)}
-                          <EventGlyph type={mark} size={13} />
+                          <EventGlyph type={mark} size={14} />
                         {/each}
                       </span>
                     {/if}
@@ -116,7 +123,7 @@
                     {#if side === 'home'}
                       <span class="sim-marks">
                         {#each marksFor(slot.player.id, side) as mark (mark)}
-                          <EventGlyph type={mark} size={13} />
+                          <EventGlyph type={mark} size={14} />
                         {/each}
                       </span>
                     {/if}
@@ -129,7 +136,7 @@
                       {#if side === 'away'}
                         <span class="sim-marks">
                           {#each marksFor(player.id, side) as mark (mark)}
-                            <EventGlyph type={mark} size={13} />
+                            <EventGlyph type={mark} size={14} />
                           {/each}
                         </span>
                       {/if}
@@ -137,7 +144,7 @@
                       {#if side === 'home'}
                         <span class="sim-marks">
                           {#each marksFor(player.id, side) as mark (mark)}
-                            <EventGlyph type={mark} size={13} />
+                            <EventGlyph type={mark} size={14} />
                           {/each}
                         </span>
                       {/if}
@@ -150,10 +157,51 @@
         </div>
       </section>
 
-      <aside class="sim-side">
-        <div class="sim-clock">{clockLabel}</div>
-        <div class="sim-feed scroll-area">
-          {#if visibleEvents.length}
+      <aside class="sim-side" aria-label="Ход матча">
+        <div
+          class="sim-clock"
+          class:is-setup={phase === 'setup'}
+          class:is-live={phase === 'live'}
+          class:is-done={phase === 'done'}
+        >
+          {#if phase !== 'setup'}
+            <span class="sim-clock__label">{phase === 'live' ? 'Идёт матч' : 'Финал'}</span>
+          {/if}
+          {#key clockLabel}
+            <strong class="sim-clock__value">{clockLabel}</strong>
+          {/key}
+        </div>
+
+        <div class="sim-feed-head">
+          <span>Лента матча</span>
+          <span>{visibleEvents.length}</span>
+        </div>
+
+        <div class="sim-feed">
+          {#if phase === 'setup'}
+            <div class="sim-setup">
+              <span class="sim-setup__eyebrow">Перед матчем</span>
+              <div class="sim-setup__rows">
+                <div class="sim-setup__row">
+                  <span>Турнир</span>
+                  <strong>{data.competition}</strong>
+                </div>
+                <div class="sim-setup__row">
+                  <span>Тур</span>
+                  <strong>{data.round}</strong>
+                </div>
+                <div class="sim-setup__row">
+                  <span>Схемы</span>
+                  <strong>{data.home_lineup.formation} · {data.away_lineup.formation}</strong>
+                </div>
+                <div class="sim-setup__row">
+                  <span>Матч</span>
+                  <strong>{data.home ? 'Дома' : 'В гостях'}</strong>
+                </div>
+              </div>
+              <span class="sim-setup__hint">События появятся после старта</span>
+            </div>
+          {:else if visibleEvents.length}
             {#each visibleEvents as event (event.id)}
               <div class="sim-feed-row is-{event.type}">
                 <span class="sim-feed-minute">{event.minute}′</span>
@@ -165,18 +213,16 @@
           {:else}
             <div class="sim-feed-empty">
               <span class="sim-feed-pulse"></span>
-              <span>
-                {phase === 'setup' ? 'События появятся после старта' : 'События появятся по ходу матча'}
-              </span>
+              <span>События появятся по ходу матча</span>
             </div>
           {/if}
         </div>
 
         {#if error}
-          <div class="sim-error">{error}</div>
+          <div class="sim-message is-error">{error}</div>
         {/if}
         {#if loading}
-          <div class="sim-loading">Симуляция…</div>
+          <div class="sim-message is-loading">Симуляция…</div>
         {/if}
       </aside>
     </div>

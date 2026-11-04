@@ -10,7 +10,7 @@
     <span class="squad-tile-label">{tile.label}</span>
     <span class="squad-tile-icon">
       <img src={club.logo} alt="" onerror={hideBrokenImage} />
-      <span class="squad-tile-check"><Icon name="check" size={14} /></span>
+      <span class="squad-tile-check"><Icon name="check" size={18} /></span>
     </span>
     <span class="squad-tile-note">{club.name}</span>
   </div>

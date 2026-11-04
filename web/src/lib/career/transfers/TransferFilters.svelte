@@ -27,12 +27,6 @@
 </script>
 
 <div class="tf-filters" inert={oskOpen ? true : undefined}>
-  <div class="tf-filters-head">
-    <span class="tf-crumbs">Трансферы <i>›</i> Поиск игроков</span>
-    <span class="tf-crumbs-note">
-      {editing ? 'A или B — выйти из плитки' : 'A — изменить · Y — начать поиск'}
-    </span>
-  </div>
   <div class="tf-filter-grid">
     <button type="button" class="tf-cell tf-name" data-nav data-filter="name" onclick={onOpenOsk}>
       <span class="tf-label">Имя игрока</span>

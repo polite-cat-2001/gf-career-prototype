@@ -1,7 +1,7 @@
 <script>
-  import { inputDevice } from './input.js'
+  import { inputDevice } from '../input.js'
 
-  let { hints = [], note = '', showDefaults = true } = $props()
+  let { hints = [], note = '' } = $props()
 
   const defaults = [
     { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Навигация' },
@@ -9,14 +9,14 @@
     { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
   ]
 
-  let shown = $derived(showDefaults ? [...defaults, ...hints] : hints)
+  let shown = $derived(hints.length ? hints : defaults)
   let device = $derived($inputDevice)
 </script>
 
-<footer class="control-bar">
-  <div class="control-hints">
+<div class="gf-legend">
+  <div class="gf-control-hints">
     {#each shown as hint}
-      <span class="control-hint">
+      <span class="gf-control-hint">
         {#each hint[device] || [] as key}
           <kbd>{key}</kbd>
         {/each}
@@ -24,5 +24,7 @@
       </span>
     {/each}
   </div>
-  <div class="control-note">{note}</div>
-</footer>
+  {#if note}
+    <span class="gf-legend__note">{note}</span>
+  {/if}
+</div>
