@@ -119,25 +119,27 @@
             {/each}
           </div>
         {:else}
-          <div class="details-list">
+          <div class="details-list details-stats" class:is-single={detailGroups.length === 1}>
             {#each detailGroups as group (group.id)}
               <div class="details-group">
                 <span class="details-group-label">{group.label}</span>
-                {#each group.rows as row (row.key)}
-                  {@const right = comparing ? Math.round(focusedPlayer.stats[row.key] ?? 0) : null}
-                  {@const left = comparing ? Math.round(anchorPlayer.stats[row.key] ?? 0) : row.value}
-                  <div class="details-row" class:is-compare={comparing}>
-                    <span class="details-value {comparing ? compareTone(left, right) : statTone(left)}">
-                      {left}
-                    </span>
-                    <span class="details-label">{row.label}</span>
-                    {#if comparing}
-                      <span class="details-value {compareTone(right, left)}">{right}</span>
-                    {:else}
-                      <span class="details-spacer"></span>
-                    {/if}
-                  </div>
-                {/each}
+                <div class="details-rows">
+                  {#each group.rows as row (row.key)}
+                    {@const right = comparing ? Math.round(focusedPlayer.stats[row.key] ?? 0) : null}
+                    {@const left = comparing ? Math.round(anchorPlayer.stats[row.key] ?? 0) : row.value}
+                    <div class="details-row" class:is-compare={comparing}>
+                      <span class="details-value {comparing ? compareTone(left, right) : statTone(left)}">
+                        {left}
+                      </span>
+                      <span class="details-label">{row.label}</span>
+                      {#if comparing}
+                        <span class="details-value {compareTone(right, left)}">{right}</span>
+                      {:else}
+                        <span class="details-spacer"></span>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
               </div>
             {/each}
           </div>

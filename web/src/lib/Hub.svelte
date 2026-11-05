@@ -192,12 +192,15 @@
   }
 
   let subview = $derived(
-    (nav.tab === 'squad' && nav.view === 'centre') ||
+    (nav.tab === 'squad' &&
+      ['centre', 'plan', 'details'].includes(nav.view)) ||
       (nav.tab === 'transfers' && transfers.transfersView !== 'hub'),
   )
   let crumbs = $derived(
     nav.tab === 'squad'
-      ? ['Карьера', 'Состав', 'Центр составов']
+      ? nav.view === 'plan' || nav.view === 'details'
+        ? ['Карьера', 'Состав', 'План игры']
+        : ['Карьера', 'Состав', 'Центр составов']
       : ['Карьера', 'Трансферы', transferViewLabels[transfers.transfersView] ?? 'Трансферы'],
   )
   let legendNote = $derived(
