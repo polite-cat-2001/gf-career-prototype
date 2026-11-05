@@ -76,8 +76,7 @@ export const TRANSFER_CENTRE_TABS = [
   { id: 'shortlist', label: 'Список' },
   { id: 'sent', label: 'Отправленные предложения' },
   { id: 'received', label: 'Полученные предложения' },
-  { id: 'listed', label: 'На трансфере' },
-  { id: 'loaned', label: 'На аренде' },
+  { id: 'listed', label: 'В списке на трансфер' },
 ]
 
 export const OFFER_STATUS_LABELS = {

@@ -91,16 +91,16 @@ export function createTransfersState(ctx) {
         : transferCentreTab === 'received'
           ? (transferCentre.received_offers ?? [])
           : transferCentreTab === 'listed'
-            ? (transferCentre.listed ?? [])
-            : transferCentreTab === 'loaned'
-              ? (transferCentre.loaned ?? [])
-              : (transferCentre.shortlist ?? []),
+            ? [
+                ...(transferCentre.listed ?? []),
+                ...(transferCentre.loaned ?? []),
+              ]
+            : (transferCentre.shortlist ?? []),
     )
     let transferCentreIsSent = $derived(transferCentreTab === 'sent')
     let transferCentreIsOffer = $derived(transferCentreTab === 'received')
-    let transferCentreIsList = $derived(
-      ['shortlist', 'listed', 'loaned'].includes(transferCentreTab),
-    )
+    let transferCentreIsList = $derived(transferCentreTab === 'shortlist')
+    let transferCentreIsOwnList = $derived(transferCentreTab === 'listed')
     let sentOffers = $derived(transferCentre.sent_offers ?? [])
     let receivedOffers = $derived(transferCentre.received_offers ?? [])
     let receivedUnread = $derived(
@@ -156,10 +156,8 @@ export function createTransfersState(ctx) {
         : transferCentreTab === 'received'
           ? 'Полученных предложений пока нет.'
           : transferCentreTab === 'listed'
-            ? 'Никого нет на трансфере. Отметьте игрока в центре составов.'
-            : transferCentreTab === 'loaned'
-              ? 'Никто не выставлен в аренду. Отметьте игрока в центре составов.'
-              : 'Шортлист пуст. Добавьте игрока из поиска или отчёта скаута.',
+            ? 'В списке на трансфер пусто. Отметьте игрока в центре составов.'
+            : 'Шортлист пуст. Добавьте игрока из поиска или отчёта скаута.',
     )
     let scouting = $derived(getCareer().scouting ?? null)
     let reportFeed = $derived([
@@ -729,10 +727,6 @@ export function createTransfersState(ctx) {
       focusElement(action ?? card)
     }
 
-    function collapseSentOffer() {
-      transferOfferModalId = null
-    }
-
     function closeSentOfferModal() {
       const offerId = transferOfferModalId
       transferOfferModalId = null
@@ -789,10 +783,6 @@ export function createTransfersState(ctx) {
         ?.closest('.tf-offer-row')
         ?.querySelector('[data-incoming-action]:not([disabled])')
       focusElement(action ?? card)
-    }
-
-    function collapseIncomingOffer() {
-      incomingOfferModalId = null
     }
 
     function closeIncomingOfferModal() {
@@ -1388,6 +1378,9 @@ export function createTransfersState(ctx) {
     get transferCentreIsList() {
       return transferCentreIsList
     },
+    get transferCentreIsOwnList() {
+      return transferCentreIsOwnList
+    },
     get sentOffers() {
       return sentOffers
     },
@@ -1484,13 +1477,11 @@ export function createTransfersState(ctx) {
     sentOfferCard,
     openSentOfferModal,
     closeSentOfferModal,
-    collapseSentOffer,
     reofferSentOffer,
     acceptSentOfferCounter,
     incomingOfferCard,
     openIncomingOfferModal,
     closeIncomingOfferModal,
-    collapseIncomingOffer,
     focusReceivedTab,
     submitIncomingOffer,
     startIncomingCounter,

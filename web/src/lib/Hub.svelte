@@ -378,9 +378,9 @@
         openTransferOffer={transfers.openTransferOffer}
         openTransferContractFromPlayer={transfers.openTransferContractFromPlayer}
         openSentOfferModal={transfers.openSentOfferModal}
-        collapseSentOffer={transfers.collapseSentOffer}
+        onCloseSentOffer={transfers.closeSentOfferModal}
         openIncomingOfferModal={transfers.openIncomingOfferModal}
-        collapseIncomingOffer={transfers.collapseIncomingOffer}
+        onCloseIncomingOffer={transfers.closeIncomingOfferModal}
         transferOfferModal={transfers.transferOfferModal}
         incomingOfferModal={transfers.incomingOfferModal}
         acceptSentOfferCounter={transfers.acceptSentOfferCounter}

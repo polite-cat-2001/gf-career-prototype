@@ -5,6 +5,7 @@
   import ReceivedOfferDetail from './ReceivedOfferDetail.svelte'
   import SentOfferCard from './SentOfferCard.svelte'
   import SentOfferDetail from './SentOfferDetail.svelte'
+  import TransferListed from './TransferListed.svelte'
 
   let {
     activeTab,
@@ -131,6 +132,7 @@
                 {offer}
                 open={offerModal?.offer_id === offer.offer_id}
                 onOpen={() => openSentOffer(offer)}
+                onClose={onCloseSentOffer}
                 onSelect={selectSentOffer}
                 onAcceptCounter={() => onAcceptTransferCounter(offer)}
                 onReoffer={() => onReofferOffer(offer)}
@@ -165,6 +167,7 @@
                 {offer}
                 open={incomingModal?.offer_id === offer.offer_id}
                 onOpen={() => openOffer(offer)}
+                onClose={onCloseIncomingOffer}
                 onSelect={selectOffer}
                 onAccept={() => onSubmitIncoming(offer, 'incoming_accept')}
                 onRefuse={() => onSubmitIncoming(offer, 'incoming_refuse')}
@@ -181,6 +184,15 @@
         <p>{empty}</p>
       </div>
     {/if}
+  {:else if activeTab === 'listed'}
+    <TransferListed
+      {players}
+      {date}
+      emptyText={empty}
+      bind:selectedId
+      bind:open={actionsOpen}
+      {onaction}
+    />
   {:else}
     <TransferPlayers
       {players}

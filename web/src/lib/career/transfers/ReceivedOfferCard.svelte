@@ -7,6 +7,7 @@
     offer,
     open = false,
     onOpen,
+    onClose,
     onSelect,
     onAccept,
     onRefuse,
@@ -59,7 +60,7 @@
     <span class="tf-offer-date">{dayMonth(offer.created_at)}</span>
   </button>
 
-  <Accordion {open}>
+  <Accordion {open} onclose={onClose}>
     <div class="tf-offer-accordion">
       <div class="tf-offer-accordion-col">
         <span class="tf-offer-accordion-title">Переговоры</span>

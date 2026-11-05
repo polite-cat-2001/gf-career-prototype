@@ -427,6 +427,223 @@
   color: var(--focus-ink);
 }
 
+/* ---------- own transfer list (merged listed + loaned) ---------- */
+
+.tf-listed {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--tile);
+  color: var(--ink);
+  box-shadow: var(--shadow-tile);
+  overflow: hidden;
+}
+
+.tf-listed-head,
+.tf-listed-row-main {
+  display: grid;
+  grid-template-columns: 26px 92px 46px minmax(0, 1fr) 62px 62px;
+  align-items: center;
+  gap: 10px;
+}
+
+.tf-listed-head {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 16px;
+  background: rgba(29, 33, 56, 0.06);
+  border-bottom: 1px solid rgba(29, 33, 56, 0.12);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.tf-listed-head span:nth-child(5) {
+  text-align: center;
+}
+
+.tf-listed-head span:last-child {
+  text-align: right;
+}
+
+.tf-listed-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(29, 33, 56, 0.3) transparent;
+}
+
+.tf-listed-row {
+  flex: 0 0 auto;
+  color: var(--ink);
+  background: var(--tile);
+  box-shadow: inset 0 -1px 0 rgba(29, 33, 56, 0.1);
+}
+
+.tf-listed-row:has(.tf-listed-row-main:focus),
+.tf-listed-row.is-open {
+  background: var(--focus-fill);
+  color: var(--focus-ink);
+}
+
+.tf-listed-row-main {
+  width: 100%;
+  min-height: 52px;
+  padding: 4px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tf-listed-row-main:focus,
+.tf-listed-row-main:focus-visible {
+  outline: none;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.tf-listed-status {
+  display: flex;
+  align-items: center;
+}
+
+.tf-listed-dot {
+  width: 9px;
+  height: 9px;
+  background: var(--rail);
+}
+
+.tf-listed-dot.is-loan {
+  background: var(--mark-warn);
+}
+
+.tf-listed-kind {
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+
+.tf-listed-pos {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tf-listed-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.tf-listed-photo {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 44px;
+  overflow: hidden;
+}
+
+.tf-listed-photo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.tf-listed-name {
+  overflow: hidden;
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tf-listed-age {
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tf-listed-date {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+
+.tf-listed-row:has(.tf-listed-row-main:focus) .tf-listed-name,
+.tf-listed-row.is-open .tf-listed-name {
+  color: var(--focus-mark);
+}
+
+.tf-listed-row:has(.tf-listed-row-main:focus) .tf-listed-kind,
+.tf-listed-row:has(.tf-listed-row-main:focus) .tf-listed-date,
+.tf-listed-row.is-open .tf-listed-kind,
+.tf-listed-row.is-open .tf-listed-date {
+  color: var(--focus-ink-2);
+}
+
+.tf-listed-accordion {
+  display: flex;
+  justify-content: flex-start;
+  padding: 10px 16px 14px;
+  background: var(--focus-fill-soft);
+}
+
+.tf-listed-action {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  text-align: left;
+  color: var(--focus-ink);
+  cursor: pointer;
+}
+
+.tf-listed-action[data-nav]:focus {
+  outline: none;
+  border-color: transparent !important;
+  background: var(--focus-mark);
+  color: var(--ink);
+  box-shadow: none !important;
+}
+
+.tf-listed-action:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
 /* ---------- received offer detail ---------- */
 
 .tf-received-detail {

@@ -211,6 +211,9 @@ export function createNavigationState(ctx) {
           if (transfers.transferCentreIsSent || transfers.transferCentreTab === 'received') {
             list.push({ gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Действие' })
             list.push({ gamepad: ['A'], keyboard: ['Enter'], label: 'Выбор' })
+          } else if (transfers.transferCentreIsOwnList) {
+            list.push({ gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Игрок' })
+            list.push({ gamepad: ['A'], keyboard: ['Enter'], label: 'Открыть' })
           } else if (transfers.transferCentreIsList) {
             list.push({ gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Игрок' })
             list.push({ gamepad: ['A'], keyboard: ['Enter'], label: 'Выбрать' })
@@ -391,7 +394,8 @@ export function createNavigationState(ctx) {
         if (
           transfers.transferCentreActionsOpen ||
           transfers.transferCentreIsOffer ||
-          transfers.transferCentreIsSent
+          transfers.transferCentreIsSent ||
+          transfers.transferCentreIsOwnList
         ) {
           return true
         }

@@ -3,7 +3,16 @@
   import { formatDate, formatValue, hideBrokenImage, shortRole } from '../../format.js'
   import { offerKindLabel, offerStatusLabel } from '../utils/transfers.js'
 
-  let { offer, open = false, onOpen, onSelect, onAcceptCounter, onReoffer, onNegotiate } = $props()
+  let {
+    offer,
+    open = false,
+    onOpen,
+    onClose,
+    onSelect,
+    onAcceptCounter,
+    onReoffer,
+    onNegotiate,
+  } = $props()
 
   let statusTone = $derived(
     offer.status === 'accepted'
@@ -83,7 +92,7 @@
     <span class="tf-offer-date">{dayMonth(offer.created_at)}</span>
   </button>
 
-  <Accordion {open}>
+  <Accordion {open} onclose={onClose}>
     <div class="tf-offer-accordion">
       <div class="tf-offer-accordion-col">
         <span class="tf-offer-accordion-title">Переговоры</span>

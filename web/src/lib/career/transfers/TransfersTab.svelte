@@ -59,8 +59,8 @@
     openTransferContractFromPlayer,
     openSentOfferModal,
     openIncomingOfferModal,
-    collapseSentOffer,
-    collapseIncomingOffer,
+    onCloseSentOffer,
+    onCloseIncomingOffer,
     transferOfferModal,
     incomingOfferModal,
     acceptSentOfferCounter,
@@ -175,9 +175,9 @@
     onoffer={openTransferOffer}
     onnegotiate={openTransferContractFromPlayer}
     onOpenSentOffer={openSentOfferModal}
-    onCloseSentOffer={collapseSentOffer}
+    {onCloseSentOffer}
     onOpenIncomingOffer={openIncomingOfferModal}
-    onCloseIncomingOffer={collapseIncomingOffer}
+    {onCloseIncomingOffer}
     onAcceptTransferCounter={acceptSentOfferCounter}
     offerModal={transferOfferModal}
     incomingModal={incomingOfferModal}
