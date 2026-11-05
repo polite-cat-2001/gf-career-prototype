@@ -116,7 +116,6 @@
     saveError = ''
     try {
       career = await api.swapPlayers(career.id, playerA, playerB)
-      announce('Состав обновлён и сохранён')
       refreshSaves()
       return career
     } catch (caught) {
