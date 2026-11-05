@@ -1,12 +1,12 @@
 <script>
   import CentreInfoRow from '../shared/CentreInfoRow.svelte'
   import CentreProfile from '../shared/CentreProfile.svelte'
+  import MoraleFace from '../shared/MoraleFace.svelte'
   import SquadActions from '../shared/SquadActions.svelte'
   import {
     formatDate,
     formatValue,
     hideBrokenImage,
-    moraleFace,
     playerInitialName,
     plural,
     posTone,
@@ -124,7 +124,11 @@
           <span>{player.squad_role_short}</span>
           <span>
             Настрой
-            {player.expected_minutes > 0 ? `${moraleFace(player.morale)} ${player.morale}%` : '—'}
+            {#if player.expected_minutes > 0}
+              <MoraleFace value={player.morale} size={16} /> {player.morale}%
+            {:else}
+              —
+            {/if}
           </span>
         </div>
 

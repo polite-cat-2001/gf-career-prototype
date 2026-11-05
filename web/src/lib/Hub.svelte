@@ -40,8 +40,9 @@
   import PlanView from './career/squad/PlanView.svelte'
   import NumberScreen from './career/squad/NumberScreen.svelte'
   import ReleaseScreen from './career/squad/ReleaseScreen.svelte'
-  import AmountKeypad from './career/squad/AmountKeypad.svelte'
   import NegotiationScreen from './career/squad/NegotiationScreen.svelte'
+  import AmountModal from './career/shared/AmountModal.svelte'
+  import { formatValue } from './format.js'
   import TransfersTab from './career/transfers/TransfersTab.svelte'
   import SeasonReview from './career/match/SeasonReview.svelte'
   import MatchSimulationOverlay from './career/match/MatchSimulationOverlay.svelte'
@@ -184,24 +185,74 @@
     network: 'Сеть поиска',
     history: 'История',
     offer: 'Предложение',
-    offerAmount: 'Предложение',
     contract: 'Контракт',
-    contractAmount: 'Контракт',
-    incomingCounter: 'Встречное предложение',
   }
 
   let subview = $derived(
     (nav.tab === 'squad' &&
-      ['centre', 'plan', 'details'].includes(nav.view)) ||
+      ['centre', 'plan', 'details', 'negotiation'].includes(nav.view)) ||
       (nav.tab === 'transfers' && transfers.transfersView !== 'hub'),
   )
   let crumbs = $derived(
     nav.tab === 'squad'
-      ? nav.view === 'plan' || nav.view === 'details'
-        ? ['Карьера', 'Состав', 'План игры']
-        : ['Карьера', 'Состав', 'Центр составов']
+      ? nav.view === 'negotiation'
+        ? ['Карьера', 'Состав', 'Продление контракта']
+        : nav.view === 'plan' || nav.view === 'details'
+          ? ['Карьера', 'Состав', 'План игры']
+          : ['Карьера', 'Состав', 'Центр составов']
       : ['Карьера', 'Трансферы', transferViewLabels[transfers.transfersView] ?? 'Трансферы'],
   )
+  let amountModal = $derived.by(() => {
+    const field = squad.amountField
+    if (!field) return null
+    if (nav.tab === 'squad') {
+      return {
+        label: field === 'weekly_wage' ? 'Зарплата в неделю' : 'Отступные',
+        hint: null,
+        confirmLabel: 'Готово',
+      }
+    }
+    if (nav.tab !== 'transfers') return null
+    if (transfers.incomingCounterOffer) {
+      return {
+        label: `Контрпредложение · ${transfers.incomingCounterPlayer?.name ?? ''}`,
+        hint: `Предложение клуба: ${formatValue(transfers.incomingCounterOffer.amount)}`,
+        confirmLabel: 'Отправить',
+      }
+    }
+    if (transfers.transfersView === 'contract') {
+      return {
+        label: field === 'weekly_wage' ? 'Зарплата в неделю' : 'Отступные',
+        hint: null,
+        confirmLabel: 'Готово',
+      }
+    }
+    if (transfers.transfersView === 'offer') {
+      return {
+        label: field === 'loan_fee' ? 'Плата за аренду' : 'Сумма предложения',
+        hint: null,
+        confirmLabel: 'Готово',
+      }
+    }
+    return null
+  })
+
+  function finishActiveAmount() {
+    if (nav.tab === 'squad') {
+      squad.finishAmount()
+      return
+    }
+    if (transfers.incomingCounterOffer) {
+      transfers.finishIncomingCounterAmount()
+      return
+    }
+    if (transfers.transfersView === 'contract') {
+      transfers.finishTransferContractAmount()
+      return
+    }
+    transfers.finishOfferAmount()
+  }
+
   let legendNote = $derived(
     match.matchdayOpen
       ? match.matchdayStep === 'results'
@@ -337,12 +388,6 @@
         openTransferContractFromOffer={transfers.openTransferContractFromOffer}
         submitIncomingOffer={transfers.submitIncomingOffer}
         startIncomingCounter={transfers.startIncomingCounter}
-        amountField={squad.amountField}
-        amountGroups={squad.amountGroups}
-        amountIndex={squad.amountIndex}
-        finishTransferContractAmount={transfers.finishTransferContractAmount}
-        finishOfferAmount={transfers.finishOfferAmount}
-        finishIncomingCounterAmount={transfers.finishIncomingCounterAmount}
         transferContractPlayer={transfers.transferContractPlayer}
         transferContractState={transfers.transferContractState}
         transferContractTerms={transfers.transferContractTerms}
@@ -357,8 +402,6 @@
         signTransferContract={transfers.signTransferContract}
         acceptTransferContractCounter={transfers.acceptTransferContractCounter}
         submitTransferContract={transfers.submitTransferContract}
-        incomingCounterOffer={transfers.incomingCounterOffer}
-        incomingCounterPlayer={transfers.incomingCounterPlayer}
         transferOffer={transfers.transferOffer}
         transferOfferPlayer={transfers.transferOfferPlayer}
         finance={squad.finance}
@@ -386,7 +429,6 @@
         oskClear={transfers.oskClear}
         applyOsk={transfers.applyOsk}
         closeOsk={transfers.closeOsk}
-        places={AMOUNT_PLACES}
       />
     {:else if nav.tab === 'squad' && nav.view === 'overview'}
       <SquadOverview
@@ -472,14 +514,6 @@
         onConfirm={squad.confirmRelease}
         onCancel={squad.closeReleaseScreen}
       />
-    {:else if nav.tab === 'squad' && nav.view === 'amount' && squad.centrePlayer && squad.amountField}
-      <AmountKeypad
-        field={squad.amountField}
-        groups={squad.amountGroups}
-        index={squad.amountIndex}
-        places={AMOUNT_PLACES}
-        onFinish={squad.finishAmount}
-      />
     {:else if nav.tab === 'squad' && nav.view === 'negotiation' && squad.centrePlayer && squad.negotiationDraft}
       <NegotiationScreen
         player={squad.centrePlayer}
@@ -498,6 +532,18 @@
       {/key}
     </div>
   </AppShell>
+
+  {#if amountModal}
+    <AmountModal
+      label={amountModal.label}
+      hint={amountModal.hint}
+      confirmLabel={amountModal.confirmLabel}
+      groups={squad.amountGroups}
+      index={squad.amountIndex}
+      places={AMOUNT_PLACES}
+      finish={finishActiveAmount}
+    />
+  {/if}
 
   {#if match.seasonReview && review}
     <SeasonReview

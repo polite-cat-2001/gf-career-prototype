@@ -1,7 +1,8 @@
 <script>
   import CentreInfoRow from '../shared/CentreInfoRow.svelte'
   import CentreProfile from '../shared/CentreProfile.svelte'
-  import { formatDate, formatValue, moraleFace, plural } from '../../format.js'
+  import MoraleFace from '../shared/MoraleFace.svelte'
+  import { formatDate, formatValue, plural } from '../../format.js'
 
   let { player } = $props()
 </script>
@@ -14,7 +15,11 @@
       <span>Настрой</span>
       <span class="centre-morale-value">
         <span class="centre-morale-face">
-          {player.expected_minutes > 0 ? moraleFace(player.morale) : '—'}
+          {#if player.expected_minutes > 0}
+            <MoraleFace value={player.morale} size={22} />
+          {:else}
+            —
+          {/if}
         </span>
         <strong
           class:is-none={player.expected_minutes <= 0}

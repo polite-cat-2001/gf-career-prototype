@@ -506,13 +506,10 @@ export function createTransfersState(ctx) {
       squad.amountDigits = String(value).padStart(9, '0')
       const firstDigit = squad.amountDigits.search(/[1-9]/)
       squad.amountIndex = firstDigit === -1 ? 8 : firstDigit
-      transfersView = 'contractAmount'
-      tick().then(focusFirst)
     }
   
     function closeTransferContractAmount() {
       squad.amountField = null
-      transfersView = 'contract'
       tick().then(focusFirst)
     }
   
@@ -529,7 +526,6 @@ export function createTransfersState(ctx) {
       }
       transferContractDraft = { ...transferContractDraft }
       squad.amountField = null
-      transfersView = 'contract'
       tick().then(focusFirst)
     }
   
@@ -642,13 +638,10 @@ export function createTransfersState(ctx) {
       squad.amountDigits = String(value).padStart(9, '0')
       const firstDigit = squad.amountDigits.search(/[1-9]/)
       squad.amountIndex = firstDigit === -1 ? 8 : firstDigit
-      transfersView = 'offerAmount'
-      tick().then(focusFirst)
     }
   
     function closeOfferAmount() {
       squad.amountField = null
-      transfersView = 'offer'
       tick().then(focusFirst)
     }
   
@@ -662,7 +655,6 @@ export function createTransfersState(ctx) {
       else transferOffer.amount = value
       transferOffer = { ...transferOffer }
       squad.amountField = null
-      transfersView = 'offer'
       tick().then(focusFirst)
     }
   
@@ -840,21 +832,16 @@ export function createTransfersState(ctx) {
       incomingCounterOffer = offer
       incomingCounterPlayer = offer
       incomingOfferModalId = null
-      const value = Math.max(
-        0,
-        Math.min(999_999_999, Math.round((Number(offer.amount) || 0) * 1.15)),
-      )
+      squad.amountField = 'incoming_counter'
       squad.amountDigits = String(value).padStart(9, '0')
       const firstDigit = squad.amountDigits.search(/[1-9]/)
       squad.amountIndex = firstDigit === -1 ? 8 : firstDigit
-      transfersView = 'incomingCounter'
-      tick().then(focusFirst)
     }
   
     function closeIncomingCounter() {
+      squad.amountField = null
       incomingCounterOffer = null
       incomingCounterPlayer = null
-      transfersView = 'centre'
       tick().then(focusReceivedTab)
     }
   
@@ -872,9 +859,9 @@ export function createTransfersState(ctx) {
       })
       squad.centreActionBusy = false
       if (!updated) return
+      squad.amountField = null
       incomingCounterOffer = null
       incomingCounterPlayer = null
-      transfersView = 'centre'
       transferCentreTab = 'received'
       await tick()
       focusReceivedTab()

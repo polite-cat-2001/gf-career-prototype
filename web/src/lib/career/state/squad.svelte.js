@@ -350,8 +350,6 @@ export function createSquadState(ctx) {
     amountDigits = String(value).padStart(9, '0')
     const firstDigit = amountDigits.search(/[1-9]/)
     amountIndex = firstDigit === -1 ? 8 : firstDigit
-    setView('amount')
-    tick().then(focusFirst)
   }
 
   function adjustAmount(direction) {
@@ -376,7 +374,6 @@ export function createSquadState(ctx) {
   function closeAmountScreen() {
     const field = amountField ?? 'weekly_wage'
     amountField = null
-    setView('negotiation')
     tick().then(() => focusNegotiationField(field))
   }
 
@@ -391,7 +388,6 @@ export function createSquadState(ctx) {
     negotiationDraft = { ...negotiationDraft }
     const field = amountField
     amountField = null
-    setView('negotiation')
     tick().then(() => focusNegotiationField(field))
   }
 

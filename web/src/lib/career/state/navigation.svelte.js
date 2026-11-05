@@ -77,23 +77,19 @@ export function createNavigationState(ctx) {
       if (match.simulating || match.advancing) {
         return [{ gamepad: ['A'], keyboard: ['Enter'], label: getCentreAction() }]
       }
+      if (squad.amountField) {
+        return [
+          { gamepad: ['←', '→'], keyboard: ['←', '→'], label: 'Разряд' },
+          { gamepad: ['↑', '↓'], keyboard: ['↑', '↓'], label: 'Цифра' },
+          {
+            gamepad: ['A'],
+            keyboard: ['Enter'],
+            label: transfers.incomingCounterOffer ? 'Отправить' : 'Готово',
+          },
+          { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+        ]
+      }
       if (tab === 'transfers') {
-        if (transfers.transfersView === 'incomingCounter') {
-          return [
-            { gamepad: ['←', '→'], keyboard: ['←', '→'], label: 'Разряд' },
-            { gamepad: ['↑', '↓'], keyboard: ['↑', '↓'], label: 'Цифра' },
-            { gamepad: ['A'], keyboard: ['Enter'], label: 'Отправить' },
-            { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
-          ]
-        }
-        if (transfers.transfersView === 'contractAmount') {
-          return [
-            { gamepad: ['←', '→'], keyboard: ['←', '→'], label: 'Разряд' },
-            { gamepad: ['↑', '↓'], keyboard: ['↑', '↓'], label: 'Цифра' },
-            { gamepad: ['A'], keyboard: ['Enter'], label: 'Готово' },
-            { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
-          ]
-        }
         if (transfers.transfersView === 'contract') {
           if (transfers.transferContractState?.status === 'pending') {
             return [
@@ -118,14 +114,6 @@ export function createNavigationState(ctx) {
             { gamepad: ['D-pad'], keyboard: ['↑', '↓'], label: 'Условие' },
             { gamepad: ['←', '→'], keyboard: ['←', '→'], label: 'Значение' },
             { gamepad: ['A'], keyboard: ['Enter'], label: 'Изменить' },
-            { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
-          ]
-        }
-        if (transfers.transfersView === 'offerAmount') {
-          return [
-            { gamepad: ['←', '→'], keyboard: ['←', '→'], label: 'Разряд' },
-            { gamepad: ['↑', '↓'], keyboard: ['↑', '↓'], label: 'Цифра' },
-            { gamepad: ['A'], keyboard: ['Enter'], label: 'Готово' },
             { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
           ]
         }
@@ -249,14 +237,6 @@ export function createNavigationState(ctx) {
         return [
           { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Игрок' },
           { gamepad: ['A'], keyboard: ['Enter'], label: 'Выбрать' },
-          { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
-        ]
-      }
-      if (tab === 'squad' && view === 'amount') {
-        return [
-          { gamepad: ['←', '→'], keyboard: ['←', '→'], label: 'Разряд' },
-          { gamepad: ['↑', '↓'], keyboard: ['↑', '↓'], label: 'Цифра' },
-          { gamepad: ['A'], keyboard: ['Enter'], label: 'Готово' },
           { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
         ]
       }
@@ -429,24 +409,24 @@ export function createNavigationState(ctx) {
     }
   
     function handleBack() {
-      if (tab === 'transfers' && transfers.transfersView === 'incomingCounter') {
-        transfers.closeIncomingCounter()
+      if (squad.amountField) {
+        if (tab === 'transfers' && transfers.incomingCounterOffer) {
+          transfers.closeIncomingCounter()
+        } else if (tab === 'transfers' && transfers.transfersView === 'contract') {
+          transfers.closeTransferContractAmount()
+        } else if (tab === 'transfers' && transfers.transfersView === 'offer') {
+          transfers.closeOfferAmount()
+        } else if (tab === 'squad') {
+          squad.closeAmountScreen()
+        }
         return
       }
       if (tab === 'transfers' && transfers.incomingOfferModalId) {
         transfers.closeIncomingOfferModal()
         return
       }
-      if (tab === 'transfers' && transfers.transfersView === 'contractAmount') {
-        transfers.closeTransferContractAmount()
-        return
-      }
       if (tab === 'transfers' && transfers.transfersView === 'contract') {
         transfers.closeTransferContract()
-        return
-      }
-      if (tab === 'transfers' && transfers.transfersView === 'offerAmount') {
-        transfers.closeOfferAmount()
         return
       }
       if (tab === 'transfers' && transfers.transfersView === 'offer') {
@@ -455,10 +435,6 @@ export function createNavigationState(ctx) {
       }
       if (tab === 'transfers' && transfers.transferOfferModalId) {
         transfers.closeSentOfferModal()
-        return
-      }
-      if (tab === 'squad' && view === 'amount') {
-        squad.closeAmountScreen()
         return
       }
       if (tab === 'squad' && view === 'negotiation') {
@@ -650,6 +626,7 @@ export function createNavigationState(ctx) {
     }
   
     function switchTab(direction) {
+      if (squad.amountField) return
       if (tab === 'transfers' && transfers.transfersView !== 'hub') {
         if (
           transfers.transfersView === 'centre' &&
@@ -662,7 +639,7 @@ export function createNavigationState(ctx) {
         }
         return
       }
-      if (tab === 'squad' && ['negotiation', 'amount', 'number', 'release'].includes(view)) return
+      if (tab === 'squad' && ['negotiation', 'number', 'release'].includes(view)) return
       if (transfers.transferEditing || transfers.oskOpen) return
       if (match.simulating || match.advancing || match.seasonReview || match.matchSimOpen || match.matchdayOpen) return
       if (tab === 'squad' && view === 'centre') {
@@ -685,22 +662,14 @@ export function createNavigationState(ctx) {
     }
   
     function handleCycle(direction) {
+      if (squad.amountField) {
+        squad.adjustAmount(direction)
+        return
+      }
       if (tab === 'transfers') {
-        if (transfers.transfersView === 'incomingCounter') {
-          squad.adjustAmount(direction)
-          return
-        }
-        if (transfers.transfersView === 'contractAmount') {
-          squad.adjustAmount(direction)
-          return
-        }
         if (transfers.transfersView === 'contract') {
           const field = document.activeElement?.dataset?.field
           if (field) transfers.adjustTransferContractField(field, direction === 'right' ? 1 : -1)
-          return
-        }
-        if (transfers.transfersView === 'offerAmount') {
-          squad.adjustAmount(direction)
           return
         }
         if (transfers.transfersView === 'offer') {
@@ -723,10 +692,6 @@ export function createNavigationState(ctx) {
       }
       if (tab === 'squad' && view === 'number') {
         squad.cycleNumber(direction)
-        return
-      }
-      if (tab === 'squad' && view === 'amount') {
-        squad.adjustAmount(direction)
         return
       }
       const field = document.activeElement?.dataset?.field

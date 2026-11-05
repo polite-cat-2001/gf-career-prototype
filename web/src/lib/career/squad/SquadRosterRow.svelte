@@ -1,7 +1,7 @@
 <script>
+  import MoraleFace from '../shared/MoraleFace.svelte'
   import {
     hideBrokenImage,
-    moraleFace,
     ovrClass,
     playerInitialName,
     posTone,
@@ -65,7 +65,11 @@
           ? `Настрой ${player.morale}%`
           : 'Нет данных о настрое'}
       >
-        {player.expected_minutes > 0 ? moraleFace(player.morale) : '—'}
+        {#if player.expected_minutes > 0}
+          <MoraleFace value={player.morale} size={20} />
+        {:else}
+          —
+        {/if}
       </span>
     {/if}
   {/if}

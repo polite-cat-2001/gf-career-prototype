@@ -306,5 +306,6 @@
     confirm={hub.confirm}
     onConfirm={() => hub.confirm?.action()}
     onCancelConfirm={() => (hub.confirm = null)}
+    hints={hub.hints}
   />
 </div>

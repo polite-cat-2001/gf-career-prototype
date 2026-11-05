@@ -599,47 +599,6 @@
   min-height: 0;
 }
 
-.gf-step__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex: 0 0 auto;
-  height: 52px;
-  max-width: 100%;
-  padding: 0 40px 0 24px;
-  background: rgba(245, 247, 250, 0.92);
-  color: var(--ink);
-  clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
-}
-
-.gf-step__crumbs {
-  overflow: hidden;
-  font-family: var(--font-heading);
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.gf-step__crumbs i {
-  margin: 0 8px;
-  font-style: normal;
-  color: var(--rail);
-}
-
-.gf-step__kind {
-  flex: 0 0 auto;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-  white-space: nowrap;
-}
-
 .gf-offer,
 .gf-contract {
   display: grid;
@@ -993,13 +952,34 @@
 
 /* ---------- amount editor ---------- */
 
-.gf-amount {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  min-height: 0;
+.gf-amount-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 46;
+  display: grid;
+  place-items: center;
   padding: 24px;
+  background: rgba(6, 12, 26, 0.68);
+  animation: gf-scrim-in 160ms linear both;
+}
+
+.gf-amount-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: calc(100vw - 48px);
+}
+
+.gf-amount-shell .gf-amount__card {
+  animation: gf-sheet-in 180ms var(--ease-out) both;
+}
+
+.gf-amount-shell .gf-modal__foot {
+  padding: 0 2px;
+}
+
+body:has(.gf-amount-layer) .gf-app .gf-control-hints {
+  visibility: hidden;
 }
 
 .gf-amount__card {
@@ -1027,13 +1007,16 @@
 .gf-amount__value {
   display: flex;
   gap: 18px;
-  padding: 14px 16px;
+  padding: 22px 18px;
   background: rgba(29, 33, 56, 0.055);
+  box-shadow: none;
   cursor: pointer;
 }
 
 .gf-amount__value:focus {
+  border-color: transparent !important;
   outline: none;
+  box-shadow: none !important;
 }
 
 .gf-amount__group {
@@ -1042,6 +1025,7 @@
 }
 
 .gf-amount__digit {
+  position: relative;
   display: grid;
   place-items: center;
   width: clamp(34px, 4.6vh, 48px);
@@ -1052,6 +1036,26 @@
   font-weight: 700;
   line-height: 1;
   color: var(--ink);
+}
+
+.gf-amount__digit.is-selected::before,
+.gf-amount__digit.is-selected::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  border-right: 7px solid transparent;
+  border-left: 7px solid transparent;
+}
+
+.gf-amount__digit.is-selected::before {
+  top: -18px;
+  border-bottom: 9px solid var(--ink);
+}
+
+.gf-amount__digit.is-selected::after {
+  bottom: -18px;
+  border-top: 9px solid var(--ink);
 }
 
 .gf-amount__digit.is-selected {

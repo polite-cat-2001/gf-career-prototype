@@ -1,9 +1,9 @@
 <script>
   import CentreProfile from '../shared/CentreProfile.svelte'
+  import MoraleFace from '../shared/MoraleFace.svelte'
   import RadarChart from '../shared/RadarChart.svelte'
   import {
     formatValue,
-    moraleFace,
     plural,
     posTone,
     positionLabel,
@@ -63,9 +63,11 @@
           <div class="attribute-trait">
             <span>Настрой</span>
             <strong>
-              {player.expected_minutes > 0
-                ? `${moraleFace(player.morale)} ${player.morale}%`
-                : '—'}
+              {#if player.expected_minutes > 0}
+                <MoraleFace value={player.morale} size={16} /> {player.morale}%
+              {:else}
+                —
+              {/if}
             </strong>
           </div>
           <div class="attribute-trait">

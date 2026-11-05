@@ -1,6 +1,5 @@
 <script>
   import { formatValue, hideBrokenImage, shortRole } from '../../format.js'
-  import { offerKindLabel } from '../utils/transfers.js'
 
   let {
     offer,
@@ -15,10 +14,6 @@
 </script>
 
 <div class="gf-step">
-  <header class="gf-step__head">
-    <span class="gf-step__crumbs">Трансферы <i>›</i> Предложение клубу</span>
-    <span class="gf-step__kind">{offerKindLabel(offer.kind)}</span>
-  </header>
   <div class="gf-offer">
     <aside class="gf-offer__player">
       <span class="gf-offer__photo">

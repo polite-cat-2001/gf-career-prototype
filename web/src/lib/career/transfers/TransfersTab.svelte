@@ -1,8 +1,6 @@
 <script>
   import Scouting from '../../Scouting.svelte'
   import TransferHistory from '../../TransferHistory.svelte'
-  import IncomingCounterScreen from './IncomingCounterScreen.svelte'
-  import OfferAmountScreen from './OfferAmountScreen.svelte'
   import OnScreenKeyboard from './OnScreenKeyboard.svelte'
   import TransferCentre from './TransferCentre.svelte'
   import TransferContractScreen from './TransferContractScreen.svelte'
@@ -70,12 +68,6 @@
     openTransferContractFromOffer,
     submitIncomingOffer,
     startIncomingCounter,
-    amountField,
-    amountGroups,
-    amountIndex,
-    finishTransferContractAmount,
-    finishOfferAmount,
-    finishIncomingCounterAmount,
     transferContractPlayer,
     transferContractState,
     transferContractTerms,
@@ -90,8 +82,6 @@
     signTransferContract,
     acceptTransferContractCounter,
     submitTransferContract,
-    incomingCounterOffer,
-    incomingCounterPlayer,
     transferOffer,
     transferOfferPlayer,
     finance,
@@ -119,7 +109,6 @@
     oskClear,
     applyOsk,
     closeOsk,
-    places,
   } = $props()
 </script>
 
@@ -197,14 +186,6 @@
     onSubmitIncoming={submitIncomingOffer}
     onStartIncomingCounter={startIncomingCounter}
   />
-{:else if view === 'contractAmount' && transferContractPlayer}
-  <OfferAmountScreen
-    label={amountField === 'weekly_wage' ? 'Зарплата в неделю' : 'Отступные'}
-    groups={amountGroups}
-    index={amountIndex}
-    places={places}
-    finish={finishTransferContractAmount}
-  />
 {:else if view === 'contract' && transferContractPlayer}
   <TransferContractScreen
     player={transferContractPlayer}
@@ -223,23 +204,6 @@
     onSign={signTransferContract}
     onAcceptCounter={acceptTransferContractCounter}
     onSubmit={submitTransferContract}
-  />
-{:else if view === 'incomingCounter' && incomingCounterOffer}
-  <IncomingCounterScreen
-    playerName={incomingCounterPlayer?.name}
-    offer={incomingCounterOffer}
-    groups={amountGroups}
-    index={amountIndex}
-    places={places}
-    finish={finishIncomingCounterAmount}
-  />
-{:else if view === 'offerAmount' && transferOffer}
-  <OfferAmountScreen
-    label={amountField === 'loan_fee' ? 'Плата за аренду' : 'Сумма предложения'}
-    groups={amountGroups}
-    index={amountIndex}
-    places={places}
-    finish={finishOfferAmount}
   />
 {:else if view === 'offer' && transferOffer && transferOfferPlayer}
   <TransferOfferScreen
