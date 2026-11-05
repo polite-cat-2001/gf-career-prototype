@@ -222,7 +222,7 @@
   )
 </script>
 
-<div class="app gf-career" class:is-simulating={match.matchSimOpen || match.matchdayOpen} class:is-hub-home={!subview}>
+<div class="app gf-career" class:is-simulating={match.matchSimOpen || match.matchdayOpen}>
   <AppShell fill hints={nav.hints} note={legendNote}>
     {#snippet header()}
       <div class="hub-head">
