@@ -122,13 +122,11 @@
         <strong class="sc-title">
           {hub.view === 'task'
             ? 'Задача скаута'
-            : hub.view === 'hire'
-              ? 'Нанять скаута'
-              : hub.view === 'region'
-                ? 'Выбор региона'
-                : hub.view === 'country'
-                  ? 'Выбор страны'
-                  : 'Сеть поиска'}
+            : hub.view === 'region'
+              ? 'Выбор региона'
+              : hub.view === 'country'
+                ? 'Выбор страны'
+                : 'Сеть поиска'}
         </strong>
         <span class="sc-sub">
           {hub.busy ? 'Сохранение…' : `${career.club.name} · ${formatDate(career.date)}`}
@@ -206,7 +204,6 @@
       />
     </div>
 
-  {:else if hub.view === 'hire'}
   {:else if hub.view === 'region' || hub.view === 'country'}
     <ScoutMapPanel
       view={hub.view}
@@ -312,7 +309,7 @@
   {/if}
 
   <ScoutingModal
-    view={hub.view}
+    view={hub.hireOpen ? 'hire' : hub.view}
     candidates={hub.candidates}
     balance={hub.balance}
     hireCandidateId={hub.hireCandidate?.id}

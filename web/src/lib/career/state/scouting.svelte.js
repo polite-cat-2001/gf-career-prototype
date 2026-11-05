@@ -43,6 +43,7 @@ export function createScoutingState(ctx) {
     let selectedEntryId = $state(getInitialEntryId())
     let scoutFilter = $state(null)
     let hireId = $state(null)
+    let hireOpen = $state(false)
     let confirm = $state(null)
     let error = $state('')
     let busy = $state(false)
@@ -145,7 +146,7 @@ export function createScoutingState(ctx) {
           back,
         ]
       }
-      if (view === 'hire') {
+      if (hireOpen) {
         return [nav, open, back]
       }
       if (view === 'region' || view === 'country') {
@@ -252,8 +253,14 @@ export function createScoutingState(ctx) {
     }
 
     function openHire() {
+      hireOpen = true
       hireId = candidates[0]?.id ?? null
-      go('hire')
+      tick().then(focusFirst)
+    }
+
+    function closeHire() {
+      hireOpen = false
+      tick().then(focusFirst)
     }
 
     function openTask(scout) {
@@ -514,7 +521,7 @@ export function createScoutingState(ctx) {
         entryActionsOpen ||
         scoutActionsOpen ||
         confirm ||
-        view === 'hire' ||
+        hireOpen ||
         view === 'region' ||
         view === 'country' ||
         view === 'task'
@@ -568,8 +575,8 @@ export function createScoutingState(ctx) {
         closeScoutActions()
         return
       }
-      if (view === 'hire') {
-        go('scouts')
+      if (hireOpen) {
+        closeHire()
         return
       }
       if (view === 'region') {
@@ -717,15 +724,17 @@ export function createScoutingState(ctx) {
     }
 
     async function confirmHire() {
-      if (!hireCandidate) return
+      const candidate = hireCandidate
+      if (!candidate) return
       const updated = await runAction({
         type: 'scout_hire',
-        scout_id: hireCandidate.id,
+        scout_id: candidate.id,
       })
       confirm = null
       if (!updated) return
-      selectedScoutId = hireCandidate.id
-      go('scouts')
+      hireOpen = false
+      selectedScoutId = candidate.id
+      tick().then(focusFirst)
     }
 
     async function confirmNetwork() {
@@ -840,6 +849,12 @@ export function createScoutingState(ctx) {
     },
     set hireId(value) {
       hireId = value
+    },
+    get hireOpen() {
+      return hireOpen
+    },
+    set hireOpen(value) {
+      hireOpen = value
     },
     get confirm() {
       return confirm
@@ -1032,6 +1047,7 @@ export function createScoutingState(ctx) {
     openScout,
     startAssign,
     openHire,
+    closeHire,
     openTask,
     defaultCriteria,
     footLabel,

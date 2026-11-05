@@ -837,6 +837,10 @@ body:has(.sc-modal-layer) .gf-app .gf-control-hints {
   color: var(--ink-2);
 }
 
+.sc-hire-head span:nth-child(n + 2) {
+  text-align: right;
+}
+
 .sc-hire-list {
   display: flex;
   flex-direction: column;
