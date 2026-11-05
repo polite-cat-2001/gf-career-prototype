@@ -52,7 +52,6 @@
     career,
     saving = false,
     playing = false,
-    saveNotice = '',
     saveError = '',
     onsave,
     onswap,
@@ -241,8 +240,6 @@
     <div class="hub-body">
       {#if saveError}
         <p class="gf-notice is-error">{saveError}</p>
-      {:else if saveNotice}
-        <p class="gf-notice">{saveNotice}</p>
       {/if}
 
       {#key nav.tab}

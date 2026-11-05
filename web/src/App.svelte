@@ -14,9 +14,7 @@
   let career = $state(null)
   let saving = $state(false)
   let playing = $state(false)
-  let saveNotice = $state('')
   let saveError = $state('')
-  let noticeTimer = null
 
   let latest = $derived(saves.find((save) => save.compatible) ?? null)
 
@@ -25,14 +23,6 @@
     refreshSaves()
     return stopInput
   })
-
-  function announce(text) {
-    saveNotice = text
-    clearTimeout(noticeTimer)
-    noticeTimer = setTimeout(() => {
-      saveNotice = ''
-    }, 2800)
-  }
 
   async function refreshSaves() {
     savesLoading = true
@@ -68,7 +58,6 @@
   }
 
   function openHub() {
-    saveNotice = ''
     saveError = ''
     screen = 'hub'
     refreshSaves()
@@ -92,17 +81,14 @@
   function careerCreated(snapshot) {
     career = snapshot
     openHub()
-    announce('Карьера создана и сохранена')
   }
 
   async function saveCareer() {
     if (!career || saving) return
     saving = true
     saveError = ''
-    saveNotice = ''
     try {
       career = await api.saveCareer(career.id)
-      announce('Сохранено вручную')
       refreshSaves()
     } catch (caught) {
       saveError = `Не удалось сохранить: ${caught.message}`
@@ -182,7 +168,6 @@
     saveError = ''
     try {
       career = await api.nextSeason(career.id)
-      announce('Начат новый сезон')
       refreshSaves()
       return career
     } catch (caught) {
@@ -191,30 +176,11 @@
     }
   }
 
-  const actionNotices = {
-    transfer_status: 'Трансферный статус сохранён',
-    shirt_number: 'Игровой номер изменён',
-    release_player: 'Игрок отпущен из клуба',
-    sign_contract: 'Контракт подписан',
-    accept_counter: 'Контракт подписан',
-    transfer_contract: 'Условия предложены',
-    transfer_accept_counter: 'Условия игрока приняты',
-    transfer_sign: 'Переход оформлен',
-    scout_hire: 'Скаут нанят',
-    scout_assign: 'Скаут отправлен на задание',
-    scout_network: 'Сеть поиска создана',
-    scout_task: 'Задача скаута обновлена',
-    scout_remove: 'Игрок убран из отчёта',
-    scout_ack: '',
-  }
-
   async function runSquadAction(payload) {
     if (!career) return null
     saveError = ''
     try {
       career = await api.careerAction(career.id, payload)
-      const notice = actionNotices[payload.type]
-      if (notice) announce(notice)
       refreshSaves()
       return career
     } catch (caught) {
@@ -254,7 +220,6 @@
     {career}
     {saving}
     {playing}
-    {saveNotice}
     {saveError}
     onsave={saveCareer}
     onswap={swapPlayers}
