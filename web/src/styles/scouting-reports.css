@@ -17,25 +17,34 @@
   overflow: hidden;
 }
 
+.sc-report-toolbar {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
 .sc-report-tabs {
   display: flex;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   gap: 2px;
+  min-width: 0;
   background: rgba(29, 33, 56, 0.05);
 }
 
 .sc-report-tabs .sc-tab {
   flex: 1 1 0;
+  min-width: 0;
   min-height: var(--chrome-h);
-  padding: 0 14px;
+  padding: 0 8px;
   background: transparent;
   color: var(--ink-2);
-  font-family: var(--font-heading);
-  font-size: 20px;
-  font-weight: 700;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
   line-height: 1.1;
   letter-spacing: 0.02em;
-  text-transform: uppercase;
   text-align: center;
   transition:
     background-color 140ms linear,
@@ -56,45 +65,9 @@
   box-shadow: inset 0 -2px 0 var(--focus-mark) !important;
 }
 
-.sc-role-tabs {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 2px;
-  flex: 0 0 auto;
-}
-
-.sc-role-tab {
-  min-height: 34px;
-  padding: 6px 12px;
-  background: rgba(29, 33, 56, 0.05);
-  color: var(--ink-2);
-  font-family: var(--font-body);
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: 0.02em;
-  text-align: center;
-  transition:
-    background-color 140ms linear,
-    color 140ms linear,
-    box-shadow 160ms ease;
-}
-
-.sc-role-tab.is-active {
-  background: var(--tile);
-  color: var(--ink);
-  box-shadow: inset 0 -2px 0 var(--rail);
-}
-
-.sc-role-tab[data-nav]:focus {
-  outline: none !important;
-  background: var(--focus-fill);
-  color: var(--focus-mark);
-  box-shadow: inset 0 -2px 0 var(--focus-mark) !important;
-}
-
 .sc-filter-note {
+  flex: 0 0 auto;
+  align-self: center;
   margin-left: auto;
   padding-bottom: 2px;
   font-family: var(--font-body);
@@ -649,8 +622,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .sc-entry,
-  .sc-report-tabs .sc-tab,
-  .sc-role-tab {
+  .sc-report-tabs .sc-tab {
     transition: none;
   }
 

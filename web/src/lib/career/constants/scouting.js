@@ -3,8 +3,9 @@ export const REPORT_PAGE_SIZE = 6
 export const OSK_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM']
 export const OSK_LIMIT = 24
 
-export const ROLE_FILTERS = [
-  { id: '', label: 'Все' },
+export const REPORT_TABS = [
+  { id: 'all', label: 'Все' },
+  { id: 'requests', label: 'Отчёты по запросу' },
   { id: 'GK', label: 'Врт' },
   { id: 'DEF', label: 'Защ' },
   { id: 'MID', label: 'ПЗЩ' },

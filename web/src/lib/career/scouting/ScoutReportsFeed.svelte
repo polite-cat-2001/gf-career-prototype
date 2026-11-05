@@ -12,16 +12,14 @@
   import ScoutReportCard from './ScoutReportCard.svelte'
 
   let {
-    reportTab,
-    roleFilters,
-    roleFilter,
+    filter,
+    filters,
     scoutFilter,
     entries,
     selectedEntry,
     failedPhotos,
     entryActionsOpen,
-    onTab,
-    onRoleFilter,
+    onFilter,
     onFocusEntry,
     onOpenEntry,
     onEntryFail,
@@ -34,35 +32,19 @@
 
 <div class="sc-body sc-reports">
   <section class="sc-report-main" inert={entryActionsOpen ? true : undefined}>
-    <div class="sc-report-tabs">
-      <button
-        class="sc-tab"
-        class:is-active={reportTab === 'recommendations'}
-        data-nav
-        onclick={() => onTab('recommendations')}
-      >
-        Рекомендации
-      </button>
-      <button
-        class="sc-tab"
-        class:is-active={reportTab === 'requests'}
-        data-nav
-        onclick={() => onTab('requests')}
-      >
-        Отчёты по запросу
-      </button>
-    </div>
-    <div class="sc-role-tabs">
-      {#each roleFilters as filter (filter.id)}
-        <button
-          class="sc-role-tab"
-          class:is-active={roleFilter === filter.id}
-          data-nav
-          onclick={() => onRoleFilter(filter.id)}
-        >
-          {filter.label}
-        </button>
-      {/each}
+    <div class="sc-report-toolbar">
+      <div class="sc-report-tabs">
+        {#each filters as tab (tab.id)}
+          <button
+            class="sc-tab"
+            class:is-active={filter === tab.id}
+            data-nav
+            onclick={() => onFilter(tab.id)}
+          >
+            {tab.label}
+          </button>
+        {/each}
+      </div>
       {#if scoutFilter}
         <span class="sc-filter-note">{scoutName(scoutFilter)}</span>
       {/if}
@@ -82,12 +64,15 @@
       {/each}
       {#if !entries.length}
         <div class="sc-empty">
-          {#if reportTab === 'recommendations'}
+          {#if filter === 'requests'}
+            <p>Отчётов по запросу пока нет.</p>
+            <span>Откройте карточку игрока в поиске и выберите «Поручить скауту».</span>
+          {:else if filter === 'all'}
             <p>Скауты пока ничего не рекомендуют.</p>
             <span>Создайте сеть поиска в стране, и скаут начнёт присылать игроков.</span>
           {:else}
-            <p>Отчётов по запросу пока нет.</p>
-            <span>Откройте карточку игрока в поиске и выберите «Поручить скауту».</span>
+            <p>По этой позиции пока никого нет.</p>
+            <span>Измените фильтр или дождитесь новых отчётов скаутов.</span>
           {/if}
         </div>
       {/if}

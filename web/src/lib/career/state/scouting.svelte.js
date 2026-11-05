@@ -12,7 +12,7 @@ import {
   shortRole,
   statTone,
 } from '../../format.js'
-import { ROLE_GROUP, TASK_ROLES } from '../constants/scouting.js'
+import { REPORT_TABS, ROLE_GROUP, TASK_ROLES } from '../constants/scouting.js'
 
 export function createScoutingState(ctx) {
   const {
@@ -36,13 +36,12 @@ export function createScoutingState(ctx) {
 
     let view = $state(getMode() === 'reports' ? 'reports' : getMode() === 'tasks' ? 'tasks' : 'scouts')
     let networkTab = $state(getMode() === 'tasks' ? 'tasks' : 'scouts')
-    let reportTab = $state('requests')
+    let reportFilter = $state('all')
     let reportsReturn = $state(getBackToHub() ? 'close' : 'scouts')
     let selectedScoutId = $state(null)
     let selectedTaskScoutId = $state(null)
     let selectedEntryId = $state(getInitialEntryId())
     let scoutFilter = $state(null)
-    let roleFilter = $state('')
     let hireId = $state(null)
     let confirm = $state(null)
     let error = $state('')
@@ -75,24 +74,30 @@ export function createScoutingState(ctx) {
     let hireCandidate = $derived(
       candidates.find((item) => item.id === hireId) ?? candidates[0] ?? null,
     )
-    let entrySource = $derived(
-      reportTab === 'requests' ? (scouting?.reports ?? []) : (scouting?.recommendations ?? []),
-    )
+    let reportEntries = $derived([
+      ...(scouting?.recommendations ?? []),
+      ...(scouting?.reports ?? []),
+    ])
     let entries = $derived.by(() => {
-      let list = entrySource
+      let list =
+        reportFilter === 'requests'
+          ? (scouting?.reports ?? [])
+          : reportFilter === 'all'
+            ? reportEntries
+            : reportEntries.filter(
+                (entry) => ROLE_GROUP[entry.player.role] === reportFilter,
+              )
       if (scoutFilter) list = list.filter((entry) => entry.scout_id === scoutFilter)
-      if (roleFilter) {
-        list = list.filter(
-          (entry) => ROLE_GROUP[entry.player.role] === roleFilter,
-        )
-      }
-      return list
+      return [...list].sort((a, b) => {
+        if (a.date !== b.date) return a.date < b.date ? 1 : -1
+        return a.player.name.localeCompare(b.player.name)
+      })
     })
     let selectedEntry = $derived(
       entries.find((entry) => entry.player.id === selectedEntryId) ?? entries[0] ?? null,
     )
     let entryActionsEntry = $derived(
-      entrySource.find((entry) => entry.player.id === entryActionsId) ?? null,
+      reportEntries.find((entry) => entry.player.id === entryActionsId) ?? null,
     )
     let taskScout = $derived(
       scouts.find((scout) => scout.id === taskScoutId) ?? scouts[0] ?? null,
@@ -149,13 +154,6 @@ export function createScoutingState(ctx) {
 
     $effect(() => {
       if (initialResolved || !getInitialEntryId()) return
-      const requests = (scouting?.reports ?? []).some(
-        (entry) => entry.player.id === getInitialEntryId(),
-      )
-      const recommendations = (scouting?.recommendations ?? []).some(
-        (entry) => entry.player.id === getInitialEntryId(),
-      )
-      if (!requests && recommendations) reportTab = 'recommendations'
       selectedEntryId = getInitialEntryId()
       initialResolved = true
     })
@@ -206,10 +204,9 @@ export function createScoutingState(ctx) {
     }
 
     function openReports(tab, entryId = null, scoutId = null, returnTo = 'scouts') {
-      reportTab = tab
+      reportFilter = tab === 'requests' ? 'requests' : 'all'
       selectedEntryId = entryId
       scoutFilter = scoutId
-      roleFilter = ''
       reportsReturn = returnTo
       acked = false
       go('reports')
@@ -428,7 +425,10 @@ export function createScoutingState(ctx) {
         return
       }
       if (view === 'reports') {
-        reportTab = reportTab === 'requests' ? 'recommendations' : 'requests'
+        const ids = REPORT_TABS.map((tab) => tab.id)
+        const index = Math.max(0, ids.indexOf(reportFilter))
+        const offset = direction === 'right' ? 1 : -1
+        reportFilter = ids[(index + offset + ids.length) % ids.length]
         selectedEntryId = null
         tick().then(focusFirst)
         return
@@ -694,11 +694,11 @@ export function createScoutingState(ctx) {
     set networkTab(value) {
       networkTab = value
     },
-    get reportTab() {
-      return reportTab
+    get reportFilter() {
+      return reportFilter
     },
-    set reportTab(value) {
-      reportTab = value
+    set reportFilter(value) {
+      reportFilter = value
     },
     get reportsReturn() {
       return reportsReturn
@@ -729,12 +729,6 @@ export function createScoutingState(ctx) {
     },
     set scoutFilter(value) {
       scoutFilter = value
-    },
-    get roleFilter() {
-      return roleFilter
-    },
-    set roleFilter(value) {
-      roleFilter = value
     },
     get hireId() {
       return hireId
@@ -882,9 +876,6 @@ export function createScoutingState(ctx) {
     },
     get hireCandidate() {
       return hireCandidate
-    },
-    get entrySource() {
-      return entrySource
     },
     get entries() {
       return entries

@@ -14,7 +14,7 @@
   import TabBar from '../../ui/TabBar.svelte'
   import { focusFirst } from '../../input.js'
   import { createScoutingState } from '../state/scouting.svelte.js'
-  import { ROLE_FILTERS } from '../constants/scouting.js'
+  import { REPORT_TABS } from '../constants/scouting.js'
   import ScoutPanel from './ScoutPanel.svelte'
   import ScoutTaskPanel from './ScoutTaskPanel.svelte'
   import ScoutGrid from './ScoutGrid.svelte'
@@ -101,8 +101,8 @@
 </script>
 
 <div class="sc-screen">
-  <header class="sc-head">
-    {#if hub.view === 'scouts' || hub.view === 'tasks'}
+  {#if hub.view === 'scouts' || hub.view === 'tasks'}
+    <header class="sc-head">
       <TabBar
         tabs={networkTabs}
         active={hub.networkTab}
@@ -111,27 +111,27 @@
           hub.go(id)
         }}
       />
-    {:else}
+    </header>
+  {:else if hub.view !== 'reports'}
+    <header class="sc-head">
       <div class="sc-headline">
         <strong class="sc-title">
-          {hub.view === 'reports'
-            ? 'Отчёт скаута'
-            : hub.view === 'task'
-              ? 'Задача скаута'
-              : hub.view === 'hire'
-                ? 'Нанять скаута'
-                : hub.view === 'region'
-                  ? 'Выбор региона'
-                  : hub.view === 'country'
-                    ? 'Выбор страны'
-                    : 'Сеть поиска'}
+          {hub.view === 'task'
+            ? 'Задача скаута'
+            : hub.view === 'hire'
+              ? 'Нанять скаута'
+              : hub.view === 'region'
+                ? 'Выбор региона'
+                : hub.view === 'country'
+                  ? 'Выбор страны'
+                  : 'Сеть поиска'}
         </strong>
         <span class="sc-sub">
           {hub.busy ? 'Сохранение…' : `${career.club.name} · ${formatDate(career.date)}`}
         </span>
       </div>
-    {/if}
-  </header>
+    </header>
+  {/if}
 
   {#if hub.error}
     <div class="sc-error">error={hub.error}</div>
@@ -246,21 +246,15 @@
     />
   {:else if hub.view === 'reports'}
     <ScoutReportsFeed
-      reportTab={hub.reportTab}
-      roleFilters={ROLE_FILTERS}
-      roleFilter={hub.roleFilter}
+      filter={hub.reportFilter}
+      filters={REPORT_TABS}
       scoutFilter={hub.scoutFilter}
       entries={hub.entries}
       selectedEntry={hub.selectedEntry}
       failedPhotos={hub.failedPhotos}
       entryActionsOpen={hub.entryActionsOpen}
-      onTab={(tab) => {
-        hub.reportTab = tab
-        hub.selectedEntryId = null
-        tick().then(focusFirst)
-      }}
-      onRoleFilter={(id) => {
-        hub.roleFilter = id
+      onFilter={(id) => {
+        hub.reportFilter = id
         hub.selectedEntryId = null
         tick().then(focusFirst)
       }}
