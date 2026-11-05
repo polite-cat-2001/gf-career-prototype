@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { hideBrokenImage } from '../../format.js'
   import { trapModalFocus } from '../../ui/modalFocus.js'
+  import { portal } from '../../ui/portal.js'
 
   let { player, scouts, onAssign, onClose } = $props()
 
@@ -10,7 +11,7 @@
   onMount(() => trapModalFocus(modalLayer))
 </script>
 
-<div class="gf-modal-layer" bind:this={modalLayer}>
+<div class="gf-modal-layer" bind:this={modalLayer} use:portal>
   <div
     class="gf-modal gf-picker"
     role="dialog"
@@ -52,9 +53,5 @@
         </button>
       {/each}
     </div>
-    <button class="gf-action gf-picker__cancel" data-nav onclick={onClose}>
-      <span class="gf-action__label">Отмена</span>
-      <span class="gf-action__key">B</span>
-    </button>
   </div>
 </div>

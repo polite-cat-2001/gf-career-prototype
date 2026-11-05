@@ -1227,8 +1227,7 @@
   padding: 8px 14px;
 }
 
-.gf-picker__list .gf-action + .gf-action,
-.gf-picker__cancel {
+.gf-picker__list .gf-action + .gf-action {
   box-shadow: inset 0 1px 0 rgba(29, 33, 56, 0.12);
 }
 
@@ -1312,10 +1311,6 @@
   color: var(--ink-2);
 }
 
-.gf-picker__cancel {
-  margin-top: 0;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .gf-modal-layer,
   .gf-modal,
@@ -1331,4 +1326,47 @@
   .gf-osk__key {
     transition: none;
   }
+}
+
+/* Player actions: compact rows, hints below the card. */
+
+.gf-modal-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(860px, 94vw);
+  max-height: calc(100vh - 48px);
+  min-height: 0;
+}
+
+.gf-modal-shell .gf-modal--player {
+  width: 100%;
+  max-height: calc(100vh - 108px);
+}
+
+.gf-modal--player .gf-modal__actions .gf-action {
+  min-height: 44px;
+  padding: 6px 14px;
+}
+
+.gf-modal--player .gf-modal__actions .gf-action__label {
+  font-size: 18px;
+}
+
+.gf-modal__foot {
+  justify-content: flex-start;
+  gap: 18px;
+  flex: 0 0 auto;
+  padding: 0 2px;
+  background: transparent;
+  color: rgba(246, 248, 251, 0.72);
+}
+
+.gf-modal__foot kbd {
+  background: rgba(246, 248, 251, 0.14);
+  color: #f6f8fb;
+}
+
+body:has(.gf-modal-layer--player) .gf-control-hints {
+  visibility: hidden;
 }

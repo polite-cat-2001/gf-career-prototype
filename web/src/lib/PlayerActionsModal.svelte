@@ -3,6 +3,7 @@
   import Icon from './Icon.svelte'
   import { inputDevice } from './input.js'
   import { trapModalFocus } from './ui/modalFocus.js'
+  import { portal } from './ui/portal.js'
   import {
     attributeGroups,
     formatDate,
@@ -76,8 +77,9 @@
   }
 </script>
 
-<div class="gf-modal-layer" bind:this={modalLayer}>
-  <div class="gf-modal gf-modal--player" role="dialog" aria-modal="true" aria-label="Действия игрока">
+<div class="gf-modal-layer gf-modal-layer--player" bind:this={modalLayer} use:portal>
+  <div class="gf-modal-shell">
+    <div class="gf-modal gf-modal--player" role="dialog" aria-modal="true" aria-label="Действия игрока">
     <header class="gf-modal__head">
       <span class="gf-modal__photo" class:is-empty={!player.photo || photoFailed}>
         {#if !player.photo || photoFailed}
@@ -263,6 +265,7 @@
           </button>
         {/if}
       </div>
+    </div>
     </div>
 
     <footer class="gf-modal__foot">

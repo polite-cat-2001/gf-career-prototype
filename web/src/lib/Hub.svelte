@@ -46,7 +46,7 @@
   import SeasonReview from './career/match/SeasonReview.svelte'
   import MatchSimulationOverlay from './career/match/MatchSimulationOverlay.svelte'
   import MatchdayOverlay from './career/match/MatchdayOverlay.svelte'
-  import { formatDate, hideBrokenImage, tierLabel } from './format.js'
+
 
   let {
     career,
@@ -235,18 +235,6 @@
         {:else}
           <TabBar {tabs} active={nav.tab} onselect={nav.setTab} />
         {/if}
-        <div class="hub-club">
-          <img
-            class="hub-club__crest"
-            src={career.club.logo}
-            alt=""
-            onerror={hideBrokenImage}
-          />
-          <div class="hub-club__text">
-            <span class="hub-club__name">{career.club.name}</span>
-            <span class="hub-club__meta">{formatDate(career.date)} · {tierLabel(career.club)}</span>
-          </div>
-        </div>
       </div>
     {/snippet}
 
