@@ -3,6 +3,7 @@
   import {
     registerBack,
     registerCycle,
+    registerDetails,
     registerPrimary,
     registerReset,
     registerStep,
@@ -22,6 +23,7 @@
   import ScoutMapPanel from './ScoutMapPanel.svelte'
   import ScoutTaskEditor from './ScoutTaskEditor.svelte'
   import ScoutReportsFeed from './ScoutReportsFeed.svelte'
+  import ScoutActionsModal from './ScoutActionsModal.svelte'
   import ScoutingModal from './ScoutingModal.svelte'
   import {
     attributeGroups,
@@ -87,6 +89,7 @@
     const stopStep = registerStep(hub.handleStep)
     const stopReset = registerReset(hub.handleReset)
     const stopCycle = registerCycle(hub.handleCycle)
+    const stopDetails = registerDetails(hub.handleDetails)
     tick().then(focusFirst)
     return () => {
       stopBack()
@@ -95,6 +98,7 @@
       stopStep()
       stopReset()
       stopCycle()
+      stopDetails()
     }
   })
 
@@ -270,6 +274,20 @@
       playerStatRows={hub.playerStatRows}
     />
 
+  {/if}
+
+  {#if hub.scoutActionsOpen && hub.scoutActionsScout}
+    <ScoutActionsModal
+      scout={hub.scoutActionsScout}
+      hasReport={hub.scoutActionsHasReport}
+      canRecall={hub.scoutActionsCanRecall}
+      hints={hub.hints}
+      onViewReport={hub.viewScoutReport}
+      onMove={hub.moveScoutToRegion}
+      onRecall={hub.recallScout}
+      onDismiss={hub.askDismissScout}
+      onClose={hub.closeScoutActions}
+    />
   {/if}
 
   {#if hub.entryActionsOpen && hub.entryActionsEntry}

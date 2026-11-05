@@ -75,14 +75,17 @@ from server.career.scouting import (
     acknowledge_reports,
     advance_scouting,
     assign_player_report,
+    dismiss_scout,
     ensure_scouts,
     hire_scout,
     normalize_criteria,
+    recall_scout,
     remove_scouted,
     report_progress,
     scouted_ids,
     scouting_counts,
     scout_candidates,
+    scout_pool,
     start_network,
     task_days,
     update_task,
@@ -915,6 +918,7 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         ensure_scouts(career)
         cache: dict[str, dict | None] = {}
         scouts_by_id = {str(scout["id"]): scout for scout in career.scouts}
+        pool_by_id = {str(scout["id"]): scout for scout in scout_pool(career)}
 
         def player_view(player_id: str, reveal: bool = True) -> dict | None:
             key = str(player_id)
@@ -1014,7 +1018,9 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             player = player_view(player_id)
             if player is None:
                 return None
-            scout = scouts_by_id.get(str(data.get("scout_id")))
+            scout = scouts_by_id.get(str(data.get("scout_id"))) or pool_by_id.get(
+                str(data.get("scout_id"))
+            )
             return {
                 "player": player,
                 "kind": kind,
@@ -2036,6 +2042,8 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             "scout_task",
             "scout_remove",
             "scout_ack",
+            "scout_recall",
+            "scout_dismiss",
         }:
             players = canon.players_by_ids(career.player_ids)
             ensure_player_finances(career, players)
@@ -2089,6 +2097,14 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
                     if not payload.player_id:
                         raise ValueError("scout_remove requires player_id")
                     remove_scouted(career, payload.player_id)
+                elif payload.type == "scout_recall":
+                    if not payload.scout_id:
+                        raise ValueError("scout_recall requires scout_id")
+                    recall_scout(career, payload.scout_id)
+                elif payload.type == "scout_dismiss":
+                    if not payload.scout_id:
+                        raise ValueError("scout_dismiss requires scout_id")
+                    dismiss_scout(career, payload.scout_id)
                 else:
                     acknowledge_reports(career)
             except ValueError as error:

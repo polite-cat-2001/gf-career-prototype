@@ -391,6 +391,11 @@ function onKeyDown(event) {
     moveFocus(direction)
     return
   }
+  if (event.code === 'KeyW') {
+    event.preventDefault()
+    detailsShortcut()
+    return
+  }
   if (event.code === 'KeyX') {
     event.preventDefault()
     triggerReset()

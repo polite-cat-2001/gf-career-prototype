@@ -269,3 +269,52 @@ def test_network_task_and_report_coexist_and_report_can_be_reassigned(client: Te
     reassigned_report = reassigned["scouting"]["scouts"][0]["report"]
     assert reassigned_report is not None
     assert reassigned_report["player_id"] == "418560"
+
+
+def test_recall_scout_releases_task_and_player_report(client: TestClient):
+    career = create_career(client)
+    scout = career["scouting"]["scouts"][0]
+
+    action(
+        client,
+        career["id"],
+        {
+            "type": "scout_network",
+            "scout_id": scout["id"],
+            "region_id": "south-europe",
+            "country_id": SPAIN,
+        },
+    )
+    action(
+        client,
+        career["id"],
+        {"type": "scout_assign", "scout_id": scout["id"], "player_id": MBAPPE},
+    )
+
+    recalled = action(
+        client, career["id"], {"type": "scout_recall", "scout_id": scout["id"]}
+    )
+    view = next(
+        item for item in recalled["scouting"]["scouts"] if item["id"] == scout["id"]
+    )
+    assert view["task"] is None
+    assert view["report"] is None
+
+    free = client.post(
+        f"/api/careers/{career['id']}/actions",
+        json={"type": "scout_recall", "scout_id": scout["id"]},
+    )
+    assert free.status_code == 422
+
+
+def test_dismiss_scout_frees_the_slot_and_returns_candidate(client: TestClient):
+    career = create_career(client)
+    scout = career["scouting"]["scouts"][0]
+
+    dismissed = action(
+        client, career["id"], {"type": "scout_dismiss", "scout_id": scout["id"]}
+    )
+    scouting = dismissed["scouting"]
+
+    assert scout["id"] not in {item["id"] for item in scouting["scouts"]}
+    assert scout["id"] in {item["id"] for item in scouting["candidates"]}

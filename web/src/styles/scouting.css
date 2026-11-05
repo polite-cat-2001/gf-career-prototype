@@ -1013,6 +1013,33 @@ body:has(.sc-modal-layer) .gf-app .gf-control-hints {
   opacity: 0.42;
 }
 
+/* ---------- scout actions modal ---------- */
+
+.sc-actions {
+  width: min(640px, 92vw);
+  padding: 0;
+}
+
+.sc-action-list {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+
+.sc-action-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sc-actions .sc-confirm-row:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.sc-actions .sc-confirm-row .sc-key {
+  margin-left: auto;
+}
+
 /* ---------- map ---------- */
 
 .sc-map-screen {

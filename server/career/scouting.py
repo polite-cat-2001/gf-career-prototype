@@ -327,6 +327,32 @@ def hire_scout(career: Career, scout_id: str) -> dict:
     return scout
 
 
+def recall_scout(career: Career, scout_id: str) -> None:
+    ensure_scouts(career)
+    _scout(career, scout_id)
+    scout_id = str(scout_id)
+    released = False
+    if career.scout_assignments.pop(scout_id, None) is not None:
+        released = True
+    if career.scout_tasks.pop(scout_id, None) is not None:
+        released = True
+    if not released:
+        raise ValueError("this scout has no active task")
+    _journal(career, "scouting.recalled", {"scout_id": scout_id})
+
+
+def dismiss_scout(career: Career, scout_id: str) -> None:
+    ensure_scouts(career)
+    _scout(career, scout_id)
+    scout_id = str(scout_id)
+    career.scouts = [
+        scout for scout in career.scouts if str(scout["id"]) != scout_id
+    ]
+    career.scout_assignments.pop(scout_id, None)
+    career.scout_tasks.pop(scout_id, None)
+    _journal(career, "scouting.dismissed", {"scout_id": scout_id})
+
+
 def report_days(experience: int) -> int:
     return max(1, min(5, 6 - int(experience)))
 

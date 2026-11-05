@@ -8,6 +8,7 @@
   class="sc-tile"
   class:is-selected={selected}
   data-nav
+  data-scout={scout.id}
   data-autofocus={autofocus ? '' : undefined}
   onfocus={onFocus}
   onclick={onOpen}

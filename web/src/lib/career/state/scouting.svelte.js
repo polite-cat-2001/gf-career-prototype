@@ -51,6 +51,8 @@ export function createScoutingState(ctx) {
     let failedPhotos = $state({})
     let entryActionsOpen = $state(false)
     let entryActionsId = $state(null)
+    let scoutActionsOpen = $state(false)
+    let scoutActionsId = $state(null)
     let assignScoutId = $state(null)
     let regionId = $state(null)
     let countryId = $state(null)
@@ -99,6 +101,19 @@ export function createScoutingState(ctx) {
     let entryActionsEntry = $derived(
       reportEntries.find((entry) => entry.player.id === entryActionsId) ?? null,
     )
+    let scoutActionsScout = $derived(
+      scouts.find((scout) => scout.id === scoutActionsId) ?? null,
+    )
+    let scoutActionsHasReport = $derived(
+      Boolean(
+        scoutActionsScout &&
+          (scoutActionsScout.task ||
+            reportEntries.some((entry) => entry.scout_id === scoutActionsScout.id)),
+      ),
+    )
+    let scoutActionsCanRecall = $derived(
+      Boolean(scoutActionsScout?.task || scoutActionsScout?.report),
+    )
     let taskScout = $derived(
       scouts.find((scout) => scout.id === taskScoutId) ?? scouts[0] ?? null,
     )
@@ -118,6 +133,9 @@ export function createScoutingState(ctx) {
           { gamepad: ['X'], keyboard: ['X'], label: 'Удалить из отчёта' },
           back,
         ]
+      }
+      if (scoutActionsOpen) {
+        return [nav, open, back]
       }
       if (view === 'reports') {
         return [
@@ -147,6 +165,7 @@ export function createScoutingState(ctx) {
         nav,
         { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Вкладки' },
         open,
+        { gamepad: ['Y'], keyboard: ['W'], label: 'Действия' },
         back,
       ]
     })
@@ -367,6 +386,83 @@ export function createScoutingState(ctx) {
       })
     }
 
+    function openScoutActions(scout) {
+      if (!scout) return
+      scoutActionsId = scout.id
+      scoutActionsOpen = true
+      tick().then(focusFirst)
+    }
+
+    function closeScoutActions() {
+      const id = scoutActionsId
+      scoutActionsOpen = false
+      scoutActionsId = null
+      tick().then(() => {
+        const element = id
+          ? document.querySelector(`[data-scout="${id}"]`)
+          : null
+        if (element) element.focus({ preventScroll: true })
+        else focusFirst()
+      })
+    }
+
+    function handleDetails() {
+      if (confirm || entryActionsOpen || scoutActionsOpen) return
+      if (view !== 'scouts' && view !== 'tasks') return
+      openScoutActions(view === 'tasks' ? selectedTaskScout : selectedScout)
+    }
+
+    function viewScoutReport() {
+      const scout = scoutActionsScout
+      if (!scout) return
+      scoutActionsOpen = false
+      scoutActionsId = null
+      openReports('all', null, scout.id, networkTab)
+    }
+
+    function moveScoutToRegion() {
+      const scout = scoutActionsScout
+      if (!scout) return
+      scoutActionsOpen = false
+      scoutActionsId = null
+      startAssign(scout.id)
+    }
+
+    async function recallScout() {
+      const scout = scoutActionsScout
+      if (!scout) return
+      const updated = await runAction({
+        type: 'scout_recall',
+        scout_id: scout.id,
+      })
+      if (!updated) return
+      closeScoutActions()
+    }
+
+    function askDismissScout() {
+      const scout = scoutActionsScout
+      if (!scout) return
+      confirm = {
+        title: `${scout.name} покинет ваш штат. Вы уверены в своем решении?`,
+        yes: 'Да',
+        no: 'Отмена',
+        action: confirmDismissScout,
+      }
+      tick().then(focusFirst)
+    }
+
+    async function confirmDismissScout() {
+      const scout = scoutActionsScout
+      if (!scout) return
+      const updated = await runAction({
+        type: 'scout_dismiss',
+        scout_id: scout.id,
+      })
+      confirm = null
+      if (!updated) return
+      closeScoutActions()
+    }
+
     async function removeActiveEntry() {
       const entry = entryActionsEntry
       if (!entry) return
@@ -416,6 +512,7 @@ export function createScoutingState(ctx) {
     function handleTabs(direction) {
       if (
         entryActionsOpen ||
+        scoutActionsOpen ||
         confirm ||
         view === 'hire' ||
         view === 'region' ||
@@ -440,7 +537,7 @@ export function createScoutingState(ctx) {
     }
 
     function handleCycle(direction) {
-      if (entryActionsOpen) return false
+      if (entryActionsOpen || scoutActionsOpen) return false
       if (view === 'reports') {
         cycleReport(direction)
         return true
@@ -465,6 +562,10 @@ export function createScoutingState(ctx) {
       if (confirm) {
         confirm = null
         tick().then(focusFirst)
+        return
+      }
+      if (scoutActionsOpen) {
+        closeScoutActions()
         return
       }
       if (view === 'hire') {
@@ -677,7 +778,11 @@ export function createScoutingState(ctx) {
     }
 
     function scoutName(scoutId) {
-      return scouts.find((scout) => scout.id === scoutId)?.name ?? ''
+      return (
+        scouts.find((scout) => scout.id === scoutId)?.name ??
+        candidates.find((candidate) => candidate.id === scoutId)?.name ??
+        ''
+      )
     }
 
 
@@ -784,6 +889,18 @@ export function createScoutingState(ctx) {
     set entryActionsId(value) {
       entryActionsId = value
     },
+    get scoutActionsOpen() {
+      return scoutActionsOpen
+    },
+    set scoutActionsOpen(value) {
+      scoutActionsOpen = value
+    },
+    get scoutActionsId() {
+      return scoutActionsId
+    },
+    set scoutActionsId(value) {
+      scoutActionsId = value
+    },
     get assignScoutId() {
       return assignScoutId
     },
@@ -886,6 +1003,15 @@ export function createScoutingState(ctx) {
     get entryActionsEntry() {
       return entryActionsEntry
     },
+    get scoutActionsScout() {
+      return scoutActionsScout
+    },
+    get scoutActionsHasReport() {
+      return scoutActionsHasReport
+    },
+    get scoutActionsCanRecall() {
+      return scoutActionsCanRecall
+    },
     get taskScout() {
       return taskScout
     },
@@ -920,6 +1046,14 @@ export function createScoutingState(ctx) {
     countryPosition,
     openEntryActions,
     closeEntryActions,
+    openScoutActions,
+    closeScoutActions,
+    handleDetails,
+    viewScoutReport,
+    moveScoutToRegion,
+    recallScout,
+    askDismissScout,
+    confirmDismissScout,
     removeActiveEntry,
     toggleShortlist,
     cycleReport,
