@@ -342,8 +342,9 @@
         openTransferOffer={transfers.openTransferOffer}
         openTransferContractFromPlayer={transfers.openTransferContractFromPlayer}
         openSentOfferModal={transfers.openSentOfferModal}
+        collapseSentOffer={transfers.collapseSentOffer}
         openIncomingOfferModal={transfers.openIncomingOfferModal}
-        acceptTransferCounter={transfers.acceptTransferCounter}
+        collapseIncomingOffer={transfers.collapseIncomingOffer}
         transferOfferModal={transfers.transferOfferModal}
         incomingOfferModal={transfers.incomingOfferModal}
         acceptSentOfferCounter={transfers.acceptSentOfferCounter}

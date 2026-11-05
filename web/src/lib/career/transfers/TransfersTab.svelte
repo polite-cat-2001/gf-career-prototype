@@ -61,7 +61,8 @@
     openTransferContractFromPlayer,
     openSentOfferModal,
     openIncomingOfferModal,
-    acceptTransferCounter,
+    collapseSentOffer,
+    collapseIncomingOffer,
     transferOfferModal,
     incomingOfferModal,
     acceptSentOfferCounter,
@@ -185,16 +186,16 @@
     onoffer={openTransferOffer}
     onnegotiate={openTransferContractFromPlayer}
     onOpenSentOffer={openSentOfferModal}
+    onCloseSentOffer={collapseSentOffer}
     onOpenIncomingOffer={openIncomingOfferModal}
-    onAcceptTransferCounter={acceptTransferCounter}
+    onCloseIncomingOffer={collapseIncomingOffer}
+    onAcceptTransferCounter={acceptSentOfferCounter}
     offerModal={transferOfferModal}
     incomingModal={incomingOfferModal}
-    onAcceptOfferCounter={acceptSentOfferCounter}
     onReofferOffer={reofferSentOffer}
     onNegotiateOffer={openTransferContractFromOffer}
     onSubmitIncoming={submitIncomingOffer}
     onStartIncomingCounter={startIncomingCounter}
-    inert={transferOfferModal || incomingOfferModal ? true : false}
   />
 {:else if view === 'contractAmount' && transferContractPlayer}
   <OfferAmountScreen

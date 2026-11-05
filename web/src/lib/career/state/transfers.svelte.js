@@ -707,39 +707,53 @@ export function createTransfersState(ctx) {
     }
   
     async function acceptTransferCounter(offer) {
-      if (!offer || squad.centreActionBusy) return
+      if (!offer || squad.centreActionBusy) return false
       squad.centreActionBusy = true
       const updated = await onaction({
         type: 'accept_offer_counter',
         offer_id: offer.offer_id,
       })
       squad.centreActionBusy = false
-      if (!updated) return
-      await tick()
-      focusFirst()
+      return Boolean(updated)
     }
-  
+
     function sentOfferCard(offerId) {
       return document.querySelector(`[data-offer-card="${offerId}"]`)
     }
-  
-    function openSentOfferModal(offer) {
+
+    async function openSentOfferModal(offer) {
       if (!offer) return
+      if (transferOfferModalId === offer.offer_id) {
+        closeSentOfferModal()
+        return
+      }
       transferOfferModalId = offer.offer_id
-      tick().then(() => {
-        const modal = document.querySelector('.tf-offer-modal')
-        const action = modal?.querySelector('[data-nav]')
-        focusElement(action ?? modal)
-      })
+      await tick()
+      if (transferOfferModalId !== offer.offer_id) return
+      const card = sentOfferCard(offer.offer_id)
+      const action = card
+        ?.closest('.tf-offer-row')
+        ?.querySelector('[data-offer-action]:not([disabled])')
+      focusElement(action ?? card)
     }
-  
+
+    function collapseSentOffer() {
+      transferOfferModalId = null
+    }
+
     function closeSentOfferModal() {
       const offerId = transferOfferModalId
       transferOfferModalId = null
       if (!offerId) return
       tick().then(() => focusElement(sentOfferCard(offerId)))
     }
-  
+
+    function focusSentRow(offerId) {
+      const card = sentOfferCard(offerId) ?? document.querySelector('[data-offer-card]')
+      if (card) focusElement(card)
+      else focusFirst()
+    }
+
     function reofferSentOffer(offer) {
       if (!offer) return
       const preset =
@@ -752,35 +766,54 @@ export function createTransfersState(ctx) {
       transferOfferModalId = null
       openTransferOffer(offer, offer.kind, preset)
     }
-  
+
     async function acceptSentOfferCounter(offer) {
       if (!offer) return
-      await acceptTransferCounter(offer)
-      closeSentOfferModal()
+      const updated = await acceptTransferCounter(offer)
+      if (!updated) return
+      transferOfferModalId = null
+      await tick()
+      focusSentRow(offer.offer_id)
     }
   
     function incomingOfferCard(offerId) {
       return document.querySelector(`[data-incoming-card="${offerId}"]`)
     }
   
-    function openIncomingOfferModal(offer) {
+    async function openIncomingOfferModal(offer) {
       if (!offer) return
+      if (incomingOfferModalId === offer.offer_id) {
+        closeIncomingOfferModal()
+        return
+      }
       incomingOfferModalId = offer.offer_id
       if (offer.unread) {
-        onaction({ type: 'incoming_ack', offer_id: offer.offer_id })
+        await onaction({ type: 'incoming_ack', offer_id: offer.offer_id })
       }
-      tick().then(() => {
-        const modal = document.querySelector('.tf-incoming-modal')
-        const action = modal?.querySelector('[data-nav]')
-        focusElement(action ?? modal)
-      })
+      await tick()
+      if (incomingOfferModalId !== offer.offer_id) return
+      const card = incomingOfferCard(offer.offer_id)
+      const action = card
+        ?.closest('.tf-offer-row')
+        ?.querySelector('[data-incoming-action]:not([disabled])')
+      focusElement(action ?? card)
     }
-  
+
+    function collapseIncomingOffer() {
+      incomingOfferModalId = null
+    }
+
     function closeIncomingOfferModal() {
       const offerId = incomingOfferModalId
       incomingOfferModalId = null
       if (!offerId) return
       tick().then(() => focusElement(incomingOfferCard(offerId)))
+    }
+
+    function focusReceivedRow() {
+      const card = document.querySelector('[data-incoming-card]')
+      if (card) focusElement(card)
+      else focusReceivedTab()
     }
   
     function focusReceivedTab() {
@@ -799,7 +832,7 @@ export function createTransfersState(ctx) {
       if (!updated) return
       incomingOfferModalId = null
       await tick()
-      focusReceivedTab()
+      focusReceivedRow()
     }
   
     function startIncomingCounter(offer) {
@@ -1464,11 +1497,13 @@ export function createTransfersState(ctx) {
     sentOfferCard,
     openSentOfferModal,
     closeSentOfferModal,
+    collapseSentOffer,
     reofferSentOffer,
     acceptSentOfferCounter,
     incomingOfferCard,
     openIncomingOfferModal,
     closeIncomingOfferModal,
+    collapseIncomingOffer,
     focusReceivedTab,
     submitIncomingOffer,
     startIncomingCounter,

@@ -48,7 +48,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 44px;
+  height: var(--chrome-h);
   max-width: 320px;
   min-width: 0;
   margin-left: auto;

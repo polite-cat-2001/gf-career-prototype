@@ -26,7 +26,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  height: 44px;
+  height: var(--chrome-h);
   padding: 0 20px;
   background: var(--tile);
   color: var(--ink);

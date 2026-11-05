@@ -264,7 +264,7 @@ button.squad-tile {
   position: relative;
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: var(--chrome-h);
   padding: 0 20px;
   background: rgba(245, 247, 250, 0.72);
   color: var(--ink-2);

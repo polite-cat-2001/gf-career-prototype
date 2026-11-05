@@ -116,9 +116,7 @@ function moveWithinPitch(current, direction) {
   return true
 }
 
-function moveWithinActions(current, direction) {
-  const panel = current.closest('.squad-actions')
-  if (!panel) return false
+function moveWithinContainer(current, direction, panel) {
   const items = Array.from(panel.querySelectorAll(NAV_SELECTOR)).filter(visible)
   if (!items.length) return true
   const rect = current.getBoundingClientRect()
@@ -159,6 +157,18 @@ function moveWithinActions(current, direction) {
     best.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }
   return true
+}
+
+function moveWithinActions(current, direction) {
+  const panel = current.closest('.squad-actions')
+  if (!panel) return false
+  return moveWithinContainer(current, direction, panel)
+}
+
+function moveWithinTrap(current, direction) {
+  const panel = current.closest('[data-nav-trap]')
+  if (!panel) return false
+  return moveWithinContainer(current, direction, panel)
 }
 
 function moveToBenchFromPitch(current, direction) {
@@ -276,6 +286,7 @@ export function moveFocus(direction) {
   if (moveWithinPitch(current, direction)) return
   if (moveToBenchFromPitch(current, direction)) return
   if (moveWithinActions(current, direction)) return
+  if (moveWithinTrap(current, direction)) return
   if (moveGridFocus(current, direction)) return
 
   const currentRect = current.getBoundingClientRect()
