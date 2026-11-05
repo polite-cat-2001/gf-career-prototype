@@ -5,6 +5,14 @@
   padding: 0;
 }
 
+.app.gf-career.is-plan .gf-frame.is-fill {
+  align-items: flex-start;
+}
+
+.app.gf-career.is-plan .gf-panel-wrap.is-fill {
+  height: min(100%, calc((100% + var(--screen-h)) / 2));
+}
+
 .app.is-simulating > .gf-app,
 .app.is-simulating > .gf-stage {
   display: none;

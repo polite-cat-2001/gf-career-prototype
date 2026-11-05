@@ -266,6 +266,8 @@
   gap: 2px;
   min-width: 0;
   min-height: 92px;
+  scroll-margin-block: 10px;
+  scroll-margin-top: 32px;
   padding: 8px 8px 6px 12px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.58);
