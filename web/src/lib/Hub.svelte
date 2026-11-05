@@ -46,7 +46,7 @@
   import SeasonReview from './career/match/SeasonReview.svelte'
   import MatchSimulationOverlay from './career/match/MatchSimulationOverlay.svelte'
   import MatchdayOverlay from './career/match/MatchdayOverlay.svelte'
-  import { formatDate, formatTimestamp, hideBrokenImage, tierLabel } from './format.js'
+  import { formatDate, hideBrokenImage, tierLabel } from './format.js'
 
   let {
     career,
@@ -218,11 +218,11 @@
             ? 'Матч идёт…'
             : squad.swapping
               ? 'Обмен…'
-              : `${career.club.name} · ${formatTimestamp(career.updated_at)}`,
+              : '',
   )
 </script>
 
-<div class="app gf-career" class:is-simulating={match.matchSimOpen || match.matchdayOpen}>
+<div class="app gf-career" class:is-simulating={match.matchSimOpen || match.matchdayOpen} class:is-hub-home={!subview}>
   <AppShell fill hints={nav.hints} note={legendNote}>
     {#snippet header()}
       <div class="hub-head">
