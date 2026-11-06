@@ -11,6 +11,13 @@ from server.career.condition import (
     recover_condition,
 )
 from server.career.core import Career
+from server.career.formations import (
+    DEFAULT_FORMATION,
+    formation_catalog,
+    formation_label,
+    formation_slots,
+    normalize_formation,
+)
 from server.career.season import season_state
 from server.career.squad import (
     contract_view,
@@ -34,21 +41,7 @@ ROLE_ORDER = {
     "CF": 9,
 }
 
-FORMATION = "4-3-3"
-
-LINEUP_SLOTS = [
-    {"position": "GK", "role": "GK", "x": 50, "y": 92, "roles": ["GK"]},
-    {"position": "LB", "role": "LB", "x": 15, "y": 72, "roles": ["LB", "LM", "CB"]},
-    {"position": "CB", "role": "CB", "x": 37, "y": 77, "roles": ["CB"]},
-    {"position": "CB", "role": "CB", "x": 63, "y": 77, "roles": ["CB"]},
-    {"position": "RB", "role": "RB", "x": 85, "y": 72, "roles": ["RB", "RM", "CB"]},
-    {"position": "DM", "role": "DM", "x": 30, "y": 54, "roles": ["DM", "CM"]},
-    {"position": "CM", "role": "CM", "x": 50, "y": 48, "roles": ["CM", "DM", "AM"]},
-    {"position": "AM", "role": "AM", "x": 70, "y": 54, "roles": ["AM", "CM", "LM", "RM"]},
-    {"position": "LW", "role": "LM", "x": 20, "y": 27, "roles": ["LM", "AM", "CF"]},
-    {"position": "ST", "role": "CF", "x": 50, "y": 19, "roles": ["CF"]},
-    {"position": "RW", "role": "RM", "x": 80, "y": 27, "roles": ["RM", "AM", "CF"]},
-]
+FORMATION = DEFAULT_FORMATION
 
 
 def _pick_player(players: list[dict], preferred_roles: list[str], used: set[str]) -> dict | None:
@@ -68,14 +61,17 @@ def lineup_for(
     order: list[str] | None = None,
     bench_order: list[str] | None = None,
     blocked_ids: set[str] | None = None,
+    formation: str | None = None,
 ) -> dict:
+    formation = normalize_formation(formation)
+    slots_template = formation_slots(formation)
     blocked = set(blocked_ids or ())
     by_id = {player["id"]: player for player in players}
     available = [player for player in players if player["id"] not in blocked]
     order_ids = [str(player_id) for player_id in (order or [])]
     starters: list[dict] = []
     used: set[str] = set()
-    for index, slot in enumerate(LINEUP_SLOTS):
+    for index, slot in enumerate(slots_template):
         player = None
         if index < len(order_ids):
             candidate = by_id.get(order_ids[index])
@@ -93,7 +89,7 @@ def lineup_for(
         used.add(player["id"])
 
     slots = []
-    for slot, player in zip(LINEUP_SLOTS, starters):
+    for slot, player in zip(slots_template, starters):
         slots.append(
             {
                 "position": slot["position"],
@@ -125,14 +121,21 @@ def lineup_for(
             key=lambda player: float(player.get("overall") or 0),
             reverse=True,
         )
-    return {"formation": FORMATION, "slots": slots, "bench": bench}
+    return {
+        "formation": formation,
+        "formation_label": formation_label(formation),
+        "slots": slots,
+        "bench": bench,
+    }
 
 
 def lineup_strength(career: Career, players: list[dict]) -> float:
     ensure_player_states(career, [str(player["id"]) for player in players])
     recover_condition(career, career.date)
     blocked = blocked_player_ids(career)
-    raw = lineup_for(players, career.lineup, career.bench_order, blocked)
+    raw = lineup_for(
+        players, career.lineup, career.bench_order, blocked, career.formation
+    )
     ratings = [
         effective_overall(slot["player"], career.player_state.get(str(slot["player"]["id"])))
         for slot in raw["slots"]
@@ -220,7 +223,9 @@ def build_snapshot(
     blocked = blocked_player_ids(career)
     clubs = league_clubs or []
     strength = strength_for or (lambda _club_id: 55.0)
-    raw_lineup = lineup_for(squad, career.lineup, career.bench_order, blocked)
+    raw_lineup = lineup_for(
+        squad, career.lineup, career.bench_order, blocked, career.formation
+    )
     available_bench = [
         player for player in raw_lineup["bench"] if player["id"] not in blocked
     ]
@@ -239,6 +244,7 @@ def build_snapshot(
             "summary": _summary(squad),
             "finance": finance_view(career, squad),
             "groups": _groups(squad),
+            "formations": formation_catalog(),
             "lineup": {
                 **raw_lineup,
                 "bench": matchday_bench,

@@ -107,7 +107,7 @@
             <div class="sim-team" class:is-away={side === 'away'}>
               <div class="sim-list-head">
                 <span class="sim-list-team">{team.name}</span>
-                <strong class="sim-list-formation">{lineup.formation}</strong>
+                <strong class="sim-list-formation">{lineup.formation_label ?? lineup.formation}</strong>
               </div>
               <div class="sim-players">
                 {#each lineup.slots as slot (slot.player.id)}
@@ -192,7 +192,7 @@
                 </div>
                 <div class="sim-setup__row">
                   <span>Схемы</span>
-                  <strong>{data.home_lineup.formation} · {data.away_lineup.formation}</strong>
+                  <strong>{data.home_lineup.formation_label ?? data.home_lineup.formation} · {data.away_lineup.formation_label ?? data.away_lineup.formation}</strong>
                 </div>
                 <div class="sim-setup__row">
                   <span>Матч</span>

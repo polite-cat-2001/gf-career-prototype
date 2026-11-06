@@ -49,6 +49,7 @@ from server.career import (
     resolve_transfer_contracts,
     resolve_transfer_offers,
     season_transition,
+    set_formation,
     set_shirt_number,
     set_transfer_status,
     sign_transfer_contract,
@@ -423,6 +424,7 @@ class CareerActionRequest(BaseModel):
     loan_fee: int | None = None
     wage_share: int | None = None
     buyout: bool | None = None
+    formation: str | None = None
 
 
 class ManagerInfo(BaseModel):
@@ -459,15 +461,31 @@ class LineupSlot(BaseModel):
 
 class Lineup(BaseModel):
     formation: str
+    formation_label: str = ""
     slots: list[LineupSlot]
     bench: list[PlayerSummary]
     reserve: list[PlayerSummary] = []
+
+
+class FormationSlot(BaseModel):
+    position: str
+    role: str
+    x: int
+    y: int
+    roles: list[str] = []
+
+
+class FormationOption(BaseModel):
+    id: str
+    label: str
+    slots: list[FormationSlot]
 
 
 class SquadBlock(BaseModel):
     summary: SquadSummary
     finance: SquadFinance
     groups: list[SquadGroup]
+    formations: list[FormationOption] = []
     lineup: Lineup
 
 
@@ -620,6 +638,7 @@ class MatchSlot(BaseModel):
 
 class MatchLineup(BaseModel):
     formation: str
+    formation_label: str = ""
     slots: list[MatchSlot]
     bench: list[MatchPlayer]
 
@@ -1391,13 +1410,27 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         home_bench = career.bench_order if own_home else None
         away_order = career.lineup if not own_home else None
         away_bench = career.bench_order if not own_home else None
+        home_formation = career.formation if own_home else None
+        away_formation = career.formation if not own_home else None
         setup = build_match_setup(
             career,
             fixture,
             str(context["league"]["name"]),
             clubs,
-            build_lineup(home_players, home_order, home_bench, blocked if own_home else None),
-            build_lineup(away_players, away_order, away_bench, None if own_home else blocked),
+            build_lineup(
+                home_players,
+                home_order,
+                home_bench,
+                blocked if own_home else None,
+                home_formation,
+            ),
+            build_lineup(
+                away_players,
+                away_order,
+                away_bench,
+                None if own_home else blocked,
+                away_formation,
+            ),
         )
         return fixture, setup
 
@@ -1405,7 +1438,9 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
         ensure_player_states(career, [str(player["id"]) for player in players])
         recover_condition(career, career.date)
         blocked = blocked_player_ids(career)
-        lineup = lineup_for(players, career.lineup, career.bench_order, blocked)
+        lineup = lineup_for(
+            players, career.lineup, career.bench_order, blocked, career.formation
+        )
         career.lineup = [slot["player"]["id"] for slot in lineup["slots"]]
         career.bench_order = [player["id"] for player in lineup["bench"]]
         return lineup
@@ -1785,6 +1820,14 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             players = canon.players_by_ids(career.player_ids)
             try:
                 swap_players(career, players, payload.player_a, payload.player_b)
+            except ActionError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+        elif payload.type == "formation":
+            if not payload.formation:
+                raise HTTPException(status_code=422, detail="formation requires formation")
+            players = canon.players_by_ids(career.player_ids)
+            try:
+                set_formation(career, players, payload.formation)
             except ActionError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
         elif payload.type == "advance":

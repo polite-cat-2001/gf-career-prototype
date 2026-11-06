@@ -25,7 +25,7 @@
       <div class="squad-team-title">
         <span class="squad-kicker">Состав клуба</span>
         <strong>{career.club.name}: по умолч.</strong>
-        <span>{lineup.formation} · {career.club.league_name}</span>
+        <span>{lineup.formation_label ?? lineup.formation} · {career.club.league_name}</span>
       </div>
       <span class="squad-team-action">A · план игры</span>
     </div>
@@ -43,7 +43,8 @@
         {@const spot = pitchSpot(slot)}
         <PlayerCard
           player={slot.player}
-          role={slot.role}
+          role={slot.position}
+          matchRole={slot.role}
           line={spot.line}
           preview
           positionStyle={`left:${spot.left}%; top:${spot.top}`}

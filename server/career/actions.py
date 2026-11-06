@@ -7,6 +7,7 @@ from server.career.condition import (
     recover_condition,
 )
 from server.career.core import Career
+from server.career.formations import FORMATIONS, arrange_lineup
 from server.career.snapshot import lineup_for
 from server.career.squad import (
     MIN_SQUAD_SIZE,
@@ -64,6 +65,7 @@ def swap_players(career: Career, players: list[dict], player_a: str, player_b: s
         career.lineup,
         career.bench_order,
         blocked,
+        career.formation,
     )
     starters = [slot["player"]["id"] for slot in lineup["slots"]]
     bench = [player["id"] for player in lineup["bench"]]
@@ -93,6 +95,31 @@ def swap_players(career: Career, players: list[dict], player_a: str, player_b: s
             "seq": len(career.journal) + 1,
             "type": "lineup.swap",
             "payload": {"player_a": player_a, "player_b": player_b},
+        }
+    )
+
+
+def set_formation(career: Career, players: list[dict], formation: str) -> None:
+    if formation not in FORMATIONS:
+        raise ActionError("unknown formation")
+    if career.formation == formation:
+        return
+
+    blocked = blocked_player_ids(career)
+    lineup = lineup_for(
+        players,
+        career.lineup,
+        career.bench_order,
+        blocked,
+        career.formation,
+    )
+    career.lineup = arrange_lineup(lineup["slots"], formation)
+    career.formation = formation
+    career.journal.append(
+        {
+            "seq": len(career.journal) + 1,
+            "type": "lineup.formation",
+            "payload": {"formation": formation},
         }
     )
 

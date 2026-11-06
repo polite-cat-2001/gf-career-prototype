@@ -45,10 +45,12 @@ def build_lineup(
     order: list[str] | None = None,
     bench_order: list[str] | None = None,
     blocked_ids: set[str] | None = None,
+    formation: str | None = None,
 ) -> dict:
-    raw = lineup_for(players, order, bench_order, blocked_ids)
+    raw = lineup_for(players, order, bench_order, blocked_ids, formation)
     return {
         "formation": raw["formation"],
+        "formation_label": raw["formation_label"],
         "slots": [
             {
                 "position": slot["position"],

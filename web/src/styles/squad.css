@@ -1241,19 +1241,194 @@ button.squad-tile {
   align-items: center;
   min-height: 38px;
   padding: 0 16px;
+  border: 0;
   background: rgba(245, 247, 250, 0.55);
   color: var(--ink-2);
+  font-family: inherit;
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.plan-tab:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .plan-tab.active {
   background: var(--tile);
   color: var(--ink);
   box-shadow: inset 0 -4px 0 var(--rail);
+}
+
+/* ---------- schemes ---------- */
+
+.plan-stage.is-schemes {
+  padding-bottom: 0;
+}
+
+.pitch-scheme {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 7;
+  padding: 4px 10px;
+  background: rgba(8, 20, 15, 0.72);
+  color: var(--focus-ink);
+  font-family: var(--font-heading);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.scheme-panel {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--tile);
+  color: var(--ink);
+  box-shadow: var(--shadow-tile);
+}
+
+.scheme-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 30px;
+  padding: 0 12px;
+  background: rgba(29, 33, 56, 0.06);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.scheme-page {
+  font-variant-numeric: tabular-nums;
+}
+
+.scheme-viewport {
+  position: relative;
+  padding: 8px 18px 8px 8px;
+}
+
+.scheme-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scheme-card {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  height: 124px;
+  padding: 6px 8px 8px;
+  border: 0;
+  background: #e8ecf2;
+  color: var(--ink);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.scheme-card[data-nav]:focus {
+  outline: none;
+  background: var(--focus-fill);
+  color: var(--focus-ink);
+  box-shadow: var(--shadow-focus);
+  z-index: 1;
+}
+
+.scheme-card-name {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.scheme-mini {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: #0d3b2d;
+  clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%);
+}
+
+.scheme-mini-surface {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 12%),
+    radial-gradient(ellipse at 50% 100%, #2a815f 0%, #176046 48%, #0d3b2d 100%);
+}
+
+.scheme-mini svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.32);
+  stroke-width: 0.7;
+}
+
+.scheme-mini i {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f4f7fb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  transform: translate(-50%, -50%);
+}
+
+.scheme-mini i.is-keeper {
+  background: #ff4d6d;
+}
+
+.scheme-check {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--focus-mark);
+  color: #1d2138;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.scheme-rail {
+  position: absolute;
+  top: 8px;
+  right: 4px;
+  bottom: 8px;
+  width: 3px;
+  background: rgba(29, 33, 56, 0.14);
+}
+
+.scheme-rail-thumb {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: var(--ink-2);
+  opacity: 0.5;
 }
 
 /* ---------- bench drawer ---------- */
@@ -1781,6 +1956,14 @@ button.squad-tile {
 @media (max-height: 800px) {
   .squad-team-title strong {
     font-size: 26px;
+  }
+
+  .scheme-card {
+    height: 110px;
+  }
+
+  .scheme-card-name {
+    font-size: 19px;
   }
 
   .squad-tile-label {

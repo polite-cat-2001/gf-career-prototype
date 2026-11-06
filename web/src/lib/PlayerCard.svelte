@@ -4,6 +4,7 @@
   let {
     player,
     role,
+    matchRole = role,
     line = 'MID',
     interactive = false,
     preview = false,
@@ -23,7 +24,7 @@
   class:is-unavailable={player.available === false}
   data-nav={interactive ? '' : undefined}
   data-player={interactive ? player.id : undefined}
-  data-role={interactive ? role : undefined}
+  data-role={interactive ? matchRole : undefined}
   data-line={line}
   role={interactive ? undefined : 'presentation'}
   type={interactive ? 'button' : undefined}

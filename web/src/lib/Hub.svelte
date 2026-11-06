@@ -468,10 +468,20 @@
         onShiftAttributePage={squad.shiftAttributePage}
         finance={squad.finance}
       />
-    {:else if nav.tab === 'squad' && (nav.view === 'plan' || nav.view === 'details') && squad.focusedPlayer}
+    {:else if nav.tab === 'squad' && (nav.view === 'plan' || nav.view === 'details') && (squad.focusedPlayer || (nav.view === 'plan' && squad.planTab === 'schemes'))}
       <PlanView
         view={nav.view}
+        planTab={squad.planTab}
         {planTabs}
+        currentFormation={squad.currentFormation}
+        schemeLineup={squad.schemeLineup}
+        visibleFormations={squad.visibleFormations}
+        formationPage={squad.formationPage}
+        formationPageCount={squad.formationPageCount}
+        onSelectPlanTab={squad.openPlanTab}
+        onPreviewFormation={squad.previewFormationCard}
+        onSelectFormation={squad.selectFormation}
+        onFormationScroll={(delta) => squad.setFormationPage(squad.formationPage + (delta > 0 ? 1 : -1))}
         comparing={squad.comparing}
         anchorPlayer={squad.anchorPlayer}
         focusedPlayer={squad.focusedPlayer}

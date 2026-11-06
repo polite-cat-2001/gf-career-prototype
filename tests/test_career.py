@@ -465,6 +465,55 @@ def test_swap_bench_pair_reorders_bench_and_persists(client: TestClient, saves_d
     assert raw["journal"][-1]["type"] == "lineup.swap"
 
 
+def test_formation_switch_keeps_keeper_and_persists(client: TestClient, saves_dir: Path):
+    created = create_career(client)
+    keeper_id = created["squad"]["lineup"]["slots"][0]["player"]["id"]
+
+    response = client.post(
+        f"/api/careers/{created['id']}/actions",
+        json={"type": "formation", "formation": "4-4-2"},
+    )
+    assert response.status_code == 200, response.text
+    updated = response.json()["squad"]["lineup"]
+    assert updated["formation"] == "4-4-2"
+    assert updated["formation_label"] == "4-4-2"
+    assert [slot["position"] for slot in updated["slots"]] == [
+        "GK",
+        "LB",
+        "CB",
+        "CB",
+        "RB",
+        "LM",
+        "CM",
+        "CM",
+        "RM",
+        "ST",
+        "ST",
+    ]
+    assert updated["slots"][0]["player"]["id"] == keeper_id
+    assert len({slot["player"]["id"] for slot in updated["slots"]}) == 11
+
+    loaded = client.get(f"/api/careers/{created['id']}").json()
+    assert loaded["squad"]["lineup"]["formation"] == "4-4-2"
+    assert loaded["squad"]["lineup"]["slots"][0]["player"]["id"] == keeper_id
+
+    raw = json.loads((saves_dir / f"{created['id']}.json").read_text(encoding="utf-8"))
+    assert raw["formation"] == "4-4-2"
+    assert raw["lineup"] == [
+        slot["player"]["id"] for slot in loaded["squad"]["lineup"]["slots"]
+    ]
+    assert raw["journal"][-1]["type"] == "lineup.formation"
+
+
+def test_formation_switch_rejects_unknown_scheme(client: TestClient):
+    created = create_career(client)
+    response = client.post(
+        f"/api/careers/{created['id']}/actions",
+        json={"type": "formation", "formation": "1-0-9"},
+    )
+    assert response.status_code == 422
+
+
 def test_swap_rejects_unknown_player_and_same_player(client: TestClient):
     created = create_career(client)
     starter = created["squad"]["lineup"]["slots"][1]["player"]

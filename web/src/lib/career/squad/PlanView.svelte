@@ -4,9 +4,11 @@
   import PlayerBlock from '../shared/PlayerBlock.svelte'
   import RadarChart from '../shared/RadarChart.svelte'
   import PitchBoard from './PitchBoard.svelte'
+  import SchemesPanel from './SchemesPanel.svelte'
 
   let {
     view,
+    planTab,
     planTabs,
     comparing,
     anchorPlayer,
@@ -24,6 +26,15 @@
     teamDelta,
     career,
     benchFocused,
+    currentFormation,
+    schemeLineup,
+    visibleFormations,
+    formationPage,
+    formationPageCount,
+    onSelectPlanTab,
+    onPreviewFormation,
+    onSelectFormation,
+    onFormationScroll,
     onCardFocus,
     onCardEnter,
     onCardActivate,
@@ -34,59 +45,25 @@
 </script>
 
 <div class="plan">
-  <div class="plan-stage" class:has-drawer={view === 'plan'}>
+  <div
+    class="plan-stage"
+    class:has-drawer={view === 'plan' && planTab === 'squad'}
+    class:is-schemes={planTab === 'schemes'}
+  >
     <nav class="plan-tabs" aria-label="План игры">
-      {#each planTabs as item (item.label)}
-        <span class="plan-tab" class:active={item.active}>{item.label}</span>
+      {#each planTabs as item (item.id)}
+        <button
+          class="plan-tab"
+          class:active={item.id === planTab}
+          disabled={item.disabled}
+          onclick={() => !item.disabled && onSelectPlanTab(item.id)}
+        >
+          {item.label}
+        </button>
       {/each}
     </nav>
 
-    {#if comparing}
-      <div class="player-head compare-head">
-        <PlayerBlock
-          player={anchorPlayer}
-          mirrored={false}
-          {comparing}
-          {anchorPlayer}
-          {focusedPlayer}
-          {lineup}
-        />
-        {#if radar.length && focusedPlayer.role !== 'GK'}
-          <RadarChart
-            values={anchorRadar.length ? anchorRadar : radar}
-            secondary={anchorRadar.length ? radar : null}
-          />
-        {:else}
-          <span class="radar-empty">Вратарский профиль не входит в канон</span>
-        {/if}
-        <PlayerBlock
-          player={focusedPlayer}
-          mirrored={true}
-          {comparing}
-          {anchorPlayer}
-          {focusedPlayer}
-          {lineup}
-        />
-      </div>
-    {:else}
-      <div class="player-head">
-        <PlayerBlock
-          player={focusedPlayer}
-          mirrored={false}
-          {comparing}
-          {anchorPlayer}
-          {focusedPlayer}
-          {lineup}
-        />
-        {#if radar.length && focusedPlayer.role !== 'GK'}
-          <RadarChart values={radar} />
-        {:else}
-          <span class="radar-empty">Вратарский профиль не входит в канон</span>
-        {/if}
-      </div>
-    {/if}
-
-    {#if view === 'details'}
+    {#if view === 'details' && planTab === 'squad'}
       <section class="details-panel" data-nav tabindex="-1" aria-label="Подробности игрока">
         <strong class="details-title">{detailPages[detailsPage].label}</strong>
 
@@ -151,7 +128,70 @@
           {/each}
         </div>
       </section>
+    {:else if planTab === 'schemes'}
+      <PitchBoard
+        lineup={schemeLineup}
+        cornerLabel={schemeLineup.formation_label ?? currentFormation}
+        interactive={false}
+        showStrength={false}
+      />
+
+      <SchemesPanel
+        clubName={career.club.name}
+        {currentFormation}
+        formations={visibleFormations}
+        page={formationPage}
+        pageCount={formationPageCount}
+        onPreview={onPreviewFormation}
+        onSelect={onSelectFormation}
+        onScroll={onFormationScroll}
+      />
     {:else}
+      {#if comparing}
+        <div class="player-head compare-head">
+          <PlayerBlock
+            player={anchorPlayer}
+            mirrored={false}
+            {comparing}
+            {anchorPlayer}
+            {focusedPlayer}
+            {lineup}
+          />
+          {#if radar.length && focusedPlayer.role !== 'GK'}
+            <RadarChart
+              values={anchorRadar.length ? anchorRadar : radar}
+              secondary={anchorRadar.length ? radar : null}
+            />
+          {:else}
+            <span class="radar-empty">Вратарский профиль не входит в канон</span>
+          {/if}
+          <PlayerBlock
+            player={focusedPlayer}
+            mirrored={true}
+            {comparing}
+            {anchorPlayer}
+            {focusedPlayer}
+            {lineup}
+          />
+        </div>
+      {:else}
+        <div class="player-head">
+          <PlayerBlock
+            player={focusedPlayer}
+            mirrored={false}
+            {comparing}
+            {anchorPlayer}
+            {focusedPlayer}
+            {lineup}
+          />
+          {#if radar.length && focusedPlayer.role !== 'GK'}
+            <RadarChart values={radar} />
+          {:else}
+            <span class="radar-empty">Вратарский профиль не входит в канон</span>
+          {/if}
+        </div>
+      {/if}
+
       <PitchBoard
         {lineup}
         {anchorId}
@@ -164,7 +204,7 @@
       />
     {/if}
 
-    {#if view === 'plan'}
+    {#if view === 'plan' && planTab === 'squad'}
       <BenchDrawer
         bench={lineup.bench}
         reserve={lineup.reserve ?? []}

@@ -7,8 +7,9 @@ import {
   positionLabel,
   radarValues,
 } from '../../format.js'
-import { attributePages } from '../constants/hub.js'
+import { attributePages, planTabs } from '../constants/hub.js'
 import { INFO_LABELS, centreTabs } from '../constants/hub.js'
+import { previewLineup } from '../utils/formations.js'
 import { average, infoValues, teamAfterSwap } from '../utils/squad.js'
 
 export function createSquadState(ctx) {
@@ -39,12 +40,30 @@ export function createSquadState(ctx) {
   let anchorId = $state(null)
   let swapping = $state(false)
   let benchFocused = $state(false)
+  let planTab = $state('squad')
+  let formationIndex = $state(0)
+  let formationPage = $state(0)
+  let formationBusy = $state(false)
+  const formationPageSize = 3
 
   const squadPlayers = $derived([
     ...getLineup().slots.map((slot) => slot.player),
     ...getLineup().bench,
     ...(getLineup().reserve ?? []),
   ])
+  const currentFormation = $derived(getLineup().formation)
+  const formationOptions = $derived(getCareer().squad.formations ?? [])
+  const formationPageCount = $derived(
+    Math.max(1, Math.ceil(formationOptions.length / formationPageSize)),
+  )
+  const visibleFormations = $derived(
+    formationOptions.slice(
+      formationPage * formationPageSize,
+      formationPage * formationPageSize + formationPageSize,
+    ),
+  )
+  const previewFormation = $derived(formationOptions[formationIndex] ?? null)
+  const schemeLineup = $derived(previewLineup(getLineup(), previewFormation))
   const centrePlayers = $derived(getCareer().squad.groups.flatMap((group) => group.players))
   const centrePlayer = $derived(
     centrePlayers.find((player) => player.id === centrePlayerId) ?? centrePlayers[0] ?? null,
@@ -491,11 +510,106 @@ export function createSquadState(ctx) {
   async function openPlan(playerId = null) {
     setTab('squad')
     setView('plan')
+    planTab = 'squad'
     anchorId = null
     benchFocused = false
     focusPlayerId = playerId ?? getLineup().slots[0]?.player.id ?? null
     await tick()
     focusPlayer(focusPlayerId)
+  }
+
+  function formationIndexOf(formationId) {
+    const index = formationOptions.findIndex((option) => option.id === formationId)
+    return index >= 0 ? index : 0
+  }
+
+  function formationCardElement(index = formationIndex) {
+    const option = formationOptions[index]
+    return option
+      ? document.querySelector(`[data-formation="${option.id}"]`)
+      : null
+  }
+
+  async function focusFormationCard(index = formationIndex) {
+    await tick()
+    focusElement(formationCardElement(index))
+  }
+
+  async function openPlanTab(next) {
+    if (!['squad', 'schemes'].includes(next) || planTab === next) return
+    planTab = next
+    anchorId = null
+    benchFocused = false
+    setView('plan')
+    if (next === 'schemes') {
+      formationIndex = formationIndexOf(currentFormation)
+      formationPage = Math.floor(formationIndex / formationPageSize)
+      await focusFormationCard()
+      return
+    }
+    await tick()
+    focusPlayer(focusPlayerId ?? getLineup().slots[0]?.player.id)
+  }
+
+  function previewFormationCard(formationId) {
+    const index = formationOptions.findIndex((option) => option.id === formationId)
+    if (index < 0) return
+    formationIndex = index
+    formationPage = Math.floor(index / formationPageSize)
+  }
+
+  async function switchPlanTab(direction) {
+    if (formationBusy) return
+    const enabled = planTabs.filter((tab) => !tab.disabled).map((tab) => tab.id)
+    const index = Math.max(0, enabled.indexOf(planTab))
+    const offset = direction === 'right' ? 1 : -1
+    await openPlanTab(enabled[(index + offset + enabled.length) % enabled.length])
+  }
+
+  async function stepFormation(direction) {
+    if (!formationOptions.length || formationBusy) return
+    const lastIndex = formationOptions.length - 1
+    const pageDelta = direction === 'down' ? 1 : direction === 'up' ? -1 : 0
+    let index = formationIndex
+    if (pageDelta) {
+      const page = Math.min(
+        formationPageCount - 1,
+        Math.max(0, formationPage + pageDelta),
+      )
+      index = Math.min(page * formationPageSize + (formationIndex % formationPageSize), lastIndex)
+    } else if (direction === 'left' || direction === 'right') {
+      index = Math.min(
+        lastIndex,
+        Math.max(0, formationIndex + (direction === 'right' ? 1 : -1)),
+      )
+    }
+    if (index === formationIndex) return
+    formationIndex = index
+    formationPage = Math.floor(index / formationPageSize)
+    await focusFormationCard()
+  }
+
+  async function setFormationPage(page) {
+    if (!formationOptions.length || formationBusy) return
+    const nextPage = Math.min(formationPageCount - 1, Math.max(0, page))
+    if (nextPage === formationPage) return
+    formationPage = nextPage
+    formationIndex = Math.min(
+      formationOptions.length - 1,
+      formationPage * formationPageSize + (formationIndex % formationPageSize),
+    )
+    await focusFormationCard()
+  }
+
+  async function selectFormation(formationId) {
+    if (formationBusy || !formationId || formationId === currentFormation) return
+    formationBusy = true
+    const updated = await onaction({ type: 'formation', formation: formationId })
+    formationBusy = false
+    if (!updated) return
+    formationIndex = formationIndexOf(formationId)
+    formationPage = Math.floor(formationIndex / formationPageSize)
+    await focusFormationCard()
   }
 
   function focusPlayer(playerId) {
@@ -621,6 +735,33 @@ export function createSquadState(ctx) {
     set benchFocused(value) {
       benchFocused = value
     },
+    get planTab() {
+      return planTab
+    },
+    set planTab(value) {
+      planTab = value
+    },
+    get formationIndex() {
+      return formationIndex
+    },
+    get formationPage() {
+      return formationPage
+    },
+    get formationPageCount() {
+      return formationPageCount
+    },
+    get currentFormation() {
+      return currentFormation
+    },
+    get formationOptions() {
+      return formationOptions
+    },
+    get visibleFormations() {
+      return visibleFormations
+    },
+    get schemeLineup() {
+      return schemeLineup
+    },
     get squadPlayers() {
       return squadPlayers
     },
@@ -729,6 +870,12 @@ export function createSquadState(ctx) {
     manageTeamFromCentre,
     shiftAttributePage,
     openPlan,
+    openPlanTab,
+    previewFormationCard,
+    switchPlanTab,
+    stepFormation,
+    setFormationPage,
+    selectFormation,
     focusPlayer,
     activatePlayer,
     revealName,

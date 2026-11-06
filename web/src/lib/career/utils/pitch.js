@@ -33,9 +33,14 @@ export function pitchLine(slot) {
 
 export function pitchSpot(slot) {
   const line = pitchLine(slot)
+  const top = Number.isFinite(slot.y)
+    ? line === 'GK'
+      ? `min(${slot.y}%, calc(100% - 40px))`
+      : `${slot.y}%`
+    : LINE_TOP[line]
   return {
     left: Number.isFinite(slot.x) ? slot.x : 50,
-    top: LINE_TOP[line],
+    top,
     line,
   }
 }

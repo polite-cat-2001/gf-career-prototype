@@ -5,6 +5,8 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from server.career.formations import DEFAULT_FORMATION, FORMATIONS
+
 SAVE_VERSION = 1
 START_DATE = "2026-07-01"
 
@@ -54,6 +56,7 @@ class Career:
     updated_at: str = field(default_factory=utc_now)
     lineup: list[str] | None = None
     bench_order: list[str] | None = None
+    formation: str = DEFAULT_FORMATION
     schedule: list[dict] | None = None
     schedule_version: int = 0
     results: dict[str, dict] = field(default_factory=dict)
@@ -111,6 +114,7 @@ class Career:
             payload["lineup"] = list(self.lineup)
         if self.bench_order is not None:
             payload["bench"] = list(self.bench_order)
+        payload["formation"] = self.formation
         if self.schedule is not None:
             payload["schedule"] = list(self.schedule)
             payload["schedule_version"] = self.schedule_version
@@ -334,6 +338,9 @@ class Career:
             else [str(club_id) for club_id in raw["league_club_ids"]],
             lineup=None if lineup is None else [str(player_id) for player_id in lineup],
             bench_order=None if bench is None else [str(player_id) for player_id in bench],
+            formation=str(raw.get("formation") or DEFAULT_FORMATION)
+            if str(raw.get("formation") or DEFAULT_FORMATION) in FORMATIONS
+            else DEFAULT_FORMATION,
             schedule=None
             if schedule is None
             else [

@@ -7,11 +7,11 @@ export const tabs = [
 ]
 
 export const planTabs = [
-  { label: 'Состав', active: true },
-  { label: 'Схемы' },
-  { label: 'Амплуа' },
-  { label: 'Задачи' },
-  { label: 'Тактика' },
+  { id: 'squad', label: 'Состав' },
+  { id: 'schemes', label: 'Схемы' },
+  { id: 'roles', label: 'Амплуа', disabled: true },
+  { id: 'tasks', label: 'Задачи', disabled: true },
+  { id: 'tactics', label: 'Тактика', disabled: true },
 ]
 
 export const detailPages = [

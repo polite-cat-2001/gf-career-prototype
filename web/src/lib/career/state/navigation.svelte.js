@@ -316,6 +316,15 @@ export function createNavigationState(ctx) {
           start,
         ]
       }
+      if (tab === 'squad' && view === 'plan' && squad.planTab === 'schemes') {
+        return [
+          { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Вкладки' },
+          { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Схема' },
+          { gamepad: ['A'], keyboard: ['Enter'], label: 'Выбрать' },
+          { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+          start,
+        ]
+      }
       if (tab === 'squad' && view === 'plan') {
         return [
           { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Игрок' },
@@ -357,6 +366,10 @@ export function createNavigationState(ctx) {
     }
   
     function handleStep(direction) {
+      if (tab === 'squad' && view === 'plan' && squad.planTab === 'schemes') {
+        squad.stepFormation(direction)
+        return true
+      }
       if (tab !== 'transfers' || transfers.transfersView !== 'filters') return false
       if (transfers.oskOpen || !transfers.transferEditing) return false
       if (transfers.transferEditing === 'age') {
@@ -514,6 +527,10 @@ export function createNavigationState(ctx) {
           return
         }
         if (view === 'plan') {
+          if (squad.planTab === 'schemes') {
+            squad.openPlanTab('squad')
+            return
+          }
           if (squad.anchorId) {
             const anchor = squad.anchorId
             squad.anchorId = null
@@ -559,6 +576,7 @@ export function createNavigationState(ctx) {
         return
       }
       if (tab === 'squad' && view === 'centre') return
+      if (tab === 'squad' && view === 'plan' && squad.planTab === 'schemes') return
       toggleDetails()
     }
   
@@ -566,6 +584,7 @@ export function createNavigationState(ctx) {
       if (match.matchdayOpen || match.seasonReview) return
       if (tab !== 'squad' || !squad.focusedPlayer) return
       if (view === 'centre') return
+      if (squad.planTab === 'schemes') return
       if (view === 'details') {
         closeDetails()
         return
@@ -648,6 +667,10 @@ export function createNavigationState(ctx) {
       if (match.simulating || match.advancing || match.seasonReview || match.matchSimOpen || match.matchdayOpen) return
       if (tab === 'squad' && view === 'centre') {
         squad.switchCentreTab(direction)
+        return
+      }
+      if (tab === 'squad' && view === 'plan') {
+        squad.switchPlanTab(direction)
         return
       }
       if (tab === 'squad' && view === 'details') {

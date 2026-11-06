@@ -965,3 +965,32 @@
     padding: 6px 0 3px;
   }
 }
+
+/* ---------- compact plan pitch ---------- */
+
+.pitch-plan-large .pitch-player {
+  width: clamp(48px, 9.5%, 80px);
+  padding: 0 4px 1px 6px;
+}
+
+.pitch-plan-large .player-photo {
+  height: 36px;
+}
+
+.pitch-plan-large .player-plate {
+  min-height: 11px;
+  gap: 2px;
+}
+
+.pitch-plan-large .player-pos {
+  font-size: 11px;
+}
+
+.pitch-plan-large .player-ovr {
+  font-size: 13px;
+}
+
+.pitch-plan-large .player-name {
+  font-size: 12px;
+  line-height: 1;
+}

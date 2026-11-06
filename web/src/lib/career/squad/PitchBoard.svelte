@@ -5,10 +5,13 @@
 
   let {
     lineup,
-    anchorId,
-    teamDisplay,
-    comparing,
-    teamDelta,
+    anchorId = null,
+    teamDisplay = 0,
+    comparing = false,
+    teamDelta = 0,
+    interactive = true,
+    showStrength = true,
+    cornerLabel = '',
     onCardFocus,
     onCardEnter,
     onCardActivate,
@@ -28,15 +31,21 @@
     {@const spot = pitchSpot(slot)}
     <PlayerCard
       player={slot.player}
-      role={slot.role}
+      role={slot.position}
+      matchRole={slot.role}
       line={spot.line}
-      interactive
+      {interactive}
       selected={anchorId === slot.player.id}
       positionStyle={`left:${spot.left}%; top:${spot.top}`}
-      onfocus={(event) => onCardFocus(slot.player, event)}
-      onmouseenter={onCardEnter}
-      onclick={() => onCardActivate(slot.player)}
+      onfocus={interactive ? (event) => onCardFocus?.(slot.player, event) : undefined}
+      onmouseenter={interactive ? onCardEnter : undefined}
+      onclick={interactive ? () => onCardActivate?.(slot.player) : undefined}
     />
   {/each}
-  <StrengthBadge display={teamDisplay} {comparing} delta={teamDelta} />
+  {#if cornerLabel}
+    <span class="pitch-scheme">{cornerLabel}</span>
+  {/if}
+  {#if showStrength}
+    <StrengthBadge display={teamDisplay} {comparing} delta={teamDelta} />
+  {/if}
 </div>
