@@ -12,13 +12,14 @@
     interactive = true,
     showStrength = true,
     cornerLabel = '',
+    trapFocus = false,
     onCardFocus,
     onCardEnter,
     onCardActivate,
   } = $props()
 </script>
 
-<div class="pitch pitch-plan-large">
+<div class="pitch pitch-plan-large" data-nav-trap={trapFocus ? '' : undefined}>
   <span class="pitch-surface"></span>
   <svg class="pitch-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
     <polygon points="13,2 87,2 98,98 2,98"></polygon>

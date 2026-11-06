@@ -18,6 +18,7 @@ from server.career.formations import (
     formation_slots,
     normalize_formation,
 )
+from server.career.roles import role_assignments as resolve_role_assignments
 from server.career.season import season_state
 from server.career.squad import (
     contract_view,
@@ -245,6 +246,9 @@ def build_snapshot(
             "finance": finance_view(career, squad),
             "groups": _groups(squad),
             "formations": formation_catalog(),
+            "roles": resolve_role_assignments(
+                career, [slot["player"] for slot in raw_lineup["slots"]]
+            ),
             "lineup": {
                 **raw_lineup,
                 "bench": matchday_bench,

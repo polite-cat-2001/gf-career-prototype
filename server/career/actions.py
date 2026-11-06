@@ -8,6 +8,7 @@ from server.career.condition import (
 )
 from server.career.core import Career
 from server.career.formations import FORMATIONS, arrange_lineup
+from server.career.roles import set_role_assignment as apply_role_assignment
 from server.career.snapshot import lineup_for
 from server.career.squad import (
     MIN_SQUAD_SIZE,
@@ -124,6 +125,24 @@ def set_formation(career: Career, players: list[dict], formation: str) -> None:
     )
 
 
+def set_role_assignment(
+    career: Career, players: list[dict], role: str, player_id: str
+) -> None:
+    blocked = blocked_player_ids(career)
+    lineup = lineup_for(
+        players,
+        career.lineup,
+        career.bench_order,
+        blocked,
+        career.formation,
+    )
+    starters = [slot["player"] for slot in lineup["slots"]]
+    try:
+        apply_role_assignment(career, starters, role, player_id)
+    except ValueError as error:
+        raise ActionError(str(error)) from error
+
+
 def add_to_shortlist(career: Career, player_id: str) -> None:
     player_id = str(player_id)
     if player_id in career.shortlist:
@@ -209,6 +228,11 @@ def release_player(career: Career, player_id: str) -> None:
     career.shirt_numbers.pop(player_id, None)
     career.player_transfers.pop(player_id, None)
     career.negotiations.pop(player_id, None)
+    career.role_assignments = {
+        role: assigned
+        for role, assigned in career.role_assignments.items()
+        if assigned != player_id
+    }
     _journal(career, "player.released", {"player_id": player_id})
 
 

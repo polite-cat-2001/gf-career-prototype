@@ -9,6 +9,7 @@ import {
 } from '../../format.js'
 import { attributePages, planTabs } from '../constants/hub.js'
 import { INFO_LABELS, centreTabs } from '../constants/hub.js'
+import { roles as roleDefinitions } from '../constants/roles.js'
 import { previewLineup } from '../utils/formations.js'
 import { average, infoValues, teamAfterSwap } from '../utils/squad.js'
 
@@ -44,6 +45,9 @@ export function createSquadState(ctx) {
   let formationIndex = $state(0)
   let formationPage = $state(0)
   let formationBusy = $state(false)
+  let roleFocusId = $state(roleDefinitions[0].id)
+  let rolePickingId = $state(null)
+  let roleBusy = $state(false)
   const formationPageSize = 3
 
   const squadPlayers = $derived([
@@ -62,8 +66,21 @@ export function createSquadState(ctx) {
       formationPage * formationPageSize + formationPageSize,
     ),
   )
-  const previewFormation = $derived(formationOptions[formationIndex] ?? null)
-  const schemeLineup = $derived(previewLineup(getLineup(), previewFormation))
+  const previewedFormation = $derived(formationOptions[formationIndex] ?? null)
+  const schemeLineup = $derived(previewLineup(getLineup(), previewedFormation))
+  const roleAssignments = $derived(getCareer().squad.roles ?? {})
+  const roleTiles = $derived(
+    roleDefinitions.map((role) => ({
+      ...role,
+      player:
+        getLineup().slots.find(
+          (slot) => slot.player.id === roleAssignments[role.id],
+        )?.player ?? null,
+    })),
+  )
+  const roleAnchorId = $derived(
+    roleTiles.find((role) => role.id === roleFocusId)?.player?.id ?? null,
+  )
   const centrePlayers = $derived(getCareer().squad.groups.flatMap((group) => group.players))
   const centrePlayer = $derived(
     centrePlayers.find((player) => player.id === centrePlayerId) ?? centrePlayers[0] ?? null,
@@ -511,6 +528,7 @@ export function createSquadState(ctx) {
     setTab('squad')
     setView('plan')
     planTab = 'squad'
+    rolePickingId = null
     anchorId = null
     benchFocused = false
     focusPlayerId = playerId ?? getLineup().slots[0]?.player.id ?? null
@@ -536,8 +554,9 @@ export function createSquadState(ctx) {
   }
 
   async function openPlanTab(next) {
-    if (!['squad', 'schemes'].includes(next) || planTab === next) return
+    if (!['squad', 'schemes', 'roles'].includes(next) || planTab === next) return
     planTab = next
+    rolePickingId = null
     anchorId = null
     benchFocused = false
     setView('plan')
@@ -545,6 +564,17 @@ export function createSquadState(ctx) {
       formationIndex = formationIndexOf(currentFormation)
       formationPage = Math.floor(formationIndex / formationPageSize)
       await focusFormationCard()
+      return
+    }
+    if (next === 'roles') {
+      roleFocusId = roleDefinitions[0].id
+      focusPlayerId =
+        getLineup().slots.find(
+          (slot) => slot.player.id === roleAssignments[roleFocusId],
+        )?.player.id ??
+        getLineup().slots[0]?.player.id ??
+        null
+      await focusRoleTile(roleFocusId)
       return
     }
     await tick()
@@ -559,7 +589,7 @@ export function createSquadState(ctx) {
   }
 
   async function switchPlanTab(direction) {
-    if (formationBusy) return
+    if (formationBusy || rolePickingId || roleBusy) return
     const enabled = planTabs.filter((tab) => !tab.disabled).map((tab) => tab.id)
     const index = Math.max(0, enabled.indexOf(planTab))
     const offset = direction === 'right' ? 1 : -1
@@ -610,6 +640,58 @@ export function createSquadState(ctx) {
     formationIndex = formationIndexOf(formationId)
     formationPage = Math.floor(formationIndex / formationPageSize)
     await focusFormationCard()
+  }
+
+  function roleTileElement(roleId = roleFocusId) {
+    return document.querySelector(`[data-role-tile="${roleId}"]`)
+  }
+
+  async function focusRoleTile(roleId = roleFocusId) {
+    await tick()
+    focusElement(roleTileElement(roleId))
+  }
+
+  function focusRole(roleId) {
+    if (rolePickingId || !roleId) return
+    roleFocusId = roleId
+  }
+
+  async function selectRole(roleId) {
+    if (rolePickingId || roleBusy || !roleId) return
+    const assigned =
+      roleTiles.find((role) => role.id === roleId)?.player?.id ??
+      getLineup().slots[0]?.player.id ??
+      null
+    roleFocusId = roleId
+    rolePickingId = roleId
+    focusPlayerId = assigned
+    await tick()
+    focusPlayer(assigned)
+  }
+
+  async function assignRolePlayer(player) {
+    if (!rolePickingId || roleBusy || !player) return
+    const role = rolePickingId
+    if (getCareer().squad.roles?.[role] !== player.id) {
+      roleBusy = true
+      const updated = await onaction({ type: 'role', role, player_id: player.id })
+      roleBusy = false
+      if (!updated) {
+        await tick()
+        focusPlayer(player.id)
+        return
+      }
+    }
+    rolePickingId = null
+    focusPlayerId = player.id
+    await focusRoleTile(role)
+  }
+
+  async function cancelRolePick() {
+    if (!rolePickingId) return
+    const role = rolePickingId
+    rolePickingId = null
+    await focusRoleTile(role)
   }
 
   function focusPlayer(playerId) {
@@ -762,6 +844,21 @@ export function createSquadState(ctx) {
     get schemeLineup() {
       return schemeLineup
     },
+    get roleTiles() {
+      return roleTiles
+    },
+    get roleFocusId() {
+      return roleFocusId
+    },
+    get rolePickingId() {
+      return rolePickingId
+    },
+    get roleAnchorId() {
+      return roleAnchorId
+    },
+    get roleBusy() {
+      return roleBusy
+    },
     get squadPlayers() {
       return squadPlayers
     },
@@ -876,6 +973,10 @@ export function createSquadState(ctx) {
     stepFormation,
     setFormationPage,
     selectFormation,
+    focusRole,
+    selectRole,
+    assignRolePlayer,
+    cancelRolePick,
     focusPlayer,
     activatePlayer,
     revealName,

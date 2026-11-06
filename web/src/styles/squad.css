@@ -1431,6 +1431,159 @@ button.squad-tile {
   opacity: 0.5;
 }
 
+/* ---------- roles ---------- */
+
+.plan-stage.is-roles {
+  padding-bottom: 0;
+}
+
+.role-panel {
+  display: flex;
+  flex: 0 0 auto;
+  height: clamp(156px, 21vh, 208px);
+  min-height: 0;
+  background: var(--tile);
+  box-shadow: var(--shadow-tile);
+}
+
+.role-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  width: 100%;
+  background: rgba(29, 33, 56, 0.16);
+}
+
+.role-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 10px 7px;
+  overflow: hidden;
+  border: 0;
+  background: var(--tile);
+  color: var(--ink);
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color 140ms linear,
+    color 140ms linear,
+    box-shadow 140ms linear;
+}
+
+.role-tile.is-captain {
+  grid-row: span 2;
+}
+
+.role-tile[data-nav]:focus {
+  outline: none;
+  background: var(--focus-fill);
+  color: var(--focus-ink);
+  box-shadow: var(--shadow-focus);
+  z-index: 2;
+}
+
+.role-tile.is-picking {
+  background: var(--focus-fill);
+  color: var(--focus-ink);
+  box-shadow: inset 0 0 0 2px var(--focus-mark);
+  z-index: 2;
+}
+
+.role-name {
+  display: block;
+  max-width: 100%;
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.role-tile[data-nav]:focus .role-name,
+.role-tile.is-picking .role-name {
+  color: var(--focus-mark);
+}
+
+.role-icon {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+  color: var(--ink-2);
+}
+
+.role-tile[data-nav]:focus .role-icon,
+.role-tile.is-picking .role-icon {
+  color: var(--focus-ink);
+}
+
+.role-glyph {
+  display: block;
+  width: auto;
+  height: clamp(26px, 4.2vh, 38px);
+  max-width: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.role-glyph.is-mirrored {
+  transform: scaleX(-1);
+}
+
+.role-glyph-c {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(34px, 4.6vh, 46px);
+  height: clamp(34px, 4.6vh, 46px);
+  border: 2px solid currentColor;
+  font-family: var(--font-heading);
+  font-size: clamp(24px, 3.2vh, 32px);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.role-tile[data-nav]:focus .role-glyph-c,
+.role-tile.is-picking .role-glyph-c {
+  color: var(--focus-mark);
+}
+
+.role-player {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-tile[data-nav]:focus .role-player,
+.role-tile.is-picking .role-player {
+  color: var(--focus-ink);
+}
+
+.role-tile.is-picking .role-player {
+  color: var(--focus-mark);
+}
+
 /* ---------- bench drawer ---------- */
 
 .bench-drawer {

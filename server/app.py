@@ -50,6 +50,7 @@ from server.career import (
     resolve_transfer_offers,
     season_transition,
     set_formation,
+    set_role_assignment,
     set_shirt_number,
     set_transfer_status,
     sign_transfer_contract,
@@ -425,6 +426,7 @@ class CareerActionRequest(BaseModel):
     wage_share: int | None = None
     buyout: bool | None = None
     formation: str | None = None
+    role: str | None = None
 
 
 class ManagerInfo(BaseModel):
@@ -486,6 +488,7 @@ class SquadBlock(BaseModel):
     finance: SquadFinance
     groups: list[SquadGroup]
     formations: list[FormationOption] = []
+    roles: dict[str, str] = {}
     lineup: Lineup
 
 
@@ -1828,6 +1831,18 @@ def create_app(db_path: Path | None = None, saves_dir: Path | None = None) -> Fa
             players = canon.players_by_ids(career.player_ids)
             try:
                 set_formation(career, players, payload.formation)
+            except ActionError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+        elif payload.type == "role":
+            if not payload.role or not payload.player_id:
+                raise HTTPException(
+                    status_code=422, detail="role requires role and player_id"
+                )
+            players = canon.players_by_ids(career.player_ids)
+            try:
+                set_role_assignment(
+                    career, players, payload.role, payload.player_id
+                )
             except ActionError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
         elif payload.type == "advance":

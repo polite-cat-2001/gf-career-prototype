@@ -57,6 +57,7 @@ class Career:
     lineup: list[str] | None = None
     bench_order: list[str] | None = None
     formation: str = DEFAULT_FORMATION
+    role_assignments: dict[str, str] = field(default_factory=dict)
     schedule: list[dict] | None = None
     schedule_version: int = 0
     results: dict[str, dict] = field(default_factory=dict)
@@ -115,6 +116,10 @@ class Career:
         if self.bench_order is not None:
             payload["bench"] = list(self.bench_order)
         payload["formation"] = self.formation
+        if self.role_assignments:
+            payload["role_assignments"] = {
+                role: str(player_id) for role, player_id in self.role_assignments.items()
+            }
         if self.schedule is not None:
             payload["schedule"] = list(self.schedule)
             payload["schedule_version"] = self.schedule_version
@@ -341,6 +346,10 @@ class Career:
             formation=str(raw.get("formation") or DEFAULT_FORMATION)
             if str(raw.get("formation") or DEFAULT_FORMATION) in FORMATIONS
             else DEFAULT_FORMATION,
+            role_assignments={
+                str(role): str(player_id)
+                for role, player_id in (raw.get("role_assignments") or {}).items()
+            },
             schedule=None
             if schedule is None
             else [

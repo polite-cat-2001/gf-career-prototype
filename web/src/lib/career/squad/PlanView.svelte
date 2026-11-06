@@ -4,6 +4,7 @@
   import PlayerBlock from '../shared/PlayerBlock.svelte'
   import RadarChart from '../shared/RadarChart.svelte'
   import PitchBoard from './PitchBoard.svelte'
+  import RolesPanel from './RolesPanel.svelte'
   import SchemesPanel from './SchemesPanel.svelte'
 
   let {
@@ -35,6 +36,13 @@
     onPreviewFormation,
     onSelectFormation,
     onFormationScroll,
+    roleTiles,
+    roleFocusId,
+    rolePickingId,
+    roleAnchorId,
+    onRoleFocus,
+    onRoleSelect,
+    onRolePlayerActivate,
     onCardFocus,
     onCardEnter,
     onCardActivate,
@@ -49,6 +57,7 @@
     class="plan-stage"
     class:has-drawer={view === 'plan' && planTab === 'squad'}
     class:is-schemes={planTab === 'schemes'}
+    class:is-roles={planTab === 'roles'}
   >
     <nav class="plan-tabs" aria-label="План игры">
       {#each planTabs as item (item.id)}
@@ -145,6 +154,25 @@
         onPreview={onPreviewFormation}
         onSelect={onSelectFormation}
         onScroll={onFormationScroll}
+      />
+    {:else if planTab === 'roles'}
+      <PitchBoard
+        {lineup}
+        anchorId={roleAnchorId}
+        showStrength={false}
+        interactive={Boolean(rolePickingId)}
+        trapFocus={Boolean(rolePickingId)}
+        onCardFocus={onCardFocus}
+        onCardEnter={onCardEnter}
+        onCardActivate={onRolePlayerActivate}
+      />
+
+      <RolesPanel
+        roles={roleTiles}
+        focusedId={roleFocusId}
+        pickingId={rolePickingId}
+        onFocus={onRoleFocus}
+        onSelect={onRoleSelect}
       />
     {:else}
       {#if comparing}

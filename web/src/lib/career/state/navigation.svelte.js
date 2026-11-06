@@ -316,6 +316,23 @@ export function createNavigationState(ctx) {
           start,
         ]
       }
+      if (tab === 'squad' && view === 'plan' && squad.planTab === 'roles') {
+        if (squad.rolePickingId) {
+          return [
+            { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Игрок' },
+            { gamepad: ['A'], keyboard: ['Enter'], label: 'Утвердить' },
+            { gamepad: ['B'], keyboard: ['Esc'], label: 'Отмена' },
+            start,
+          ]
+        }
+        return [
+          { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Вкладки' },
+          { gamepad: ['D-pad'], keyboard: ['Стрелки'], label: 'Амплуа' },
+          { gamepad: ['A'], keyboard: ['Enter'], label: 'Выбрать' },
+          { gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' },
+          start,
+        ]
+      }
       if (tab === 'squad' && view === 'plan' && squad.planTab === 'schemes') {
         return [
           { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Вкладки' },
@@ -527,6 +544,14 @@ export function createNavigationState(ctx) {
           return
         }
         if (view === 'plan') {
+          if (squad.planTab === 'roles') {
+            if (squad.rolePickingId) {
+              squad.cancelRolePick()
+            } else {
+              squad.openPlanTab('squad')
+            }
+            return
+          }
           if (squad.planTab === 'schemes') {
             squad.openPlanTab('squad')
             return
@@ -576,7 +601,13 @@ export function createNavigationState(ctx) {
         return
       }
       if (tab === 'squad' && view === 'centre') return
-      if (tab === 'squad' && view === 'plan' && squad.planTab === 'schemes') return
+      if (
+        tab === 'squad' &&
+        view === 'plan' &&
+        ['schemes', 'roles'].includes(squad.planTab)
+      ) {
+        return
+      }
       toggleDetails()
     }
   
@@ -584,7 +615,7 @@ export function createNavigationState(ctx) {
       if (match.matchdayOpen || match.seasonReview) return
       if (tab !== 'squad' || !squad.focusedPlayer) return
       if (view === 'centre') return
-      if (squad.planTab === 'schemes') return
+      if (['schemes', 'roles'].includes(squad.planTab)) return
       if (view === 'details') {
         closeDetails()
         return

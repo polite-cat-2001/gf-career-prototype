@@ -9,7 +9,7 @@ export const tabs = [
 export const planTabs = [
   { id: 'squad', label: 'Состав' },
   { id: 'schemes', label: 'Схемы' },
-  { id: 'roles', label: 'Амплуа', disabled: true },
+  { id: 'roles', label: 'Амплуа' },
   { id: 'tasks', label: 'Задачи', disabled: true },
   { id: 'tactics', label: 'Тактика', disabled: true },
 ]

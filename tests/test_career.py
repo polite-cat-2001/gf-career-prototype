@@ -514,6 +514,92 @@ def test_formation_switch_rejects_unknown_scheme(client: TestClient):
     assert response.status_code == 422
 
 
+def test_roles_defaults_cover_every_role_and_starters(client: TestClient):
+    created = create_career(client)
+    roles = created["squad"]["roles"]
+    starter_ids = {
+        slot["player"]["id"] for slot in created["squad"]["lineup"]["slots"]
+    }
+
+    assert set(roles) == {
+        "captain",
+        "free_kick_left",
+        "free_kick_right",
+        "free_kick_long",
+        "penalties",
+        "corner_left",
+        "corner_right",
+    }
+    assert set(roles.values()) <= starter_ids
+
+
+def test_role_assignment_persists_and_journals(client: TestClient, saves_dir: Path):
+    created = create_career(client)
+    starters = [slot["player"] for slot in created["squad"]["lineup"]["slots"]]
+    current = created["squad"]["roles"]["captain"]
+    replacement = next(player for player in starters if player["id"] != current)
+
+    response = client.post(
+        f"/api/careers/{created['id']}/actions",
+        json={"type": "role", "role": "captain", "player_id": replacement["id"]},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["squad"]["roles"]["captain"] == replacement["id"]
+
+    loaded = client.get(f"/api/careers/{created['id']}").json()
+    assert loaded["squad"]["roles"]["captain"] == replacement["id"]
+
+    raw = json.loads((saves_dir / f"{created['id']}.json").read_text(encoding="utf-8"))
+    assert raw["role_assignments"]["captain"] == replacement["id"]
+    assert raw["journal"][-1]["type"] == "lineup.role"
+
+
+def test_role_assignment_rejects_bench_player_and_unknown_role(client: TestClient):
+    created = create_career(client)
+    bench_player = created["squad"]["lineup"]["bench"][0]
+
+    bench = client.post(
+        f"/api/careers/{created['id']}/actions",
+        json={"type": "role", "role": "penalties", "player_id": bench_player["id"]},
+    )
+    assert bench.status_code == 422
+
+    unknown = client.post(
+        f"/api/careers/{created['id']}/actions",
+        json={"type": "role", "role": "waterboy", "player_id": bench_player["id"]},
+    )
+    assert unknown.status_code == 422
+
+
+def test_role_falls_back_to_starter_after_lineup_change(client: TestClient):
+    created = create_career(client)
+    starters = [slot["player"] for slot in created["squad"]["lineup"]["slots"]]
+    current = created["squad"]["roles"]["penalties"]
+    replacement = next(player for player in starters if player["id"] != current)
+    bench_player = created["squad"]["lineup"]["bench"][0]
+
+    client.post(
+        f"/api/careers/{created['id']}/actions",
+        json={"type": "role", "role": "penalties", "player_id": replacement["id"]},
+    )
+    swapped = client.post(
+        f"/api/careers/{created['id']}/actions",
+        json={
+            "type": "swap",
+            "player_a": replacement["id"],
+            "player_b": bench_player["id"],
+        },
+    )
+    assert swapped.status_code == 200, swapped.text
+
+    roles = swapped.json()["squad"]["roles"]
+    starter_ids = {
+        slot["player"]["id"] for slot in swapped.json()["squad"]["lineup"]["slots"]
+    }
+    assert roles["penalties"] in starter_ids
+    assert roles["penalties"] != replacement["id"]
+
+
 def test_swap_rejects_unknown_player_and_same_player(client: TestClient):
     created = create_career(client)
     starter = created["squad"]["lineup"]["slots"][1]["player"]
