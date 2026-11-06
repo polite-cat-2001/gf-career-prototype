@@ -49,7 +49,6 @@ export function createScoutingState(ctx) {
     let busy = $state(false)
     let acked = $state(false)
     let initialResolved = $state(false)
-    let failedPhotos = $state({})
     let entryActionsOpen = $state(false)
     let entryActionsId = $state(null)
     let scoutActionsOpen = $state(false)
@@ -885,12 +884,6 @@ export function createScoutingState(ctx) {
     },
     set initialResolved(value) {
       initialResolved = value
-    },
-    get failedPhotos() {
-      return failedPhotos
-    },
-    set failedPhotos(value) {
-      failedPhotos = value
     },
     get entryActionsOpen() {
       return entryActionsOpen

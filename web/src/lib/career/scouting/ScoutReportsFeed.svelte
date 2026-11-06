@@ -9,6 +9,7 @@
     shortRole,
     statTone,
   } from '../../format.js'
+  import PlayerPhoto from '../../ui/PlayerPhoto.svelte'
   import ScoutReportCard from './ScoutReportCard.svelte'
 
   let {
@@ -17,12 +18,10 @@
     scoutFilter,
     entries,
     selectedEntry,
-    failedPhotos,
     entryActionsOpen,
     onFilter,
     onFocusEntry,
     onOpenEntry,
-    onEntryFail,
     scoutName,
     footLabel,
     positionLabel,
@@ -56,10 +55,8 @@
           {entry}
           selected={selectedEntry?.player.id === entry.player.id}
           autofocus={index === 0}
-          failed={Boolean(failedPhotos[entry.player.id])}
           onFocus={() => onFocusEntry(entry.player.id)}
           onOpen={() => onOpenEntry(entry)}
-          onFail={() => onEntryFail(entry.player.id)}
         />
       {/each}
       {#if !entries.length}
@@ -83,17 +80,8 @@
     {#if selectedEntry}
       {@const player = selectedEntry.player}
       <div class="sc-report-top">
-        <span
-          class="sc-report-photo"
-          class:is-empty={!player.photo || failedPhotos[player.id]}
-        >
-          {#if !player.photo || failedPhotos[player.id]}
-            <span class="sc-entry-photo-fallback">
-              <Icon name="users" size={36} />
-            </span>
-          {:else}
-            <img src={player.photo} alt="" onerror={() => onEntryFail(player.id)} />
-          {/if}
+        <span class="sc-report-photo">
+          <PlayerPhoto src={player.photo} />
         </span>
         <div class="sc-report-info">
           {#if !selectedEntry.acknowledged}

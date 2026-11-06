@@ -1,5 +1,6 @@
 <script>
-  import { hideBrokenImage, posTone, shortRole, statusLabel } from './format.js'
+  import { posTone, shortRole, statusLabel } from './format.js'
+  import PlayerPhoto from './ui/PlayerPhoto.svelte'
 
   let {
     player,
@@ -34,7 +35,7 @@
   {onclick}
 >
   <span class="player-photo">
-    <img src={player.photo} alt="" loading="lazy" onerror={hideBrokenImage} />
+    <PlayerPhoto src={player.photo} loading="lazy" />
     {#if player.injury}
       <span
         class="player-status-flag"

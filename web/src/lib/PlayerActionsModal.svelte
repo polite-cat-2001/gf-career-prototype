@@ -1,7 +1,7 @@
 ﻿<script>
   import { onMount } from 'svelte'
-  import Icon from './Icon.svelte'
   import { inputDevice } from './input.js'
+  import PlayerPhoto from './ui/PlayerPhoto.svelte'
   import { trapModalFocus } from './ui/modalFocus.js'
   import { portal } from './ui/portal.js'
   import {
@@ -30,7 +30,6 @@
     ondiscuss = null,
   } = $props()
 
-  let photoFailed = $state(false)
   let modalLayer = $state(null)
 
   onMount(() => trapModalFocus(modalLayer))
@@ -81,18 +80,8 @@
   <div class="gf-modal-shell">
     <div class="gf-modal gf-modal--player" role="dialog" aria-modal="true" aria-label="Действия игрока">
     <header class="gf-modal__head">
-      <span class="gf-modal__photo" class:is-empty={!player.photo || photoFailed}>
-        {#if !player.photo || photoFailed}
-          <span class="sc-entry-photo-fallback">
-            <Icon name="users" size={40} />
-          </span>
-        {:else}
-          <img
-            src={player.photo}
-            alt=""
-            onerror={() => (photoFailed = true)}
-          />
-        {/if}
+      <span class="gf-modal__photo">
+        <PlayerPhoto src={player.photo} />
       </span>
       <div class="gf-modal__title">
         <span class="gf-modal__eyebrow">Действия игрока</span>

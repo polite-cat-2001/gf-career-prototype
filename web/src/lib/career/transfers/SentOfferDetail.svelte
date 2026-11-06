@@ -5,6 +5,7 @@
     hideBrokenImage,
     shortRole,
   } from '../../format.js'
+  import PlayerPhoto from '../../ui/PlayerPhoto.svelte'
   import {
     contractStatusLabel,
     offerKindLabel,
@@ -69,7 +70,7 @@
   {#if offer}
     <div class="tf-offer-detail-hero">
       <span class="tf-offer-detail-photo">
-        <img src={offer.photo} alt="" onerror={hideBrokenImage} />
+        <PlayerPhoto src={offer.photo} />
       </span>
       <div class="tf-offer-detail-info">
         <strong class="tf-offer-detail-name">{offer.name}</strong>

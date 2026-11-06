@@ -3,10 +3,10 @@
   import CentreProfile from '../shared/CentreProfile.svelte'
   import MoraleFace from '../shared/MoraleFace.svelte'
   import SquadActions from '../shared/SquadActions.svelte'
+  import PlayerPhoto from '../../ui/PlayerPhoto.svelte'
   import {
     formatDate,
     formatValue,
-    hideBrokenImage,
     playerInitialName,
     plural,
     posTone,
@@ -73,7 +73,7 @@
               <span class="pos-badge {posTone(row.role)}">{shortRole(row.role)}</span>
               <span class="finance-name-cell">
                 <span class="finance-row-photo">
-                  <img src={row.photo} alt="" onerror={hideBrokenImage} />
+                  <PlayerPhoto src={row.photo} />
                   {#if row.injury}
                     <span
                       class="player-status-flag"

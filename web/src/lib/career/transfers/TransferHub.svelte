@@ -1,6 +1,7 @@
 ﻿<script>
   import Icon from '../../Icon.svelte'
-  import { hideBrokenImage, shortDate } from '../../format.js'
+  import PlayerPhoto from '../../ui/PlayerPhoto.svelte'
+  import { shortDate } from '../../format.js'
   import TransferHubCard from './TransferHubCard.svelte'
 
   let {
@@ -41,7 +42,7 @@
       {#each reportPageEntries as entry, index (entry.player.id)}
         <div class="tf-scout-item">
           <span class="tf-scout-photo">
-            <img src={entry.player.photo} alt="" onerror={hideBrokenImage} />
+            <PlayerPhoto src={entry.player.photo} />
           </span>
           <span class="tf-scout-main">
             <strong>{entry.player.name}</strong>

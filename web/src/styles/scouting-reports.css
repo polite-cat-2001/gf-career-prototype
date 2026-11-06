@@ -150,22 +150,6 @@
   object-position: bottom center;
 }
 
-.sc-entry-photo.is-empty {
-  align-items: center;
-}
-
-.sc-entry-photo-fallback {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  color: var(--ink-2);
-}
-
-.sc-entry[data-nav]:focus .sc-entry-photo-fallback {
-  color: var(--focus-ink-2);
-}
-
 .sc-entry-main {
   align-self: center;
   display: flex;
@@ -305,10 +289,6 @@
   max-height: 100%;
   object-fit: contain;
   object-position: bottom center;
-}
-
-.sc-report-photo.is-empty {
-  align-items: center;
 }
 
 .sc-report-info {

@@ -1,5 +1,6 @@
 <script>
   import { formatValue, hideBrokenImage, shortRole } from '../../format.js'
+  import PlayerPhoto from '../../ui/PlayerPhoto.svelte'
 
   let {
     offer,
@@ -17,7 +18,7 @@
   <div class="gf-offer">
     <aside class="gf-offer__player">
       <span class="gf-offer__photo">
-        <img src={player.photo} alt="" onerror={hideBrokenImage} />
+        <PlayerPhoto src={player.photo} />
       </span>
       <strong class="gf-offer__name">{player.name}</strong>
       <div class="gf-offer__facts">

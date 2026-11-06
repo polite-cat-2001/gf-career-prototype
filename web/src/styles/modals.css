@@ -98,12 +98,6 @@
   object-fit: contain;
 }
 
-.gf-modal__photo.is-empty {
-  align-items: center;
-  background: rgba(29, 33, 56, 0.07);
-  color: var(--ink-2);
-}
-
 .gf-modal__title {
   display: flex;
   flex-direction: column;

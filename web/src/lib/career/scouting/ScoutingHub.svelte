@@ -252,7 +252,6 @@
       scoutFilter={hub.scoutFilter}
       entries={hub.entries}
       selectedEntry={hub.selectedEntry}
-      failedPhotos={hub.failedPhotos}
       entryActionsOpen={hub.entryActionsOpen}
       onFilter={(id) => {
         hub.reportFilter = id
@@ -264,7 +263,6 @@
         hub.selectedEntryId = entry.player.id
         hub.openEntryActions(entry)
       }}
-      onEntryFail={(id) => (hub.failedPhotos[id] = true)}
       scoutName={hub.scoutName}
       footLabel={hub.footLabel}
       {positionLabel}

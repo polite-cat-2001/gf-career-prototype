@@ -1,18 +1,18 @@
 <script>
   import {
-    hideBrokenImage,
     playerInitialName,
     positionLabel,
     shortRole,
     statusLabel,
   } from '../../format.js'
+  import PlayerPhoto from '../../ui/PlayerPhoto.svelte'
 
   let { player, eyebrow = '' } = $props()
 </script>
 
 <div class="centre-profile">
   <span class="centre-photo">
-    <img src={player.photo} alt="" onerror={hideBrokenImage} />
+    <PlayerPhoto src={player.photo} />
     {#if player.injury}
       <span
         class="player-status-flag"

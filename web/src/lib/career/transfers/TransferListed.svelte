@@ -1,8 +1,9 @@
 <script>
   import { tick } from 'svelte'
   import Accordion from '../../ui/Accordion.svelte'
+  import PlayerPhoto from '../../ui/PlayerPhoto.svelte'
   import { focusElement, focusFirst } from '../../input.js'
-  import { hideBrokenImage, playerInitialName, shortRole } from '../../format.js'
+  import { playerInitialName, shortRole } from '../../format.js'
 
   let {
     players = [],
@@ -116,7 +117,7 @@
           <span class="tf-listed-pos">{shortRole(player.role)}</span>
           <span class="tf-listed-player">
             <span class="tf-listed-photo">
-              <img src={player.photo} alt="" onerror={hideBrokenImage} />
+              <PlayerPhoto src={player.photo} />
             </span>
             <span class="tf-listed-name">{playerInitialName(player)}</span>
           </span>

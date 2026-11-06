@@ -2,6 +2,7 @@
   import { onMount, tick } from 'svelte'
   import { registerBack, registerTabs } from './actions.js'
   import { focusFirst } from './input.js'
+  import PlayerPhoto from './ui/PlayerPhoto.svelte'
   import {
     formatValue,
     hideBrokenImage,
@@ -133,9 +134,7 @@
         aria-label={`${entry.player_name}: ${entry.from_club_name || 'Свободный агент'} — ${entry.to_club_name}`}
       >
         <span class="tf-history-photo">
-          {#if entry.photo}
-            <img src={entry.photo} alt="" onerror={hideBrokenImage} />
-          {/if}
+          <PlayerPhoto src={entry.photo} />
         </span>
         <span class="tf-history-main">
           <strong>{entry.player_name}</strong>

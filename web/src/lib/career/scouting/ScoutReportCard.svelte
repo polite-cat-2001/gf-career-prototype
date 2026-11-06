@@ -1,8 +1,8 @@
 <script>
-  import Icon from '../../Icon.svelte'
+  import PlayerPhoto from '../../ui/PlayerPhoto.svelte'
   import { hideBrokenImage, plural, posTone, shortRole } from '../../format.js'
 
-  let { entry, selected = false, autofocus = false, failed = false, onFocus, onOpen, onFail } = $props()
+  let { entry, selected = false, autofocus = false, onFocus, onOpen } = $props()
 </script>
 
 <button
@@ -14,14 +14,8 @@
   onfocus={onFocus}
   onclick={onOpen}
 >
-  <span class="sc-entry-photo" class:is-empty={!entry.player.photo || failed}>
-    {#if !entry.player.photo || failed}
-      <span class="sc-entry-photo-fallback">
-        <Icon name="users" size={24} />
-      </span>
-    {:else}
-      <img src={entry.player.photo} alt="" onerror={onFail} />
-    {/if}
+  <span class="sc-entry-photo">
+    <PlayerPhoto src={entry.player.photo} />
   </span>
   <span class="sc-entry-main">
     <strong>{entry.player.name}</strong>

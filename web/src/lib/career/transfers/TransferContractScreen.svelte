@@ -1,11 +1,11 @@
 <script>
   import ContractTerms from '../shared/ContractTerms.svelte'
   import CentreInfoRow from '../shared/CentreInfoRow.svelte'
+  import PlayerPhoto from '../../ui/PlayerPhoto.svelte'
   import {
     contractRoleLabel,
     formatDate,
     formatValue,
-    hideBrokenImage,
     plural,
     positionLabel,
     shortRole,
@@ -37,7 +37,7 @@
   <aside class="gf-contract__player">
     <div class="gf-contract__profile">
       <span class="gf-contract__photo">
-        <img src={player.photo} alt="" onerror={hideBrokenImage} />
+        <PlayerPhoto src={player.photo} />
       </span>
       <div class="gf-contract__profile-info">
         <span class="gf-contract__eyebrow">

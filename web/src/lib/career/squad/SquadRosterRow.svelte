@@ -1,7 +1,7 @@
 <script>
   import MoraleFace from '../shared/MoraleFace.svelte'
+  import PlayerPhoto from '../../ui/PlayerPhoto.svelte'
   import {
-    hideBrokenImage,
     ovrClass,
     playerInitialName,
     posTone,
@@ -26,7 +26,7 @@
   onclick={() => onToggle(player)}
 >
   <span class="centre-row-photo">
-    <img src={player.photo} alt="" onerror={hideBrokenImage} />
+    <PlayerPhoto src={player.photo} />
     {#if player.injury}
       <span
         class="player-status-flag"

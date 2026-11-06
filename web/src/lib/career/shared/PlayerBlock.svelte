@@ -1,12 +1,12 @@
 <script>
   import {
-    hideBrokenImage,
     ovrClass,
     playerInitialName,
     posTone,
     shortRole,
     statusLabel,
   } from '../../format.js'
+  import PlayerPhoto from '../../ui/PlayerPhoto.svelte'
   import { currentRole, ratingAt, targetInfo } from '../utils/squad.js'
 
   let { player, mirrored = false, comparing, anchorPlayer, focusedPlayer, lineup } = $props()
@@ -18,7 +18,7 @@
 <div class="head-side" class:mirrored={mirrored}>
   <div class="head-photo-block">
     <span class="player-photo-large">
-      <img src={player.photo} alt="" onerror={hideBrokenImage} />
+      <PlayerPhoto src={player.photo} />
       {#if player.injury}
         <span
           class="player-status-flag"

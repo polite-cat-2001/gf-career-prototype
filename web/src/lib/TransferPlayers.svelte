@@ -2,6 +2,7 @@
   import { tick } from 'svelte'
   import Icon from './Icon.svelte'
   import PlayerActionsModal from './PlayerActionsModal.svelte'
+  import PlayerPhoto from './ui/PlayerPhoto.svelte'
   import { focusElement, focusFirst } from './input.js'
   import {
     attributeGroups,
@@ -190,7 +191,7 @@
           onclick={() => openActions(player.id)}
         >
           <span class="tf-result-photo">
-            <img src={player.photo} alt="" onerror={hideBrokenImage} />
+            <PlayerPhoto src={player.photo} />
           </span>
           <span class="tf-result-main">
             <span class="tf-result-name">{playerInitialName(player)}</span>
@@ -223,7 +224,7 @@
     {#if selected}
       <div class="tf-detail-top">
         <span class="tf-detail-photo">
-          <img src={selected.photo} alt="" onerror={hideBrokenImage} />
+          <PlayerPhoto src={selected.photo} />
         </span>
         <div class="tf-detail-info">
           <strong class="tf-detail-name">{selected.name}</strong>

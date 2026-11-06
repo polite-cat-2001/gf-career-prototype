@@ -1,5 +1,6 @@
 <script>
   import Accordion from '../../ui/Accordion.svelte'
+  import PlayerPhoto from '../../ui/PlayerPhoto.svelte'
   import { formatDate, formatValue, hideBrokenImage, shortRole } from '../../format.js'
   import { offerKindLabel, offerStatusLabel } from '../utils/transfers.js'
 
@@ -84,7 +85,7 @@
     <span class="tf-offer-kind">{offerKindLabel(offer.kind)}</span>
     <span class="tf-offer-player">
       <span class="tf-offer-photo">
-        <img src={offer.photo} alt="" onerror={hideBrokenImage} />
+        <PlayerPhoto src={offer.photo} />
       </span>
       <span class="tf-offer-name">{offer.name}</span>
     </span>
