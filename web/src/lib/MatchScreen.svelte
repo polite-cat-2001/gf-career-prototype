@@ -81,7 +81,6 @@
               <img src={data.home_team.logo} alt="" onerror={hideBrokenImage} />
               <div class="sim-club__text">
                 <strong>{data.home_team.name}</strong>
-                {#if data.home}<span class="sim-club__tag">Ваша команда</span>{/if}
               </div>
             </div>
 
@@ -95,7 +94,6 @@
             <div class="sim-club is-away">
               <div class="sim-club__text">
                 <strong>{data.away_team.name}</strong>
-                {#if !data.home}<span class="sim-club__tag">Ваша команда</span>{/if}
               </div>
               <img src={data.away_team.logo} alt="" onerror={hideBrokenImage} />
             </div>

@@ -11,6 +11,7 @@
           { gamepad: ['B'], keyboard: ['Esc'], label: 'В хаб' },
         ]
       : [
+          { gamepad: ['L-stick'], keyboard: ['↑', '↓'], label: 'Прокрутка' },
           { gamepad: ['A'], keyboard: ['Enter'], label: 'Продолжить' },
           { gamepad: ['B'], keyboard: ['Esc'], label: 'К результатам' },
         ],

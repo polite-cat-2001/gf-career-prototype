@@ -1,7 +1,7 @@
 <script>
   import Glyph from '../../ui/Glyph.svelte'
-  import LeagueTableTile from './LeagueTableTile.svelte'
   import NextMatchTile from './NextMatchTile.svelte'
+  import OverviewTile from './OverviewTile.svelte'
 
   let {
     career,
@@ -15,12 +15,16 @@
     simulating,
     advancing,
     ownRow,
-    tableRows,
-    tableRound,
+    tournament,
+    overviewSection,
     inert,
     onPlay,
     onOpenSimulation,
     onNext,
+    onOpenOverview,
+    onSelectOverviewSection,
+    onOverviewFocus,
+    onOverviewBlur,
   } = $props()
 </script>
 
@@ -50,11 +54,14 @@
     <span class="gf-tile__glyph"><Glyph name="shirt" size={68} /></span>
   </section>
 
-  <LeagueTableTile
-    rows={tableRows}
-    standings={season?.standings ?? []}
+  <OverviewTile
+    {tournament}
+    section={overviewSection}
     clubId={career.club.id}
-    round={tableRound}
+    onopen={onOpenOverview}
+    onselectsection={onSelectOverviewSection}
+    onfocus={onOverviewFocus}
+    onblur={onOverviewBlur}
   />
 
   <section class="gf-tile home-tile home-news is-soon">

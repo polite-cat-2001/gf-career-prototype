@@ -16,12 +16,15 @@
 <div class="gf-legend">
   <div class="gf-control-hints">
     {#each shown as hint}
-      <span class="gf-control-hint">
-        {#each hint[device] || [] as key}
-          <kbd>{key}</kbd>
-        {/each}
-        <span>{hint.label}</span>
-      </span>
+      {@const keys = hint[device] || []}
+      {#if keys.length}
+        <span class="gf-control-hint">
+          {#each keys as key}
+            <kbd>{key}</kbd>
+          {/each}
+          <span>{hint.label}</span>
+        </span>
+      {/if}
     {/each}
   </div>
   {#if note}

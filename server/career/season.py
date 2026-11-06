@@ -619,6 +619,8 @@ def season_state(
             "date": fixture["date"],
             "round": fixture["round"],
             "home": fixture["home"] == career.club_id,
+            "competition": competition_name,
+            "competition_id": career.league_id,
             "opponent": {
                 "id": opponent.get("id", opponent_id),
                 "name": opponent.get("name", opponent_id),

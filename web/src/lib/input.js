@@ -63,6 +63,24 @@ function cycle(direction) {
   triggerCycle(direction)
 }
 
+function scrollRegionTarget() {
+  const regions = Array.from(document.querySelectorAll('[data-stick-scroll]')).filter(
+    (element) => visible(element) && !element.closest('[inert]'),
+  )
+  if (!regions.length) return null
+  const active = document.activeElement
+  const owner = active?.closest?.('[data-stick-scroll]')
+  if (owner && regions.includes(owner)) return owner
+  if (active?.matches?.(NAV_SELECTOR) && visible(active)) return null
+  return regions[0]
+}
+
+function scrollRegion(region, amount) {
+  if (!region || !amount) return false
+  region.scrollTop += amount
+  return true
+}
+
 function stepFocused(direction) {
   const element = document.activeElement
   if (element?.dataset?.edit === 'true') {
@@ -381,6 +399,9 @@ function onKeyDown(event) {
       ArrowRight: 'right',
     }
     const direction = map[event.key]
+    if (direction === 'up' || direction === 'down') {
+      if (scrollRegion(scrollRegionTarget(), direction === 'up' ? -48 : 48)) return
+    }
     if (stepFocused(direction)) return
     if (
       (direction === 'left' || direction === 'right') &&
@@ -455,21 +476,35 @@ function pollGamepad() {
     const rightX = pad.axes[2] ?? 0
     const pressed = pad.buttons.map((button) => button.pressed)
 
-    let direction = ''
-    if (pressed[12] || axisY < -0.55) direction = 'up'
-    else if (pressed[13] || axisY > 0.55) direction = 'down'
-    else if (pressed[14] || axisX < -0.55) direction = 'left'
-    else if (pressed[15] || axisX > 0.55) direction = 'right'
+    const scrollTarget = scrollRegionTarget()
+    let scrollAmount = 0
+    if (scrollTarget) {
+      if (pressed[12]) scrollAmount = -1
+      else if (pressed[13]) scrollAmount = 1
+      else if (Math.abs(axisY) > 0.35) scrollAmount = axisY
+    }
 
-    if (direction) {
+    let direction = ''
+    if (scrollAmount) {
       inputDevice.set('gamepad')
-      if (direction !== lastDirection || now - lastMoveAt > 190) {
-        lastDirection = direction
-        lastMoveAt = now
-        if (!stepFocused(direction)) moveFocus(direction)
-      }
-    } else {
+      scrollRegion(scrollTarget, scrollAmount * 26)
       lastDirection = ''
+    } else {
+      if (pressed[12] || axisY < -0.55) direction = 'up'
+      else if (pressed[13] || axisY > 0.55) direction = 'down'
+      else if (pressed[14] || axisX < -0.55) direction = 'left'
+      else if (pressed[15] || axisX > 0.55) direction = 'right'
+
+      if (direction) {
+        inputDevice.set('gamepad')
+        if (direction !== lastDirection || now - lastMoveAt > 190) {
+          lastDirection = direction
+          lastMoveAt = now
+          if (!stepFocused(direction)) moveFocus(direction)
+        }
+      } else {
+        lastDirection = ''
+      }
     }
 
     if (Math.abs(rightX) > 0.55) {

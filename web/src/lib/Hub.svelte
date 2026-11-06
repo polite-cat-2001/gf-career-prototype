@@ -25,16 +25,14 @@
     tabs,
   } from './career/constants/hub.js'
   import { transferHubCards } from './career/constants/transfers.js'
-  import {
-    ownRow as findOwnRow,
-    tableRound as computeTableRound,
-    tableRows as computeTableRows,
-  } from './career/utils/table.js'
+  import { ownRow as findOwnRow } from './career/utils/table.js'
+  import { createCentreState } from './career/state/centre.svelte.js'
   import { createMatchState } from './career/state/match.svelte.js'
   import { createSquadState } from './career/state/squad.svelte.js'
   import { createTransfersState } from './career/state/transfers.svelte.js'
   import { createNavigationState } from './career/state/navigation.svelte.js'
   import CentreTab from './career/centre/CentreTab.svelte'
+  import TournamentOverlay from './career/centre/TournamentOverlay.svelte'
   import SquadOverview from './career/squad/SquadOverview.svelte'
   import SquadCentre from './career/squad/SquadCentre.svelte'
   import PlanView from './career/squad/PlanView.svelte'
@@ -71,8 +69,6 @@
   let review = $derived(season?.review ?? null)
   let nextMatch = $derived(season?.next ?? null)
   let ownRow = $derived(findOwnRow(season?.standings, career.club.id))
-  let tableRows = $derived(computeTableRows(season?.standings, ownRow))
-  let tableRound = $derived(computeTableRound(season))
   const match = createMatchState({
     getCareer: () => career,
     getNextMatch: () => nextMatch,
@@ -85,6 +81,12 @@
     onplay,
     onadvance,
     onnextseason,
+    focusFirst,
+  })
+
+  const centre = createCentreState({
+    getCareer: () => career,
+    getSeason: () => season,
     focusFirst,
   })
 
@@ -124,6 +126,7 @@
     getSaving: () => saving,
     getCentreAction: () => centreAction,
     match,
+    centre,
     squad,
     transfers,
     onexit,
@@ -274,7 +277,7 @@
 
 <div
   class="app gf-career"
-  class:is-simulating={match.matchSimOpen || match.matchdayOpen}
+  class:is-simulating={match.matchSimOpen || match.matchdayOpen || centre.overlayOpen}
   class:is-plan={nav.tab === 'squad' && (nav.view === 'plan' || nav.view === 'details')}
 >
   <AppShell fill hints={nav.hints} note={legendNote}>
@@ -309,12 +312,16 @@
         simulating={match.simulating}
         advancing={match.advancing}
         {ownRow}
-        {tableRows}
-        {tableRound}
-        inert={match.seasonReview || match.matchSimOpen || match.matchdayOpen}
+        tournament={centre.tournaments[0] ?? null}
+        overviewSection={centre.section}
+        inert={match.seasonReview || match.matchSimOpen || match.matchdayOpen || centre.overlayOpen}
         onPlay={match.playMatch}
         onOpenSimulation={match.openMatchSimulation}
         onNext={match.handleNextWidget}
+        onOpenOverview={centre.openOverlay}
+        onSelectOverviewSection={centre.setSection}
+        onOverviewFocus={() => centre.setWidgetFocused(true)}
+        onOverviewBlur={() => centre.setWidgetFocused(false)}
       />
     {:else if nav.tab === 'transfers'}
       <TransfersTab
@@ -587,5 +594,15 @@
 
   {#if match.matchdayOpen && match.matchdayData}
     <MatchdayOverlay data={match.matchdayData} step={match.matchdayStep} clubId={career.club.id} />
+  {/if}
+
+  {#if centre.overlayOpen && centre.overlayTournament}
+    <TournamentOverlay
+      tournament={centre.overlayTournament}
+      tournaments={centre.tournaments}
+      index={centre.overlayIndex}
+      section={centre.section}
+      clubId={career.club.id}
+    />
   {/if}
 </div>

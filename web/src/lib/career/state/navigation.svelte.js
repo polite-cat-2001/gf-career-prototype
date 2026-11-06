@@ -12,6 +12,7 @@ export function createNavigationState(ctx) {
     getSaving,
     getCentreAction,
     match,
+    centre,
     squad,
     transfers,
     onexit,
@@ -27,6 +28,17 @@ export function createNavigationState(ctx) {
     let hints = $derived.by(() => {
       const start = { gamepad: ['Start'], keyboard: ['S'], label: 'Сохранить' }
       const sections = { gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Разделы' }
+      if (centre.overlayOpen) {
+        const list = []
+        if (centre.section === 'table') {
+          list.push({ gamepad: ['L-stick'], keyboard: ['↑', '↓'], label: 'Прокрутка' })
+        }
+        if (centre.tournaments.length > 1) {
+          list.push({ gamepad: ['L1', 'R1'], keyboard: ['Q', 'E'], label: 'Турниры' })
+        }
+        list.push({ gamepad: ['B'], keyboard: ['Esc'], label: 'Назад' })
+        return list
+      }
       if (match.matchdayOpen) {
         return match.matchdayStep === 'results'
           ? [
@@ -34,6 +46,7 @@ export function createNavigationState(ctx) {
               { gamepad: ['B'], keyboard: ['Esc'], label: 'В хаб' },
             ]
           : [
+              { gamepad: ['L-stick'], keyboard: ['↑', '↓'], label: 'Прокрутка' },
               { gamepad: ['A'], keyboard: ['Enter'], label: 'Продолжить' },
               { gamepad: ['B'], keyboard: ['Esc'], label: 'К результатам' },
             ]
@@ -355,6 +368,9 @@ export function createNavigationState(ctx) {
       }
       const list = [sections]
       if (tab === 'centre') {
+        if (centre.widgetFocused) {
+          list.push({ gamepad: ['R-stick'], keyboard: [], label: 'Раздел' })
+        }
         list.push({
           gamepad: ['A'],
           keyboard: ['Enter'],
@@ -376,7 +392,8 @@ export function createNavigationState(ctx) {
         !match.simulating &&
         !match.advancing &&
         !match.matchSimOpen &&
-        !match.matchdayOpen
+        !match.matchdayOpen &&
+        !centre.overlayOpen
       ) {
         onsave()
       }
@@ -443,6 +460,10 @@ export function createNavigationState(ctx) {
     }
   
     function handleBack() {
+      if (centre.overlayOpen) {
+        centre.closeOverlay()
+        return
+      }
       if (squad.amountField) {
         if (tab === 'transfers' && transfers.incomingCounterOffer) {
           transfers.closeIncomingCounter()
@@ -581,6 +602,7 @@ export function createNavigationState(ctx) {
     }
   
     function handlePrimaryAction() {
+      if (centre.overlayOpen) return true
       if (tab === 'squad' && view === 'number') {
         squad.confirmNumber()
         return true
@@ -595,6 +617,7 @@ export function createNavigationState(ctx) {
     }
   
     function handleDetails() {
+      if (centre.overlayOpen) return
       if (match.matchdayOpen) return
       if (match.matchSimOpen) {
         if (match.matchSimPhase === 'live') match.finishMatchSimulation()
@@ -642,6 +665,7 @@ export function createNavigationState(ctx) {
     }
   
     async function setTab(next) {
+      if (centre.overlayOpen) return
       if (match.simulating || match.advancing || match.matchSimOpen || match.matchdayOpen) return
       if (!enabledTabs.includes(next)) return
       tab = next
@@ -680,6 +704,10 @@ export function createNavigationState(ctx) {
     }
   
     function switchTab(direction) {
+      if (centre.overlayOpen) {
+        centre.cycleTournament(direction)
+        return
+      }
       if (squad.amountField) return
       if (tab === 'transfers' && transfers.transfersView !== 'hub') {
         if (
@@ -722,6 +750,11 @@ export function createNavigationState(ctx) {
     function handleCycle(direction) {
       if (squad.amountField) {
         squad.adjustAmount(direction)
+        return
+      }
+      if (centre.overlayOpen) return
+      if (tab === 'centre' && centre.widgetFocused) {
+        centre.cycleSection(direction)
         return
       }
       if (tab === 'transfers') {

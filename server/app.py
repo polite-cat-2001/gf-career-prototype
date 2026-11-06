@@ -507,6 +507,8 @@ class SeasonNext(BaseModel):
     date: str
     round: int
     home: bool
+    competition: str = ""
+    competition_id: str = ""
     opponent: SeasonOpponent
 
 
